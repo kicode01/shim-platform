@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import Link from "next/link";
@@ -42,6 +42,17 @@ interface StatsData {
   chartData?: any[];
 }
 
+/* Mobile-only swipe carousel pages. The ids match the panel anchors below and
+   are used purely to drive the segmented control; desktop renders all three at
+   once and never reads this list. */
+const MOBILE_TABS = [
+  { id: "data", label: "Data" },
+  { id: "issuance", label: "Issuance" },
+  { id: "events", label: "Events" },
+] as const;
+
+type MobileTab = (typeof MOBILE_TABS)[number]["id"];
+
 export default function DashboardClient({
   initialEvents,
   initialStats,
@@ -54,6 +65,31 @@ export default function DashboardClient({
   allVerifications?: { timestamp: string | Date }[];
 }) {
   const [timeframe, setTimeframe] = useState("30d");
+
+  /* Mobile swipe carousel. The panels live in one horizontal snap scroller
+     (`.mob-panels`); these refs/state keep the segmented control in sync with
+     whatever page is currently snapped into view. On desktop the scroller is
+     `display: contents` (no box, no scroll), so `clientWidth` is 0 and both
+     handlers bail out immediately — nothing to sync, nothing to break. */
+  const [mobileTab, setMobileTab] = useState<MobileTab>("data");
+  const panelsRef = useRef<HTMLDivElement>(null);
+
+  const goToTab = (index: number) => {
+    setMobileTab(MOBILE_TABS[index].id);
+    const el = panelsRef.current;
+    // Each slide is exactly one viewport wide, so the offset is index * width.
+    if (el) el.scrollTo({ left: index * el.clientWidth, behavior: "smooth" });
+  };
+
+  const handlePanelsScroll = () => {
+    const el = panelsRef.current;
+    if (!el) return;
+    const width = el.clientWidth;
+    if (!width) return; // desktop: not a scroller
+    const index = Math.max(0, Math.min(MOBILE_TABS.length - 1, Math.round(el.scrollLeft / width)));
+    const id = MOBILE_TABS[index].id;
+    setMobileTab((prev) => (prev === id ? prev : id));
+  };
 
   // Helper to get date boundaries for a timeframe
   const getTimeframeDates = (tf: string) => {
@@ -181,8 +217,34 @@ export default function DashboardClient({
         </div>
       </div>
 
+      {/* Mobile-only segmented control for the swipeable panels below. It reads
+          as tabs and also acts as the page indicator: tapping scrolls the
+          carousel, and swiping the carousel updates the active tab (see
+          `handlePanelsScroll`). `lg:hidden` + the mobile-only CSS layer keep
+          desktop exactly as it was. */}
+      <div className="mob-panel-tabs lg:hidden" role="tablist" aria-label="Overview sections">
+        {MOBILE_TABS.map((tab, i) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={mobileTab === tab.id}
+            data-active={mobileTab === tab.id}
+            onClick={() => goToTab(i)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* `.mob-panels` is `display: contents` on desktop, so this wrapper
+          contributes NO box and the desktop layout is unchanged. On mobile it
+          becomes the horizontal snap carousel, and the inner grid also goes
+          `display: contents` so its two cards join the stat ribbon as sibling
+          slides — three pages, no reparenting of the originals. */}
+      <div className="mob-panels" ref={panelsRef} onScroll={handlePanelsScroll}>
       {/* Key Metrics Ribbon */}
-      <div className="bg-zinc-200 border border-zinc-200 rounded-xl shadow-sm mb-6 shrink-0 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-[1px] overflow-hidden">
+      <div id="mob-panel-stats" className="mob-panel mob-stat-row bg-zinc-200 border border-zinc-200 rounded-xl shadow-sm mb-6 shrink-0 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-[1px] overflow-hidden">
         {[
           { label: "Total Issued", value: currentStats.totalCertificates, Icon: Files, iconColor: "text-zinc-900", trend: trends.total, trendLabel: getTrendLabel(), isPositive: !trends.total.startsWith("-") },
           { label: "Valid & Active", value: currentStats.validCertificates, Icon: ShieldCheck, iconColor: "text-zinc-900", trend: trends.valid, trendLabel: getTrendLabel(), isPositive: !trends.valid.startsWith("-") },
@@ -218,10 +280,10 @@ export default function DashboardClient({
       </div>
 
       {/* Main Grid: Recent Events & Charts */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 flex-1 min-h-[400px] shrink-0">
+      <div className="mob-panels-grid grid grid-cols-1 xl:grid-cols-3 gap-6 flex-1 min-h-[400px] shrink-0">
         
         {/* Left Col: Analytics Chart (Takes 2 columns for wider timeline) */}
-        <div className="xl:col-span-2 bg-white border border-zinc-200 rounded-xl shadow-sm flex flex-col h-full min-h-0 overflow-hidden">
+        <div id="mob-panel-issuance" className="mob-panel xl:col-span-2 bg-white border border-zinc-200 rounded-xl shadow-sm flex flex-col h-full min-h-0 overflow-hidden">
           <div className="p-6 border-b border-zinc-200 flex justify-between items-center bg-white shrink-0">
             <div>
               <h3 className="text-lg font-bold text-zinc-700">
@@ -279,7 +341,7 @@ export default function DashboardClient({
         </div>
 
         {/* Right Col: Recent Events (Takes 1 column for a compact list view) */}
-        <div className="xl:col-span-1 bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm flex flex-col h-full min-h-0">
+        <div id="mob-panel-events" className="mob-panel xl:col-span-1 bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm flex flex-col h-full min-h-0">
           <div className="p-6 border-b border-zinc-200 flex justify-between items-center bg-white shrink-0">
             <h2 className="text-lg font-bold text-zinc-700">Recent Events</h2>
             <Link href="/dashboard/events" className="mob-link text-sm font-medium text-zinc-600 hover:text-zinc-700 flex items-center gap-1">
@@ -287,7 +349,7 @@ export default function DashboardClient({
             </Link>
           </div>
 
-          <div className="flex-1 overflow-y-auto bg-zinc-50/50">
+          <div className="mob-events-list flex-1 overflow-y-auto bg-zinc-50/50">
             {initialEvents.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full p-8 text-center">
                 <div className="w-12 h-12 bg-white border border-zinc-200 rounded-xl flex items-center justify-center mb-4 shadow-sm">
@@ -330,6 +392,7 @@ export default function DashboardClient({
             )}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

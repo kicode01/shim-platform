@@ -38,6 +38,14 @@ export async function PUT(
       data: { status: newStatus }
     });
 
+    await prisma.auditLog.create({
+      data: {
+        action: newStatus === "revoked" ? "REVOKED" : "RESTORED",
+        certificateId: id,
+        ipAddress: request.headers.get("x-forwarded-for") || "unknown"
+      }
+    });
+
     return NextResponse.json({ success: true, certificate: updated });
   } catch (error) {
     console.error("Revoke error:", error);

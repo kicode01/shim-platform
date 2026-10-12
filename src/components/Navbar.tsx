@@ -36,10 +36,26 @@ export default function Navbar() {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
     setIsMounted(true);
-    // Prefetch pages for fast transitions
-    router.prefetch('/validate');
-    router.prefetch('/dashboard');
-    router.prefetch('/portal');
+    // Prefetch pages for fast transitions.
+    //
+    // Deferred a frame and wrapped in try/catch on purpose. `router.prefetch`
+    // reaches into the App Router's action queue, which throws
+    // "Internal Next.js error: Router action dispatched before initialization"
+    // (E668) if it is called before the router has finished mounting. During
+    // Fast Refresh the router module is briefly re-initialized while this
+    // effect re-runs, which is exactly that window — it showed up as an
+    // uncaught error in the console during HMR. A prefetch is only a
+    // best-effort optimisation, so it must never surface an error.
+    const raf = requestAnimationFrame(() => {
+      try {
+        router.prefetch('/validate');
+        router.prefetch('/dashboard');
+        router.prefetch('/portal');
+      } catch {
+        /* Router not ready yet; the next mount will prefetch instead. */
+      }
+    });
+    return () => cancelAnimationFrame(raf);
   }, [router]);
 
   const navItems = [
@@ -57,7 +73,7 @@ export default function Navbar() {
     <>
       <header className={`sticky top-0 z-50 no-print transition-colors duration-500 flex items-center h-16 ${
         isLandingMode
-          ? 'mob-nav-landing bg-[#0a0a0a] border-b border-zinc-700' 
+          ? 'mob-nav-landing bg-[#0a0a0a] border-b border-zinc-700'
           : 'bg-white border-b border-zinc-200'
       }`}>
         <div className="mob-nav-inner w-full px-4 sm:px-6 h-full flex justify-between items-center">
@@ -98,7 +114,7 @@ export default function Navbar() {
                     wordmark vertically every frame — the lockup visibly sank
                     and rose. Pinning to the top makes the mark's top edge the
                     single fixed reference for the entire animation. */}
-                <div className="flex items-start gap-2.5">
+                <div className="mob-lockup-row flex items-start gap-2.5">
                 {/* Static width/height as well as the animation: without an
                     intrinsic size the SVG paints at its natural dimensions for
                     one frame before framer-motion initialises, which showed up
@@ -239,14 +255,14 @@ export default function Navbar() {
                 >
                   {!isAuthPage && (
                     <>
-                      <Link href="/validate" className="mob-cta text-sm font-medium text-zinc-100 hover:text-white transition-colors flex items-center gap-1.5 bg-zinc-700 border border-zinc-700 rounded-md px-3 py-1.5 hover:border-zinc-700 whitespace-nowrap shadow-sm">
+                      <Link href="/validate" className="mob-cta text-sm font-medium text-zinc-100 hover:text-white transition-colors flex items-center gap-1.5 bg-zinc-700 border border-zinc-700 rounded-xl px-3 py-1.5 hover:border-zinc-700 whitespace-nowrap shadow-sm">
                         Verify
                       </Link>
                       <div className="mob-divider h-5 w-px bg-zinc-700 shrink-0 hidden sm:block"></div>
-                      <Link href="/login" className="text-sm font-medium text-zinc-400 hover:text-zinc-100 transition-colors whitespace-nowrap inline-block">
+                      <Link href="/login" className="text-sm font-medium mob-hide text-zinc-400 hover:text-zinc-100 transition-colors whitespace-nowrap inline-block">
                         Sign In
                       </Link>
-                      <Link href="/register" className="mob-cta bg-zinc-100 hover:bg-white text-zinc-700 transition-colors text-sm font-medium rounded-md px-4 py-2 flex items-center gap-2 whitespace-nowrap shadow-sm">
+                      <Link href="/register" className="mob-cta bg-zinc-100 hover:bg-white text-zinc-700 transition-colors text-sm font-medium rounded-xl px-4 py-2 flex items-center gap-2 whitespace-nowrap shadow-sm">
                         Get Started
                         <ArrowRight size={14} className="shrink-0" />
                       </Link>
@@ -369,7 +385,7 @@ export default function Navbar() {
                         window.location.href = isLocal ? "/logout" : "https://shim-hq.vercel.app/logout";
                       }
                     }}
-                    className={`mob-icon-btn shrink-0 flex items-center justify-center border transition-all rounded-md overflow-hidden ${
+                    className={`mob-icon-btn shrink-0 flex items-center justify-center border transition-all rounded-xl overflow-hidden ${
                       confirmLogout
                         ? "w-[80px] h-8 border-red-600 bg-red-600 text-white hover:bg-red-700 shadow-sm"
                         : "w-8 h-8 border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-600 shadow-sm"
@@ -417,14 +433,14 @@ export default function Navbar() {
                     (session.user as any).role === "member" ? (
                       <Link 
                         href="/portal"
-                        className="mob-cta flex items-center justify-center bg-zinc-700 border border-zinc-700 text-zinc-100 hover:text-white hover:bg-zinc-600 transition-colors rounded-md px-4 py-2 shadow-sm text-sm font-medium whitespace-nowrap"
+                        className="mob-cta flex items-center justify-center bg-zinc-700 border border-zinc-700 text-zinc-100 hover:text-white hover:bg-zinc-600 transition-colors rounded-xl px-4 py-2 shadow-sm text-sm font-medium whitespace-nowrap"
                       >
                         <span>Portal</span>
                       </Link>
                     ) : (
                       <Link 
                         href="/dashboard"
-                        className="mob-cta flex items-center justify-center bg-zinc-700 border border-zinc-700 text-zinc-100 hover:text-white hover:bg-zinc-600 transition-colors rounded-md px-4 py-2 shadow-sm text-sm font-medium whitespace-nowrap"
+                        className="mob-cta flex items-center justify-center bg-zinc-700 border border-zinc-700 text-zinc-100 hover:text-white hover:bg-zinc-600 transition-colors rounded-xl px-4 py-2 shadow-sm text-sm font-medium whitespace-nowrap"
                       >
                         <span>Dashboard</span>
                       </Link>
@@ -434,7 +450,7 @@ export default function Navbar() {
                       <Link href="/" className="mob-cta text-sm font-medium text-zinc-500 hover:text-zinc-700 transition-colors whitespace-nowrap">
                         Home
                       </Link>
-                      <Link href="/login" className="mob-cta flex items-center justify-center bg-zinc-700 border border-zinc-700 hover:bg-zinc-700 text-zinc-100 hover:text-white transition-colors rounded-md px-4 py-2 shadow-sm text-sm font-medium whitespace-nowrap">
+                      <Link href="/login" className="mob-cta flex items-center justify-center bg-zinc-700 border border-zinc-700 hover:bg-zinc-700 text-zinc-100 hover:text-white transition-colors rounded-xl px-4 py-2 shadow-sm text-sm font-medium whitespace-nowrap">
                         Sign In
                       </Link>
                     </div>

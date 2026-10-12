@@ -22,7 +22,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="flex flex-row bg-white h-full w-full overflow-hidden">
       <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="mob-tabbar-space flex-1 flex flex-col min-w-0 overflow-hidden">
         <DashboardTransition>
           {children}
         </DashboardTransition>

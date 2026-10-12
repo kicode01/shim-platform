@@ -646,6 +646,14 @@ main[data-surface="dark"],
   color-scheme: light dark;
 }
 
+/* Dashboard Overview: the swipe wrapper around the stat ribbon and the main
+   grid. `display: contents` on desktop means the wrapper contributes NO box, so
+   the dashboard layout is byte-identical there. All the swipe behaviour lives
+   in the mobile layer below. */
+.mob-panels {
+  display: contents;
+}
+
 /* --------------------------------------------------------------------------
    AUTH BRAND PANEL — SHORT-VIEWPORT COMPACTION
 
@@ -738,6 +746,214 @@ input[type="number"] {
      does this (both 24px). 13px broke it on mobile, where the wordmark is 18px:
      the suffix rendered at 72% and sat visually detached from "shim". */
   .mob-suffix { font-size: 18px !important; }
+
+  /* Landing lockup on mobile. Its tagline is hidden here (`.mob-tagline`), so
+     the name column is just the wordmark — give it a little more presence and
+     CENTRE it against the mark instead of top-aligning. The desktop
+     top-alignment exists to keep the mark's top edge fixed while the 52 -> 24
+     logo tween runs; once the tagline is gone that reference no longer matters.
+
+     Scoped to landing on purpose: the app chrome's lockup is sized against its
+     own mode suffix and shares its row with three controls, so growing it there
+     would crowd the bar (and overflow 320px). */
+  .mob-nav-landing .mob-lockup-row { align-items: center; }
+  .mob-nav-landing .mob-wordmark { font-size: 22px !important; }
+
+  /* Hide a nav item on mobile only — no-op on desktop. */
+  .mob-hide { display: none !important; }
+
+  /* Landing feature cards. Desktop stacks icon-above-text inside a 4-up grid;
+     on a phone that leaves a tall column of dead space, so put the icon BESIDE
+     the text. A 2-column grid does it without reordering the markup: the tile
+     spans both rows in column 1, the heading and copy sit in column 2.
+     `minmax(0, 1fr)` on the text column so a long word can still wrap rather
+     than forcing the track wider than the viewport. */
+  .mob-feature {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 0.875rem;
+    align-items: start;
+  }
+  .mob-feature > div {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    margin-bottom: 0 !important; /* `mb-6` existed for the stacked layout */
+  }
+  .mob-feature > h3 {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .mob-feature > p {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  /* Hide scrollbars entirely on mobile.
+     Touch browsers overlay and auto-hide their own bars, so the custom classic
+     one we style for desktop is an artefact here: on the dark landing it paints
+     a permanent light strip down the right edge (measured: it takes 0 layout
+     width at 390px, so it is an overlay sitting ON the content). This removes
+     the INDICATOR only — everything stays touch-scrollable.
+
+     Standing caveat from this file: "a hidden-scrollbar scroller is
+     undiscoverable on touch", which is why `.mob-filter-row` wraps rather than
+     scrolling sideways. That reasoning is about HORIZONTAL chip rows, where
+     there is no scroll gesture to discover; vertical page scrolling is done by
+     reflex and needs no indicator. */
+  * {
+    scrollbar-width: none;
+  }
+  *::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+
+  /* ---- Dashboard sidebar -> bottom tab bar --------------------------------
+     On a phone the vertical rail spends a whole column on six icons and pushes
+     the content sideways. Lift it out of the flow and lay it along the bottom
+     instead, the way a native app would.
+
+     `position: fixed` takes it out of the flex row, so the content div
+     (`flex-1`) reclaims the full width. `.mob-tabbar-space` on that div
+     reserves the bar's height so the last row of content is not covered.
+
+     Desktop is untouched: every rule here lives below 1024px, and the two
+     markers are no-ops above it. */
+  .mob-tabbar {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100% !important;
+    height: 60px;
+    flex-direction: row;
+    border-right-width: 0 !important;
+    border-top: 1px solid #e4e4e7;
+    /* Fully opaque, unlike the desktop rail's `bg-white/50` + blur. A tab bar
+       sits ON the content, and the dashboard's page wrapper
+       (dashboard/template.tsx) is translated 8px down by its entrance
+       animation, so the last ~8px of a page can sit under this bar. Opaque
+       means that never reads as a smudge; the border-top keeps the edge. */
+    background: #ffffff !important;
+  }
+
+  /* Studio screens (the template / event editors) hide the rail to reclaim the
+     full canvas. Keep that behaviour rather than parking a bar over an editor
+     that is designed to be edge-to-edge. */
+  .mob-tabbar-off {
+    display: none !important;
+  }
+
+  .mob-tabbar > div {
+    flex: 1;
+    display: flex;
+    padding: 0 !important;
+    min-width: 0 !important;
+  }
+  .mob-tabbar nav {
+    flex: 1;
+    flex-direction: row;
+    gap: 0;
+  }
+  .mob-tabbar nav > a {
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0.25rem;
+    border-radius: 0.75rem;
+    /* `space-y-1` on the nav sets margin-top on every item but the first; in a
+       row that would nudge them all downwards. */
+    margin-top: 0 !important;
+  }
+
+  .mob-tabbar-space {
+    padding-bottom: 60px;
+  }
+
+  /* ---- Dashboard Overview: swipeable panels -------------------------------
+     On a phone the three regions of the Overview page — the stat ribbon, the
+     issuance chart and the recent-events list — stack into one long scroll,
+     which buries the chart and the events below the fold. Turn them into a
+     three-page swipe carousel instead: one panel per screen, with the
+     segmented control above doubling as the page indicator.
+
+     The markup is NOT reparented. `.mob-panels` already wraps the ribbon and
+     the grid; here it becomes the horizontal scroller, and `.mob-panels-grid`
+     goes `display: contents` so its two cards drop out of their own grid and
+     join the ribbon as siblings — three slides, zero extra DOM.
+
+     NOTE: the previous attempt made the stat RIBBON itself the horizontal
+     scroller (`display: flex` + `flex: 0 0 62%` on its tiles). That is what
+     blew the ribbon out to ~1273px: a scroller's content box is sized by its
+     items, so it no longer respected `grid-cols-2`. The scroller belongs on
+     the WRAPPER, not on the ribbon — the ribbon stays a plain 2-up grid.
+
+     Desktop is untouched: the base rule keeps `.mob-panels` at `display:
+     contents`, and every rule below lives only inside this media query. */
+  .mob-panel-tabs {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    margin-bottom: 1rem;
+    background: #f4f4f5;
+    border: 1px solid #e4e4e7;
+    border-radius: 0.75rem;
+  }
+  /* Higher specificity than the app-wide `main button { min-height: 44px }`
+     rule further down, so the control stays a compact 36px. */
+  .mob-panel-tabs button {
+    flex: 1 1 0;
+    min-height: 36px;
+    padding: 0 0.5rem;
+    border-radius: 0.5rem;
+    background: transparent;
+    color: #71717a;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    transition: background-color 0.15s, color 0.15s, box-shadow 0.15s;
+  }
+  .mob-panel-tabs button[data-active="true"] {
+    background: #ffffff;
+    color: #18181b;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.07);
+  }
+
+  .mob-panels {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Drop the desktop grid wrapper so its two cards become direct children of
+     the carousel — sibling slides beside the ribbon. */
+  .mob-panels > .mob-panels-grid {
+    display: contents;
+  }
+  /* One slide per page. `height: auto` releases the panels' desktop `h-full`
+     so the flex row can stretch all three to a shared height — the shorter
+     cards then read as full pages rather than ragged ones. `margin-bottom: 0`
+     drops the ribbon's desktop `mb-6`, which would otherwise shorten its card
+     relative to the others. */
+  .mob-panels .mob-panel {
+    flex: 0 0 100%;
+    width: 100%;
+    min-width: 0;
+    height: auto !important;
+    min-height: 0 !important;
+    margin-bottom: 0 !important;
+    scroll-snap-align: center;
+  }
+  /* Cap the events list so a long event history does not set the height for
+     all three pages; the list keeps its own internal scroll. */
+  .mob-events-list {
+    max-height: 58vh;
+  }
   /* The tagline is decorative: at 6px on a 390px screen it is unreadable and
      only eats vertical space. Hide it on mobile; it returns on desktop. */
   .mob-tagline { display: none !important; }
@@ -746,6 +962,15 @@ input[type="number"] {
   .mob-divider { display: none !important; }
   .mob-cta {
     min-height: 40px;
+    /* Centre the LABEL inside that 40px target. Without this the plain text
+       links stayed `display: block`, so their single 20px line box sat at the
+       TOP of the 40px box, while the button next to them (already flex +
+       items-center) centred its label. Measured on /validate: "Home" rendered
+       ~10px higher than "Sign In" beside it — the boxes were both centred, the
+       text inside one of them was not. */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     padding-left: 12px !important;
     padding-right: 12px !important;
     font-size: 13px !important;
@@ -773,13 +998,70 @@ input[type="number"] {
   main a.mob-card-action { min-height: 44px; min-width: 44px; }
 
   /* The credentials/audit filter rows should WRAP on phones, not scroll
-     invisibly (a hidden-scrollbar scroller is undiscoverable on touch). */
+     invisibly (a hidden-scrollbar scroller is undiscoverable on touch).
+     Measured on /dashboard/audit at 390px: the 5 chips are 421px wide in a
+     268px track, so they break 3 + 2 — and with content-sized chips the second
+     row stopped ~86px short, leaving a ragged hole in the gray track.
+     `flex: 1 1 auto` lets each LINE grow to fill the track, turning the wrap
+     into a deliberate justified 2-row control. The chips keep
+     `whitespace-nowrap` (and basis `auto`), so a label never gets squeezed
+     narrower than its text — the line breaks stay exactly where they were. */
   .mob-filter-row { flex-wrap: wrap; }
+  .mob-filter-row > * { flex: 1 1 auto; }
 
-  /* Dashboard header action row: wrap instead of overflowing the 390px bar */
-  .mob-dash-actions { flex-wrap: wrap; }
+  /* ---- Dashboard header action row -> single line -------------------------
+     Desktop lays the three controls out in a row with room to spare. On a
+     phone the row used to WRAP, dropping "Issue Credential" onto its own line.
+     Keep all three on one line instead: the timeframe select absorbs the
+     leftover width and shrinks (its label truncates), while the two buttons
+     stay fixed and shed a little side padding. `nowrap` guarantees nothing can
+     be pushed onto a second line.
+
+     `min-width: 0` on the select wrapper is load-bearing: without it a flex
+     item refuses to shrink below its content width, the row overflows the
+     viewport and the page gains a horizontal scrollbar. */
+  .mob-dash-actions {
+    /* Full width so the row's LEFT and RIGHT edges line up with the tab strip
+       and the stat ribbon below it. The header is a `flex-col` with
+       `items-start` on mobile, so without this the row is shrink-to-fit and
+       ends ~7px short of the content edge (measured: row right 351 vs strip
+       right 358 at a 390px viewport). The select below is `flex: 1 1 0`, so it
+       simply absorbs the extra width. */
+    width: 100%;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+  }
   .mob-dash-actions > .w-px { display: none; }
-  .mob-dash-actions .relative:first-child { flex: 1 1 140px; min-width: 0; }
+  /* The select wrapper is the flex child; `flex: 1 1 0` lets it take whatever
+     the buttons leave and shrink below the desktop `w-[140px]`. */
+  .mob-dash-actions .relative:first-child {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  /* The Select's own root is `w-[140px]` (fixed) — release it so it fills the
+     flexible wrapper instead of overflowing it. */
+  .mob-dash-actions .relative:first-child > div {
+    width: 100% !important;
+    min-width: 0;
+  }
+  /* Reclaim horizontal room inside the select: tighter side padding and a
+     smaller label/chevron gap (the label still truncates if it must). */
+  .mob-dash-actions .relative:first-child button {
+    gap: 0.375rem;
+    padding-left: 0.625rem;
+    padding-right: 0.625rem;
+  }
+  /* Trim the two action buttons' side padding and stop them shrinking — their
+     labels must stay legible. `min-height: 44px` matches the app-wide tap-
+     target rule that already governs the select (`main button`); without it
+     the links sat at `h-9` (36px) beside a 44px select, which read as a ragged
+     row once they shared one line. */
+  .mob-dash-actions > a {
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding-left: 0.625rem !important;
+    padding-right: 0.625rem !important;
+  }
 
   /* Cards replace the desktop tables; give them comfortable spacing. */
   .mob-card-action { min-height: 44px; }

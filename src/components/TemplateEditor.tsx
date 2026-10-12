@@ -2912,7 +2912,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         width: (el.type === 'signature' && !el.src) ? 'auto' : (el.width || 'auto'), 
         height: (el.type === 'signature' && !el.src) ? 'auto' : (el.height || 'auto') 
       }}
-      position={{ x: el.x, y: el.y }}
+      position={{ x: Number.isFinite(el.x) ? el.x : 0, y: Number.isFinite(el.y) ? el.y : 0 }}
       onDragStart={() => {
         if (el.locked) return;
         if (!isSelected) setSelectedElementId(el.id);

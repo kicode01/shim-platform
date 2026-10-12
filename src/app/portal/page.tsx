@@ -92,7 +92,7 @@ export default async function PortalPage() {
   // awaits the certificates first and is then issued alongside attendance.
   const orConditions = [
     ...(wallet ? [{ walletId: wallet.id }] : []),
-    ...(user.email ? [{ recipientEmail: user.email }] : []),
+    ...(user.email ? [{ recipientEmail: { equals: user.email, mode: "insensitive" as const } }] : []),
   ];
 
   const certificates = await prisma.certificate.findMany({
@@ -113,7 +113,7 @@ export default async function PortalPage() {
     role: cert.role,
     status: cert.status,
     issueDate: cert.issueDate.toISOString(),
-    event: { name: cert.event.name },
+    event: { name: cert.event?.name || "Event" },
     template: { name: cert.template?.name || "Standard Template" }
   }));
 
@@ -122,7 +122,7 @@ export default async function PortalPage() {
   const certIds = certificates.map((c) => c.id);
   const [attendances, totalVerifications] = await Promise.all([
     prisma.attendance.findMany({
-      where: user.email ? { email: user.email } : { id: "__impossible__" }
+      where: user.email ? { email: { equals: user.email, mode: "insensitive" } } : { id: "__impossible__" }
     }),
     prisma.auditLog.count({
       where: {

@@ -187,6 +187,7 @@ function GenerateCertificatesContent() {
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (file) processFile(file);
   };
 

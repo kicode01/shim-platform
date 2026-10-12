@@ -34,7 +34,7 @@ export async function linkCertificatesToUser(
       where: {
         walletId: null,
         OR: [
-          ...(normalized ? [{ recipientEmail: normalized }] : []),
+          ...(normalized ? [{ recipientEmail: { equals: normalized, mode: "insensitive" as const } }] : []),
           ...(extraIds.length ? [{ id: { in: extraIds } }] : []),
         ],
       },
@@ -78,8 +78,8 @@ export async function linkCertificatesByEmail(
   const normalized = (email || "").trim().toLowerCase();
   if (!normalized) return { accountExists: false, linked: 0 };
 
-  const user = await prisma.user.findUnique({
-    where: { email: normalized },
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: normalized, mode: "insensitive" } },
     select: { id: true },
   });
 

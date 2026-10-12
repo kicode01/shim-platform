@@ -16,8 +16,8 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null;
         
         const email = credentials.email.toLowerCase().trim();
-        let user = await prisma.user.findUnique({
-          where: { email }
+        let user = await prisma.user.findFirst({
+          where: { email: { equals: email, mode: "insensitive" } }
         });
 
         // Demo login fallback helper for evaluator testing
@@ -39,6 +39,7 @@ export const authOptions: NextAuthOptions = {
               email: "member@shim.app",
               name: "Jamie Cruz",
               role: "member",
+              membershipId: "ATT-M-00042",
               image: "member123"
             }
           });

@@ -91,6 +91,15 @@ export default function TemplatesListClient({ initialTemplates }: { initialTempl
         </div>
       </div>
 
+      {deleteError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-medium rounded-xl flex items-center justify-between shrink-0 shadow-xs">
+          <span>{deleteError}</span>
+          <button onClick={() => setDeleteError(null)} className="text-red-500 hover:text-red-800 ml-2" title="Dismiss error">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       {/* Templates Grid / List */}
       {templates.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-white border border-zinc-200 rounded-xl shadow-sm min-h-0">

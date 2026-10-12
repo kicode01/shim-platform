@@ -65,7 +65,7 @@ export async function PUT(
     // Fetch existing templates that start with this name to determine if we need a suffix, excluding the current one
     const existingTemplates = await prisma.template.findMany({
       where: {
-        userId,
+        userId: existingTemplate.userId,
         name: {
           startsWith: finalName
         },

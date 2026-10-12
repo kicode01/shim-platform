@@ -40,7 +40,10 @@ export default function AuditClient({ initialLogs }: { initialLogs: AuditLogType
     // Search filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      const targetMatch = log.certificate?.recipientName.toLowerCase().includes(term) || log.certificate?.event.name.toLowerCase().includes(term);
+      const recipient = log.certificate?.recipientName?.toLowerCase() || "";
+      const eventName = log.certificate?.event?.name?.toLowerCase() || "";
+      const certId = log.certificate?.id?.toLowerCase() || "";
+      const targetMatch = recipient.includes(term) || eventName.includes(term) || certId.includes(term);
       const actionMatch = log.action.toLowerCase().includes(term);
       if (!targetMatch && !actionMatch) return false;
     }
@@ -54,6 +57,7 @@ export default function AuditClient({ initialLogs }: { initialLogs: AuditLogType
       case "VERIFIED": return "Verification scan recorded";
       case "CLAIMED": return "Claimed certificate";
       case "REVOKED": return "Revoked certificate";
+      case "RESTORED": return "Restored certificate";
       default: return action;
     }
   };
@@ -64,6 +68,7 @@ export default function AuditClient({ initialLogs }: { initialLogs: AuditLogType
       case "VERIFIED": return ipAddress ? `Guest (${ipAddress})` : "Guest";
       case "CLAIMED": return ipAddress ? `Attendee (${ipAddress})` : "Attendee";
       case "REVOKED": return "Admin";
+      case "RESTORED": return "Admin";
       default: return "System";
     }
   };
@@ -178,7 +183,7 @@ export default function AuditClient({ initialLogs }: { initialLogs: AuditLogType
                             {log.certificate ? (
                               <div className="flex flex-col">
                                 <span className="text-zinc-700 font-medium truncate" title={log.certificate.recipientName}>{log.certificate.recipientName}</span>
-                                <span className="text-zinc-500 text-xs truncate" title={log.certificate.event.name}>{log.certificate.event.name}</span>
+                                <span className="text-zinc-500 text-xs truncate" title={log.certificate.event?.name || "Event"}>{log.certificate.event?.name || "Event"}</span>
                               </div>
                             ) : (
                               <span className="text-zinc-400 italic">Unknown Target</span>
@@ -211,7 +216,7 @@ export default function AuditClient({ initialLogs }: { initialLogs: AuditLogType
                       </div>
                       <div className="mt-1 text-sm text-zinc-700">{getActorText(log.action, log.ipAddress)}</div>
                       <div className="mt-0.5 text-[13px] text-zinc-500 truncate">
-                        {log.certificate ? `${log.certificate.recipientName} · ${log.certificate.event.name}` : "Unknown Target"}
+                        {log.certificate ? `${log.certificate.recipientName} · ${log.certificate.event?.name || "Event"}` : "Unknown Target"}
                       </div>
                     </div>
                   ))

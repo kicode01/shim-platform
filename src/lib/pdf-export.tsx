@@ -292,12 +292,24 @@ export async function downloadBatchCertificatesPdf(
   const pdfHeight = pdf.internal.pageSize.getHeight();
 
   for (let i = 0; i < certs.length; i++) {
-    if (i > 0) pdf.addPage();
+    let certDesign: any = {};
+    if (certs[i]?.design) {
+      try {
+        certDesign = typeof certs[i].design === "string" ? JSON.parse(certs[i].design) : certs[i].design;
+      } catch {}
+    }
+    const certIsPortrait = certDesign.orientation === "portrait";
+
+    if (i > 0) {
+      pdf.addPage("a4", certIsPortrait ? "p" : "l");
+    }
     if (onProgress) onProgress(i + 1, certs.length);
 
     const canvas = await renderCertToCanvas(certs[i]);
     const imgData = canvas.toDataURL("image/png");
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight, undefined, "FAST");
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    pdf.addImage(imgData, "PNG", 0, 0, pageWidth, pageHeight, undefined, "FAST");
   }
 
   const finalFilename = filename || `Batch_Certificates_${certs.length}.pdf`;

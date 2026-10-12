@@ -95,18 +95,19 @@ export default function CredentialsClient({
     }
   };
 
-  // Run instantly when statusFilter changes
-  useEffect(() => {
-    fetchCertificates(searchTerm, statusFilter);
-  }, [statusFilter]);
+  const isFirstMount = useRef(true);
 
-  // Run with debounce when searchTerm changes
+  // Run with debounce when search or status filter changes (skip initial redundant fetch)
   useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
     const timer = setTimeout(() => {
       fetchCertificates(searchTerm, statusFilter);
-    }, 300);
+    }, 250);
     return () => clearTimeout(timer);
-  }, [searchTerm]);
+  }, [searchTerm, statusFilter]);
 
   const showToast = (message: string, type: 'error' | 'success' = 'error') => {
     setToast({ message, type });

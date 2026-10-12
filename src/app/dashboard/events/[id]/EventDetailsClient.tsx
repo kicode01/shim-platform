@@ -68,7 +68,8 @@ export default function EventDetailsClient({
         router.push("/dashboard/events");
         router.refresh();
       } else {
-        alert("Failed to delete event");
+        const data = await res.json().catch(() => null);
+        alert(data?.message || "Failed to delete event");
         setIsDeleting(false);
       }
     } catch (e) {

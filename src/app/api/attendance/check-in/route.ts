@@ -37,8 +37,8 @@ export async function POST(request: Request) {
     }
 
     // 2. Find Member by membershipId
-    const member = await prisma.user.findUnique({
-      where: { membershipId: cleanId }
+    const member = await prisma.user.findFirst({
+      where: { membershipId: { equals: cleanId, mode: "insensitive" } }
     });
 
     if (!member || member.role !== "member") {
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
       let certificate = await prisma.certificate.findFirst({
         where: {
           eventId: event.id,
-          recipientEmail: member.email,
+          recipientEmail: { equals: member.email, mode: "insensitive" },
         }
       });
 

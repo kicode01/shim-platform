@@ -20,8 +20,8 @@ export async function POST(req: Request) {
 
     let issuerId = (session.user as any).id;
     if (!issuerId && session.user.email) {
-      const dbUser = await prisma.user.findUnique({
-        where: { email: session.user.email.toLowerCase().trim() },
+      const dbUser = await prisma.user.findFirst({
+        where: { email: { equals: session.user.email.trim(), mode: "insensitive" } },
         select: { id: true }
       });
       if (dbUser) issuerId = dbUser.id;

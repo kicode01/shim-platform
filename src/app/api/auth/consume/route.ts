@@ -53,13 +53,14 @@ export async function GET(req: Request) {
     });
 
     // 4. Set the session cookie directly
-    const isSecure = process.env.NODE_ENV === "production" || req.url.startsWith("https://");
-    const cookieName = isSecure ? "__Secure-next-auth.session-token" : "next-auth.session-token";
+    const proto = req.headers.get("x-forwarded-proto") || (req.url.startsWith("https://") ? "https" : "http");
+    const isHttps = proto === "https";
+    const cookieName = isHttps ? "__Secure-next-auth.session-token" : "next-auth.session-token";
 
     const cookieStore = await cookies();
     cookieStore.set(cookieName, sessionJwt, {
       httpOnly: true,
-      secure: isSecure,
+      secure: isHttps,
       sameSite: "lax",
       path: "/",
       maxAge: 30 * 24 * 60 * 60,

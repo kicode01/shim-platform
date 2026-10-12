@@ -16,15 +16,14 @@ export async function GET(
 
     const { id: eventId } = await params;
 
-    // Optional: verify the event belongs to the organizer
+    const userRole = (session.user as any).role;
+    const userId = (session.user as any).id;
+
     const event = await prisma.event.findUnique({
-      where: { 
-        id: eventId,
-        organizerId: (session.user as any).id
-      },
+      where: { id: eventId },
     });
 
-    if (!event) {
+    if (!event || (userRole !== "admin" && event.organizerId !== userId)) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 

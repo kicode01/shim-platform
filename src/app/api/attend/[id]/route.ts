@@ -52,8 +52,8 @@ export async function POST(
     });
 
     // Does a Shim account already exist for this email?
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
+    const existingUser = await prisma.user.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } },
       select: { id: true },
     });
     const accountExists = Boolean(existingUser);
@@ -82,7 +82,7 @@ export async function POST(
     let certificate = await prisma.certificate.findFirst({
       where: {
         eventId,
-        recipientEmail: email,
+        recipientEmail: { equals: email, mode: "insensitive" },
       },
     });
 

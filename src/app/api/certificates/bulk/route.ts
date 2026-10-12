@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { computeCertificateFingerprint } from "@/lib/security";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -86,13 +87,25 @@ export async function POST(req: Request) {
       certificates.push(cert);
     }
 
-    if (certificates.length > 0) {
+    const certsWithFingerprint = certificates.map((c) => ({
+      ...c,
+      fingerprint: computeCertificateFingerprint({
+        id: c.id,
+        recipientName: c.recipientName,
+        role: c.role,
+        eventName: c.event.name,
+        issueDate: c.issueDate,
+        issuerId: c.issuerId,
+      }),
+    }));
+
+    if (certsWithFingerprint.length > 0) {
       await prisma.auditLog.createMany({
-        data: certificates.map((c) => ({
+        data: certsWithFingerprint.map((c) => ({
           action: "ISSUED",
           certificateId: c.id,
           ipAddress: req.headers.get("x-forwarded-for") || "System",
-          details: JSON.stringify({ method: "bulk_generation" })
+          details: JSON.stringify({ method: "bulk_generation", fingerprint: c.fingerprint })
         }))
       });
     }
@@ -131,7 +144,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ 
-      certificates: certificates.map(c => ({
+      certificates: certsWithFingerprint.map(c => ({
         ...c,
         accountExists: c.recipientEmail ? (accountByEmail.get(c.recipientEmail) ?? false) : false,
       })),

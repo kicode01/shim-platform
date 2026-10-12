@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { computeCertificateFingerprint, maskEmail } from "@/lib/security";
 
 export async function GET(
   req: Request,
@@ -34,7 +35,40 @@ export async function GET(
       }
     });
 
-    return NextResponse.json(certificate);
+    // Compute cryptographic SHA-256 fingerprint
+    const fingerprint = computeCertificateFingerprint({
+      id: certificate.id,
+      recipientName: certificate.recipientName,
+      role: certificate.role,
+      eventName: certificate.event?.name || certificate.eventId,
+      issueDate: certificate.issueDate,
+      issuerId: certificate.issuerId,
+    });
+
+    // Determine if caller is an authorized organizer/admin or the certificate recipient
+    const session = await getServerSession(authOptions);
+    const sessionUser = session?.user as any;
+    const isAuthorized = Boolean(
+      sessionUser && (
+        sessionUser.role === "admin" ||
+        sessionUser.id === certificate.issuerId ||
+        (sessionUser.email && certificate.recipientEmail && sessionUser.email.toLowerCase() === certificate.recipientEmail.toLowerCase())
+      )
+    );
+
+    // Mask PII for public scanners/unauthenticated viewers
+    const responseData = {
+      ...certificate,
+      fingerprint,
+      recipientEmail: isAuthorized ? certificate.recipientEmail : maskEmail(certificate.recipientEmail),
+      issuer: {
+        ...certificate.issuer,
+        email: isAuthorized ? certificate.issuer?.email : maskEmail(certificate.issuer?.email),
+      },
+      isPiiMasked: !isAuthorized,
+    };
+
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error("Error fetching certificate:", error);
     return NextResponse.json({ message: "Error fetching certificate" }, { status: 500 });

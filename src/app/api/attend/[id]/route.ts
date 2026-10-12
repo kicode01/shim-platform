@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendCertificateEmail, sendCheckInConfirmationEmail } from "@/lib/email";
 import { linkCertificatesByEmail } from "@/lib/claim";
+import { computeCertificateFingerprint } from "@/lib/security";
 
 export async function POST(
   req: Request,
@@ -99,12 +100,21 @@ export async function POST(
         },
       });
 
+      const fingerprint = computeCertificateFingerprint({
+        id: certificate.id,
+        recipientName: certificate.recipientName,
+        role: certificate.role,
+        eventName: event.name,
+        issueDate: certificate.issueDate,
+        issuerId: certificate.issuerId,
+      });
+
       await prisma.auditLog.create({
         data: {
           action: "ISSUED",
           certificateId: certificate.id,
           ipAddress: req.headers.get("x-forwarded-for") || "Kiosk",
-          details: JSON.stringify({ method: "kiosk_checkin" }),
+          details: JSON.stringify({ method: "kiosk_checkin", fingerprint }),
         },
       });
     }

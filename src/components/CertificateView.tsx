@@ -591,6 +591,7 @@ interface CertificateViewProps {
   role?: string | null;
   eventId?: string | null;
   issueDate?: string | Date;
+  fingerprint?: string;
   design?: CertificateDesignConfig | string;
   status?: string;
   printMode?: boolean;
@@ -602,6 +603,7 @@ export default function CertificateView({
   role = "Bachelor of Science in Computer Science",
   eventId,
   issueDate = new Date(),
+  fingerprint,
   design,
   status = "valid",
   printMode = false,
@@ -850,12 +852,13 @@ export default function CertificateView({
         else if (el.text === "eventName") content = eventId || "Event Description";
         else if (el.text === "issueDate") content = formattedDate;
         else if (el.text === "certificateId") content = certificateId || "SERIAL-NO-PLACEHOLDER";
+        else if (el.text === "fingerprint" || el.text === "hash" || el.text === "sha256") content = fingerprint || "AUTHENTIC-SHA256-SEAL";
       }
       if (!content) return;
 
       // Ceiling: explicit maxFontSize, else the authored fontSize.
       const ceiling = el.maxFontSize ?? el.fontSize ?? 16;
-      const isSingleLine = el.type === "dynamicText" && (el.text === "certificateId" || el.text === "issueDate" || el.text === "recipientName");
+      const isSingleLine = el.type === "dynamicText" && (el.text === "certificateId" || el.text === "issueDate" || el.text === "recipientName" || el.text === "fingerprint" || el.text === "hash");
       const maxLines = el.autoFit ? (el.maxLines ?? 1) : (isSingleLine ? 1 : Math.max(1, Math.ceil(content.length / 40)));
 
       // Measure using resolved font face for true 1:1 Canvas 2D font metric calculation
@@ -886,6 +889,7 @@ export default function CertificateView({
     eventId,
     formattedDate,
     certificateId,
+    fingerprint,
   ]);
 
   return (
@@ -953,6 +957,7 @@ export default function CertificateView({
               else if (el.text === "eventName") content = eventId || "Event Description";
               else if (el.text === "issueDate") content = formattedDate;
               else if (el.text === "certificateId") content = certificateId || "SERIAL-NO-PLACEHOLDER";
+              else if (el.text === "fingerprint" || el.text === "hash" || el.text === "sha256") content = fingerprint || "AUTHENTIC-SHA256-SEAL";
             }
 
             if (el.type === "qrCode") {

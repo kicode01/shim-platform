@@ -15,6 +15,7 @@ import jsQR from "jsqr";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import CertificateView from "@/components/CertificateView";
 import { downloadCertificatePdf } from "@/lib/pdf-export";
+import { computeCertificateFingerprint } from "@/lib/security";
 import Tesseract from "tesseract.js";
 
 // Initialize pdfjs worker
@@ -37,6 +38,8 @@ interface FetchedCertificate {
   eventId?: string | null;
   issueDate: string;
   status: string;
+  fingerprint?: string;
+  isPiiMasked?: boolean;
   event?: {
     id: string;
     name: string;
@@ -69,7 +72,19 @@ export default function ValidateSearchClient() {
   const [recentChecks, setRecentChecks] = useState<RecentCheck[]>([]);
 
   const [copied, setCopied] = useState(false);
+  const [copiedHash, setCopiedHash] = useState(false);
   const [downloading, setDownloading] = useState(false);
+
+  const displayFingerprint = certificate
+    ? certificate.fingerprint || computeCertificateFingerprint({
+        id: certificate.id,
+        recipientName: certificate.recipientName,
+        role: certificate.role || certificate.template?.name,
+        eventName: certificate.event?.name || certificate.eventId || "Event Description",
+        issueDate: certificate.issueDate,
+        issuerId: (certificate as any).issuerId,
+      })
+    : "";
 
   // OCR Advanced Mode States
   const [advancedMode, setAdvancedMode] = useState(false);
@@ -325,6 +340,7 @@ export default function ValidateSearchClient() {
         role: certificate.role || certificate.template?.name,
         eventName: certificate.event?.name || certificate.eventId || "Event Description",
         issueDate: certificate.issueDate,
+        fingerprint: displayFingerprint,
         design: certificate.template?.designData,
         status: certificate.status,
       }, `Credential-${certificate.id.substring(0, 10)}.pdf`);
@@ -551,6 +567,7 @@ export default function ValidateSearchClient() {
                       role={certificate.role || certificate.template.name}
                       eventId={certificate.event?.name || certificate.eventId || "Unknown Event"}
                       issueDate={certificate.issueDate}
+                      fingerprint={displayFingerprint}
                       design={certificate.template.designData}
                       status={certificate.status}
                     />
@@ -660,6 +677,15 @@ export default function ValidateSearchClient() {
                     <div>
                       <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Issued To</div>
                       <div className="text-sm font-medium text-zinc-200">{certificate.recipientName}</div>
+                      {certificate.recipientEmail && (
+                        <div 
+                          className="text-xs text-zinc-400 font-mono mt-1.5 flex items-center gap-1.5" 
+                          title={certificate.isPiiMasked ? "Attendee email masked for privacy compliance" : undefined}
+                        >
+                          {certificate.isPiiMasked && <Lock size={11} className="text-zinc-500 shrink-0" />}
+                          <span className="truncate">{certificate.recipientEmail}</span>
+                        </div>
+                      )}
                     </div>
                     <div>
                       <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Certification</div>
@@ -677,8 +703,8 @@ export default function ValidateSearchClient() {
                     </div>
                     
                     <div className="col-span-2 sm:col-span-2 mt-2">
-                      <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Cryptographic Fingerprint</div>
-                      <div className="text-xs font-mono text-zinc-400 tracking-wider">
+                      <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Ledger Record ID</div>
+                      <div className="text-xs font-mono text-zinc-300 tracking-wider break-all select-all">
                         {certificate.id}
                       </div>
                     </div>
@@ -694,6 +720,32 @@ export default function ValidateSearchClient() {
                       <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Ledger State</div>
                       <div className="text-sm font-medium text-zinc-200">
                         {certificate.status === "valid" ? "Immutable (Active)" : "Revoked"}
+                      </div>
+                    </div>
+
+                    <div className="col-span-2 sm:col-span-4 mt-2 pt-4 border-t border-zinc-800/80">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
+                          <ShieldCheck size={13} className="text-emerald-400" />
+                          <span>Cryptographic SHA-256 Digest (Tamper Seal)</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(displayFingerprint);
+                            setCopiedHash(true);
+                            setTimeout(() => setCopiedHash(false), 2000);
+                          }}
+                          className="text-[10px] font-mono text-zinc-500 hover:text-zinc-300 transition-colors uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+                          title="Copy full 256-bit cryptographic digest"
+                        >
+                          {copiedHash ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                          <span>{copiedHash ? "Copied" : "Copy Hash"}</span>
+                        </button>
+                      </div>
+                      <div className="text-[11px] sm:text-xs font-mono text-emerald-400/90 tracking-wider bg-zinc-900/90 px-3 py-2.5 rounded-lg border border-zinc-800 break-all select-all flex items-start gap-2 shadow-inner">
+                        <span className="text-zinc-600 select-none">SHA256:</span>
+                        <span className="flex-1">{displayFingerprint}</span>
                       </div>
                     </div>
                   </div>

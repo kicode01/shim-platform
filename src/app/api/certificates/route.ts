@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { linkCertificatesByEmail } from "@/lib/claim";
+import { computeCertificateFingerprint } from "@/lib/security";
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
@@ -132,12 +133,21 @@ export async function POST(req: Request) {
       }
     });
 
+    const fingerprint = computeCertificateFingerprint({
+      id: certificate.id,
+      recipientName: certificate.recipientName,
+      role: certificate.role,
+      eventName: certificate.event.name,
+      issueDate: certificate.issueDate,
+      issuerId: certificate.issuerId,
+    });
+
     await prisma.auditLog.create({
       data: {
         action: "ISSUED",
         certificateId: certificate.id,
         ipAddress: req.headers.get("x-forwarded-for") || "System",
-        details: JSON.stringify({ method: "single_generation" })
+        details: JSON.stringify({ method: "single_generation", fingerprint })
       }
     });
 
@@ -162,7 +172,7 @@ export async function POST(req: Request) {
       }).catch(err => console.error("Failed to send email silently:", err));
     }
 
-    return NextResponse.json({ ...certificate, accountExists }, { status: 201 });
+    return NextResponse.json({ ...certificate, fingerprint, accountExists }, { status: 201 });
   } catch (error: any) {
     console.error("Error creating certificate:", error);
     return NextResponse.json({ message: error?.message || "Error issuing certificate" }, { status: 500 });

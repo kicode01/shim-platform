@@ -13,6 +13,7 @@ export interface RenderCertOptions {
   role?: string | null;
   eventName?: string | null;
   issueDate?: string | Date;
+  fingerprint?: string;
   design?: any;
   status?: string;
 }
@@ -155,6 +156,7 @@ export async function renderCertToCanvas(options: RenderCertOptions): Promise<HT
           role={options.role}
           eventId={options.eventName}
           issueDate={options.issueDate}
+          fingerprint={options.fingerprint}
           design={parsedDesign}
           status={options.status || "valid"}
           printMode={true}

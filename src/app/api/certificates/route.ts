@@ -16,9 +16,9 @@ export async function GET(req: Request) {
   const status = searchParams.get("status") || "";
 
   try {
-    const whereClause: any = {
-      issuerId: (session.user as any).id
-    };
+    const userRole = (session.user as any).role;
+    const userId = (session.user as any).id;
+    const whereClause: any = userRole === "admin" ? {} : { issuerId: userId };
 
     if (search) {
       whereClause.OR = [

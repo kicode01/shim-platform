@@ -31,8 +31,12 @@ export async function POST(
       return NextResponse.json({ error: "Certificate not found" }, { status: 404 });
     }
 
-    // Only the event organizer may resend.
-    if (certificate.event.organizerId !== session.user.id) {
+    const userRole = (session.user as any).role;
+    const isIssuer = certificate.issuerId === session.user.id;
+    const isOrganizer = certificate.event?.organizerId === session.user.id;
+    const isAdmin = userRole === "admin";
+
+    if (!isIssuer && !isOrganizer && !isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 

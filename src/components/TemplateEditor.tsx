@@ -2744,6 +2744,20 @@ export default function TemplateEditor({
                   />
                 );
               })}
+
+              {/* Dynamic Center Snapping Guidelines */}
+              {activeGuides.vertical !== null && (
+                <div
+                  className="absolute top-0 bottom-0 pointer-events-none z-[60] border-l-2 border-indigo-500 border-dashed"
+                  style={{ left: `${activeGuides.vertical}px` }}
+                />
+              )}
+              {activeGuides.horizontal !== null && (
+                <div
+                  className="absolute left-0 right-0 pointer-events-none z-[60] border-t-2 border-indigo-500 border-dashed"
+                  style={{ top: `${activeGuides.horizontal}px` }}
+                />
+              )}
             </div>
 
             {/* Interactive Zoom Controls */}
@@ -2903,26 +2917,37 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         if (el.locked) return;
         if (!isSelected) setSelectedElementId(el.id);
       }}
-      onDragStop={(e, data) => {
-        // Canvas is 3508x2480 (landscape) / 2480x3508 (portrait). react-rnd
-        // reports positions in *screen* px, so divide by the zoom to get back
-        // to the canvas's own coordinate space before storing.
-        const zoom = scale || 1; // `scale` prop is already scale * userZoom
+      onDrag={(e, data) => {
         const canvasWidth = currentOrientation === 'landscape' ? 3508 : 2480;
         const canvasHeight = currentOrientation === 'landscape' ? 2480 : 3508;
-        // offsetWidth/Height are screen px too -> convert to canvas units.
-        const elW = data.node.offsetWidth / zoom;
-        const elH = data.node.offsetHeight / zoom;
-        let finalX = data.x / zoom;
-        let finalY = data.y / zoom;
+        const elW = data.node.offsetWidth;
+        const elH = data.node.offsetHeight;
+        const centerX = data.x + elW / 2;
+        const centerY = data.y + elH / 2;
+        const snap = 25;
+        const isNearV = Math.abs(centerX - canvasWidth / 2) < snap;
+        const isNearH = Math.abs(centerY - canvasHeight / 2) < snap;
+        setActiveGuides({
+          vertical: isNearV ? canvasWidth / 2 : null,
+          horizontal: isNearH ? canvasHeight / 2 : null
+        });
+      }}
+      onDragStop={(e, data) => {
+        // react-rnd is passed `scale={scale}`, so `data.x` and `data.y`
+        // are ALREADY in the unscaled canvas coordinate space (3508x2480 or 2480x3508).
+        const canvasWidth = currentOrientation === 'landscape' ? 3508 : 2480;
+        const canvasHeight = currentOrientation === 'landscape' ? 2480 : 3508;
+        const elW = data.node.offsetWidth;
+        const elH = data.node.offsetHeight;
+        let finalX = data.x;
+        let finalY = data.y;
         const centerX = finalX + elW / 2;
         const centerY = finalY + elH / 2;
-        // Snap threshold is a real canvas distance (15px at 1:1), not screen px.
-        const snap = 15 / 1;
+        const snap = 25;
         if (Math.abs(centerX - canvasWidth / 2) < snap) finalX = canvasWidth / 2 - elW / 2;
         if (Math.abs(centerY - canvasHeight / 2) < snap) finalY = canvasHeight / 2 - elH / 2;
         setActiveGuides({ vertical: null, horizontal: null });
-        updateElement(el.id, { x: finalX, y: finalY });
+        updateElement(el.id, { x: Math.round(finalX), y: Math.round(finalY) });
       }}
       onResizeStart={(e, dir, ref) => {
         if (!isSelected) setSelectedElementId(el.id);
@@ -2930,13 +2955,12 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         dragStartData.current = { width: ref.offsetWidth, fontSize: el.fontSize || defaultFontSize };
       }}
       onResize={(e, direction, ref, delta, position) => {
-        // `ref.style.width` and `position` are screen px; divide by zoom to
-        // store canvas-space units (the canvas itself is scaled by `zoom`).
-        const zoom = scale || 1;
-        const newWidth = parseFloat(ref.style.width) / zoom;
-        const newHeight = el.height ? parseFloat(ref.style.height) / zoom : undefined;
+        // `ref.style.width` and `position` are already in canvas-space units
+        // because react-rnd passes scale to re-resizable.
+        const newWidth = parseFloat(ref.style.width) || ref.offsetWidth;
+        const newHeight = el.height ? (parseFloat(ref.style.height) || ref.offsetHeight) : undefined;
 
-        let updates: any = { x: position.x / zoom, y: position.y / zoom };
+        let updates: any = { x: Math.round(position.x), y: Math.round(position.y) };
 
         const isCorner = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'].includes(direction);
         if (isCorner && !isProportional && el.type !== 'shape') {
@@ -2947,17 +2971,15 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
           updates.fontSize = Math.max(8, Math.round(startFs * ratio));
         }
 
-        updates.width = (el.type === 'signature' && !el.src) ? ref.offsetWidth / zoom : newWidth;
-        if (newHeight !== undefined) updates.height = (el.type === 'signature' && !el.src) ? ref.offsetHeight / zoom : newHeight;
+        updates.width = (el.type === 'signature' && !el.src) ? ref.offsetWidth : Math.round(newWidth);
+        if (newHeight !== undefined) updates.height = (el.type === 'signature' && !el.src) ? ref.offsetHeight : Math.round(newHeight);
 
         updateSelectedElement(updates);
       }}
       onResizeStop={(e, direction, ref, delta, position) => {
-        // Same normalization as onResize — keep canvas-space units consistent.
-        const zoom = scale || 1;
-        const newWidth = parseFloat(ref.style.width) / zoom;
-        const newHeight = el.height ? parseFloat(ref.style.height) / zoom : undefined;
-        let updates: any = { x: position.x / zoom, y: position.y / zoom };
+        const newWidth = parseFloat(ref.style.width) || ref.offsetWidth;
+        const newHeight = el.height ? (parseFloat(ref.style.height) || ref.offsetHeight) : undefined;
+        let updates: any = { x: Math.round(position.x), y: Math.round(position.y) };
 
         const isCorner = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'].includes(direction);
         if (isCorner && !isProportional && el.type !== 'shape') {
@@ -2968,8 +2990,8 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
           updates.fontSize = Math.max(8, Math.round(startFs * ratio));
         }
 
-        updates.width = (el.type === 'signature' && !el.src) ? ref.offsetWidth / zoom : newWidth;
-        if (newHeight !== undefined) updates.height = (el.type === 'signature' && !el.src) ? ref.offsetHeight / zoom : newHeight;
+        updates.width = (el.type === 'signature' && !el.src) ? ref.offsetWidth : Math.round(newWidth);
+        if (newHeight !== undefined) updates.height = (el.type === 'signature' && !el.src) ? ref.offsetHeight : Math.round(newHeight);
 
         updateSelectedElement(updates);
       }}

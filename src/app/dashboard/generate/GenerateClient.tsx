@@ -132,7 +132,26 @@ function GenerateCertificatesContent() {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
-        const valid = results.data.filter((row: any) => row.name && String(row.name).trim().length > 0);
+        const normalized = (results.data || []).map((row: any) => {
+          const normRow: any = {};
+          for (const [key, val] of Object.entries(row || {})) {
+            const k = key.trim().toLowerCase();
+            if (k === "name" || k === "recipient name" || k === "full name" || k === "fullname" || k === "participant") {
+              normRow.name = val;
+            } else if (k === "email" || k === "email address" || k === "recipient email") {
+              normRow.email = val;
+            } else if (k === "role" || k === "title" || k === "category") {
+              normRow.role = val;
+            } else if (k === "event" || k === "event name" || k === "event title") {
+              normRow.event = val;
+            } else {
+              normRow[key.trim()] = val;
+            }
+          }
+          return normRow;
+        });
+
+        const valid = normalized.filter((row: any) => row.name && String(row.name).trim().length > 0);
         setCsvData(valid);
         setPreviewIndex(0);
         if (valid.length > 0) {

@@ -24,7 +24,10 @@ export async function GET(
       }
     });
 
-    if (!template || template.userId !== (session.user as any).id) {
+    const userRole = (session.user as any).role;
+    const userId = (session.user as any).id;
+
+    if (!template || (userRole !== "admin" && template.userId !== userId)) {
       return NextResponse.json({ message: "Template not found" }, { status: 404 });
     }
 
@@ -49,14 +52,15 @@ export async function PUT(
   try {
     const { name, description, designData } = await req.json();
 
+    const userRole = (session.user as any).role;
     const userId = (session.user as any).id;
 
     const existingTemplate = await prisma.template.findUnique({ where: { id } });
-    if (!existingTemplate || existingTemplate.userId !== userId) {
+    if (!existingTemplate || (userRole !== "admin" && existingTemplate.userId !== userId)) {
       return NextResponse.json({ message: "Template not found" }, { status: 404 });
     }
 
-    let finalName = name.trim();
+    let finalName = (name !== undefined ? name : existingTemplate.name)?.trim() || existingTemplate.name;
 
     // Fetch existing templates that start with this name to determine if we need a suffix, excluding the current one
     const existingTemplates = await prisma.template.findMany({
@@ -84,8 +88,8 @@ export async function PUT(
       where: { id },
       data: {
         name: finalName,
-        description: description?.trim() || null,
-        designData: typeof designData === "string" ? designData : JSON.stringify(designData),
+        description: description !== undefined ? (description?.trim() || null) : existingTemplate.description,
+        designData: designData !== undefined ? (typeof designData === "string" ? designData : JSON.stringify(designData)) : existingTemplate.designData,
       }
     });
 
@@ -108,10 +112,11 @@ export async function DELETE(
   const { id } = await props.params;
 
   try {
+    const userRole = (session.user as any).role;
     const userId = (session.user as any).id;
 
     const existingTemplate = await prisma.template.findUnique({ where: { id } });
-    if (!existingTemplate || existingTemplate.userId !== userId) {
+    if (!existingTemplate || (userRole !== "admin" && existingTemplate.userId !== userId)) {
       return NextResponse.json({ message: "Template not found" }, { status: 404 });
     }
 

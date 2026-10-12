@@ -84,13 +84,13 @@ export default async function PortalPage() {
   // round-trip for each in turn, which dominated the page's load time against
   // the remote database. The audit count only needs the certificate ids, so it
   // awaits the certificates first and is then issued alongside attendance.
+  const orConditions = [
+    ...(wallet ? [{ walletId: wallet.id }] : []),
+    ...(user.email ? [{ recipientEmail: user.email }] : []),
+  ];
+
   const certificates = await prisma.certificate.findMany({
-    where: {
-      OR: [
-        ...(wallet ? [{ walletId: wallet.id }] : []),
-        { recipientEmail: user.email },
-      ],
-    },
+    where: orConditions.length > 0 ? { OR: orConditions } : { id: "__impossible__" },
     include: {
       event: true,
       template: true,
@@ -116,7 +116,7 @@ export default async function PortalPage() {
   const certIds = certificates.map((c) => c.id);
   const [attendances, totalVerifications] = await Promise.all([
     prisma.attendance.findMany({
-      where: { email: user.email! }
+      where: user.email ? { email: user.email } : { id: "__impossible__" }
     }),
     prisma.auditLog.count({
       where: {

@@ -19,20 +19,20 @@ export default async function KioskPage({ params }: { params: Promise<{ id: stri
   }
 
   const event = await prisma.event.findUnique({
-    where: { 
-      id: id,
-      organizerId: (session.user as any).id
-    },
+    where: { id },
     select: {
       id: true,
       name: true,
+      organizerId: true,
       _count: {
         select: { attendances: true }
       }
     }
   });
 
-  if (!event) {
+  const userRole = (session.user as any).role;
+  const userId = (session.user as any).id;
+  if (!event || (userRole !== "admin" && event.organizerId !== userId)) {
     notFound();
   }
 

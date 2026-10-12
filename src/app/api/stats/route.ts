@@ -10,7 +10,11 @@ export async function GET() {
   }
 
   try {
+    const userRole = (session.user as any).role;
     const userId = (session.user as any).id;
+    const issuerFilter = userRole === "admin" ? {} : { issuerId: userId };
+    const templateFilter = userRole === "admin" ? {} : { userId };
+    const auditFilter = userRole === "admin" ? { action: "VERIFIED" } : { action: "VERIFIED", certificate: { issuerId: userId } };
 
     const [
       totalCertificates, 
@@ -22,12 +26,12 @@ export async function GET() {
       totalVerifications,
       totalClaimed
     ] = await Promise.all([
-      prisma.certificate.count({ where: { issuerId: userId } }),
-      prisma.certificate.count({ where: { issuerId: userId, status: "valid" } }),
-      prisma.certificate.count({ where: { issuerId: userId, status: "revoked" } }),
-      prisma.template.count({ where: { userId } }),
+      prisma.certificate.count({ where: { ...issuerFilter } }),
+      prisma.certificate.count({ where: { ...issuerFilter, status: "valid" } }),
+      prisma.certificate.count({ where: { ...issuerFilter, status: "revoked" } }),
+      prisma.template.count({ where: templateFilter }),
       prisma.certificate.findMany({
-        where: { issuerId: userId },
+        where: issuerFilter,
         take: 6,
         orderBy: { issueDate: "desc" },
         include: {
@@ -35,11 +39,11 @@ export async function GET() {
         }
       }),
       prisma.certificate.findMany({
-        where: { issuerId: userId },
+        where: issuerFilter,
         select: { issueDate: true, status: true }
       }),
-      prisma.auditLog.count({ where: { action: "VERIFIED", certificate: { issuerId: userId } } }),
-      prisma.certificate.count({ where: { issuerId: userId, isClaimed: true } })
+      prisma.auditLog.count({ where: auditFilter }),
+      prisma.certificate.count({ where: { ...issuerFilter, isClaimed: true } })
     ]);
 
     // Aggregate monthly data for the last 6 months

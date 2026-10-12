@@ -29,7 +29,12 @@ export default async function DashboardPage() {
   }
 
   // Load server-side initial stats and events
+  const userRole = (session.user as any).role;
   const userId = session.user.id;
+  const issuerFilter = userRole === "admin" ? {} : { issuerId: userId };
+  const templateFilter = userRole === "admin" ? {} : { userId };
+  const organizerFilter = userRole === "admin" ? {} : { organizerId: userId };
+  const auditFilter = userRole === "admin" ? { action: "VERIFIED" } : { action: "VERIFIED", certificate: { issuerId: userId } };
   
   let totalCertificates = 0, validCertificates = 0, revokedCertificates = 0;
   let totalTemplates = 0, totalVerifications = 0, totalClaimed = 0;
@@ -49,14 +54,14 @@ export default async function DashboardPage() {
       allCertificates,
       allVerifications
     ] = await Promise.all([
-      prisma.certificate.count({ where: { issuerId: userId } }),
-      prisma.certificate.count({ where: { issuerId: userId, status: "valid" } }),
-      prisma.certificate.count({ where: { issuerId: userId, status: "revoked" } }),
-      prisma.template.count({ where: { userId } }),
-      prisma.auditLog.count({ where: { action: "VERIFIED", certificate: { issuerId: userId } } }),
-      prisma.certificate.count({ where: { issuerId: userId, isClaimed: true } }),
+      prisma.certificate.count({ where: { ...issuerFilter } }),
+      prisma.certificate.count({ where: { ...issuerFilter, status: "valid" } }),
+      prisma.certificate.count({ where: { ...issuerFilter, status: "revoked" } }),
+      prisma.template.count({ where: templateFilter }),
+      prisma.auditLog.count({ where: auditFilter }),
+      prisma.certificate.count({ where: { ...issuerFilter, isClaimed: true } }),
       prisma.event.findMany({
-        where: { organizerId: userId },
+        where: organizerFilter,
         take: 5,
         orderBy: { createdAt: "desc" },
         include: {
@@ -66,11 +71,11 @@ export default async function DashboardPage() {
         }
       }),
       prisma.certificate.findMany({
-        where: { issuerId: userId },
+        where: issuerFilter,
         select: { issueDate: true, status: true, isClaimed: true }
       }),
       prisma.auditLog.findMany({
-        where: { action: "VERIFIED", certificate: { issuerId: userId } },
+        where: auditFilter,
         select: { createdAt: true }
       })
     ]);

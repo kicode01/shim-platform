@@ -22,7 +22,7 @@ export async function POST(request: Request) {
       where: { id: eventId }
     });
 
-    if (!event || event.organizerId !== session.user.id) {
+    if (!event || (session.user.role !== "admin" && event.organizerId !== session.user.id)) {
       return NextResponse.json({ error: "Event not found or unauthorized" }, { status: 404 });
     }
 

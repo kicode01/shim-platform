@@ -10,8 +10,10 @@ export async function GET() {
   }
 
   try {
+    const userRole = (session.user as any).role;
+    const userId = (session.user as any).id;
     const events = await prisma.event.findMany({
-      where: { organizerId: (session.user as any).id },
+      where: userRole === "admin" ? {} : { organizerId: userId },
       orderBy: { createdAt: "desc" },
       include: {
         _count: {

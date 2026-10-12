@@ -11,8 +11,10 @@ export async function GET() {
   }
 
   try {
+    const userRole = (session.user as any).role;
+    const userId = (session.user as any).id;
     const templates = await prisma.template.findMany({
-      where: { userId: (session.user as any).id },
+      where: userRole === "admin" ? {} : { userId },
       include: {
         _count: {
           select: { certificates: true }

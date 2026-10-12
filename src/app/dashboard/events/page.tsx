@@ -18,9 +18,12 @@ export default async function EventsPage() {
     redirect("/login");
   }
 
+  const userRole = (session.user as any).role;
+  const userId = (session.user as any).id;
+
   const [events, templates] = await Promise.all([
     prisma.event.findMany({
-      where: { organizerId: (session.user as any).id },
+      where: userRole === "admin" ? {} : { organizerId: userId },
       include: {
         _count: {
           select: { certificates: true }
@@ -29,7 +32,7 @@ export default async function EventsPage() {
       orderBy: { createdAt: "desc" }
     }),
     prisma.template.findMany({
-      where: { userId: (session.user as any).id },
+      where: userRole === "admin" ? {} : { userId },
       select: { id: true, name: true }
     })
   ]);

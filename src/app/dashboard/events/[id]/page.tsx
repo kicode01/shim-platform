@@ -29,7 +29,8 @@ export default async function EventDetailsPage({ params }: { params: Promise<{ i
     }
   });
 
-  if (!event || event.organizerId !== session.user.id) {
+  const userRole = (session.user as any).role;
+  if (!event || (userRole !== "admin" && event.organizerId !== session.user.id)) {
     notFound();
   }
 
@@ -42,7 +43,7 @@ export default async function EventDetailsPage({ params }: { params: Promise<{ i
 
   // Fetch templates for the Default Template dropdown
   const templates = await prisma.template.findMany({
-    where: { userId: session.user.id },
+    where: userRole === "admin" ? {} : { userId: session.user.id },
     select: { id: true, name: true }
   });
 

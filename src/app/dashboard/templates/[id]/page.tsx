@@ -33,7 +33,9 @@ export default async function EditTemplatePage(props: { params: Promise<{ id: st
     where: { id }
   });
 
-  if (!template) {
+  const userRole = (session.user as any).role;
+  const userId = (session.user as any).id;
+  if (!template || (userRole !== "admin" && template.userId !== userId)) {
     notFound();
   }
 

@@ -22,7 +22,9 @@ export default async function CheckInPage({ params }: { params: Promise<{ id: st
     }
   });
 
-  if (!event || event.organizerId !== session.user.id) {
+  const userRole = session.user.role;
+  const userId = session.user.id;
+  if (!event || (userRole !== "admin" && event.organizerId !== userId)) {
     redirect("/dashboard/events");
   }
 

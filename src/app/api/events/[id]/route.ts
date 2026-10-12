@@ -17,7 +17,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       where: { id }
     });
 
-    if (!existing || existing.organizerId !== (session.user as any).id) {
+    const userRole = (session.user as any).role;
+    const userId = (session.user as any).id;
+    if (!existing || (userRole !== "admin" && existing.organizerId !== userId)) {
       return NextResponse.json({ message: "Event not found or unauthorized" }, { status: 404 });
     }
 
@@ -55,8 +57,21 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
       where: { id }
     });
 
-    if (!existing || existing.organizerId !== (session.user as any).id) {
+    const userRole = (session.user as any).role;
+    const userId = (session.user as any).id;
+    if (!existing || (userRole !== "admin" && existing.organizerId !== userId)) {
       return NextResponse.json({ message: "Event not found or unauthorized" }, { status: 404 });
+    }
+
+    // Check if certificates are linked to this event to prevent DB foreign key constraint errors
+    const certCount = await prisma.certificate.count({
+      where: { eventId: id }
+    });
+
+    if (certCount > 0) {
+      return NextResponse.json({ 
+        message: `Cannot delete event because ${certCount} certificate(s) have been issued for it.` 
+      }, { status: 400 });
     }
 
     await prisma.event.delete({

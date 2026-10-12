@@ -94,9 +94,10 @@ export async function PATCH(
       return NextResponse.json({ message: "Invalid status value" }, { status: 400 });
     }
 
+    const userRole = (session.user as any).role;
     const userId = (session.user as any).id;
     const existing = await prisma.certificate.findUnique({ where: { id } });
-    if (!existing || existing.issuerId !== userId) {
+    if (!existing || (userRole !== "admin" && existing.issuerId !== userId)) {
       return NextResponse.json({ message: "Certificate not found" }, { status: 404 });
     }
 
@@ -134,9 +135,10 @@ export async function DELETE(
   const { id } = await props.params;
 
   try {
+    const userRole = (session.user as any).role;
     const userId = (session.user as any).id;
     const existing = await prisma.certificate.findUnique({ where: { id } });
-    if (!existing || existing.issuerId !== userId) {
+    if (!existing || (userRole !== "admin" && existing.issuerId !== userId)) {
       return NextResponse.json({ message: "Certificate not found" }, { status: 404 });
     }
 

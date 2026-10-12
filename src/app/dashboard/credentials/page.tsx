@@ -17,9 +17,12 @@ export default async function CredentialsPage() {
     redirect("/login");
   }
 
+  const userRole = (session.user as any).role;
+  const userId = (session.user as any).id;
+
   // Load server-side initial certificates
   const certificates = await prisma.certificate.findMany({
-    where: { issuerId: (session.user as any).id },
+    where: userRole === "admin" ? {} : { issuerId: userId },
     take: 50,
     orderBy: { issueDate: "desc" },
     include: {

@@ -10,34 +10,44 @@ export default async function AuditPage() {
     redirect("/login");
   }
 
-  // Get all events for this organizer
-  const events = await prisma.event.findMany({
-    where: { organizerId: session.user.id },
-    select: { id: true, name: true }
-  });
-  
-  const eventIds = events.map(e => e.id);
+  const userRole = (session.user as any).role;
+  const userId = session.user.id;
 
-  // Get all certificates for these events
+  // Get certificates for this organizer (as issuer or event organizer), or all if admin
+  const whereCertClause = userRole === "admin"
+    ? {}
+    : {
+        OR: [
+          { issuerId: userId },
+          { event: { organizerId: userId } }
+        ]
+      };
+
   const certificates = await prisma.certificate.findMany({
-    where: { eventId: { in: eventIds } },
-    select: { id: true, recipientName: true, recipientEmail: true, eventId: true }
+    where: whereCertClause,
+    select: {
+      id: true,
+      recipientName: true,
+      recipientEmail: true,
+      eventId: true,
+      event: { select: { id: true, name: true } }
+    }
   });
 
   const certIds = certificates.map(c => c.id);
 
-  // Get all audit logs for these certificates
+  // Get all audit logs for these certificates, or all if admin
   const auditLogs = await prisma.auditLog.findMany({
-    where: { certificateId: { in: certIds } },
-    orderBy: { createdAt: "desc" }
+    where: userRole === "admin" ? {} : { certificateId: { in: certIds } },
+    orderBy: { createdAt: "desc" },
+    take: 100
   });
 
   const certMap = new Map(certificates.map(c => [c.id, c]));
-  const eventMap = new Map(events.map(e => [e.id, e]));
 
   const serializedLogs = auditLogs.map(log => {
     const cert = certMap.get(log.certificateId);
-    const event = cert ? eventMap.get(cert.eventId) : null;
+    const event = cert ? cert.event : null;
     
     return {
       id: log.id,

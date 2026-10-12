@@ -74,20 +74,20 @@ export default function EventsClient({ initialEvents, templates }: EventsClientP
   };
 
   return (
-    <div className="mob-scroll-pane flex-1 flex flex-col max-w-7xl mx-auto w-full px-4 sm:px-6 py-8 min-h-0 overflow-hidden">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-6 shrink-0">
+    <div className="flex-1 flex flex-col max-w-7xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-8 min-h-0 overflow-hidden">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 sm:gap-6 mb-3 sm:mb-6 shrink-0">
         <div>
-          <h1 className="text-3xl font-bold text-zinc-700 mb-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-zinc-700 mb-0.5 sm:mb-1">
             Events Management
           </h1>
-          <p className="text-zinc-500 text-sm font-medium">
+          <p className="text-zinc-500 text-xs sm:text-sm font-medium">
             Organize events and issue batch certificates efficiently.
           </p>
         </div>
       </div>
 
-      {/* Mobile App Segmented Control (Hidden on desktop/tablet xl) */}
-      <div className="xl:hidden flex p-1 bg-zinc-100 rounded-xl mb-6 border border-zinc-200/80 shrink-0">
+      {/* Mobile App Segmented Control (Pinned under header, hidden on desktop xl) */}
+      <div className="xl:hidden flex p-1 bg-zinc-100 rounded-xl mb-3 sm:mb-6 border border-zinc-200/80 shrink-0">
         <button
           type="button"
           onClick={() => setActiveMobileTab("list")}
@@ -114,19 +114,20 @@ export default function EventsClient({ initialEvents, templates }: EventsClientP
         </button>
       </div>
 
-      <div className="mob-flow grid grid-cols-1 xl:grid-cols-3 gap-6 flex-1 min-h-0">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 flex-1 min-h-0 overflow-hidden">
         
         {/* LEFT COLUMN: Event List */}
-        <div className={`mob-flow xl:col-span-2 bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden flex-col h-full min-h-0 ${
-          activeMobileTab === "list" ? "flex" : "hidden xl:flex"
+        <div className={`xl:col-span-2 bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden flex-col h-full min-h-0 ${
+          activeMobileTab === "list" ? "flex flex-1" : "hidden xl:flex"
         }`}>
-          <div className="px-6 py-5 border-b border-zinc-100 bg-white shrink-0 flex items-center justify-between">
+          {/* Desktop-only inner section title (redundant on mobile since top is stuck) */}
+          <div className="hidden lg:flex px-6 py-5 border-b border-zinc-100 bg-white shrink-0 items-center justify-between">
             <h2 className="text-lg font-semibold text-zinc-700">
               Your Events
             </h2>
           </div>
 
-          <div className="mob-flow flex flex-col flex-1 min-h-0">
+          <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
             {events.length === 0 ? (
               <div className="flex flex-col items-center justify-center p-12 text-center h-full">
                 <div className="w-12 h-12 bg-zinc-50 border border-zinc-200 rounded-lg flex items-center justify-center mb-4">
@@ -140,7 +141,7 @@ export default function EventsClient({ initialEvents, templates }: EventsClientP
             ) : (
               <>
                 {/* Mobile: stats, search, and touch-optimized card list */}
-                <div className="mob-flow lg:hidden flex-1 min-h-0 flex flex-col overflow-hidden bg-white">
+                <div className="lg:hidden flex-1 min-h-0 flex flex-col overflow-hidden bg-white">
                   {/* Stats pills */}
                   <div className="p-3 bg-zinc-50 border-b border-zinc-100 grid grid-cols-2 gap-2 shrink-0">
                     <div className="bg-white p-2.5 rounded-lg border border-zinc-200/70 shadow-xs flex items-center gap-2.5">
@@ -321,8 +322,8 @@ export default function EventsClient({ initialEvents, templates }: EventsClientP
         </div>
 
         {/* RIGHT COLUMN: Create Event Form */}
-        <div className={`mob-flow bg-white border border-zinc-200 rounded-xl shadow-sm flex-col h-full min-h-0 overflow-hidden ${
-          activeMobileTab === "create" ? "flex" : "hidden xl:flex"
+        <div className={`bg-white border border-zinc-200 rounded-xl shadow-sm flex-col h-full min-h-0 overflow-hidden ${
+          activeMobileTab === "create" ? "flex flex-1" : "hidden xl:flex"
         }`}>
           <div className="px-6 py-4 border-b border-zinc-100 bg-white shrink-0 flex justify-between items-center">
             <h3 className="text-lg font-semibold text-zinc-700">
@@ -338,7 +339,7 @@ export default function EventsClient({ initialEvents, templates }: EventsClientP
               {isCreating ? <Loader2 className="animate-spin" size={18} /> : <Plus size={20} strokeWidth={2.5} />}
             </button>
           </div>
-          <form id="create-event-form" onSubmit={handleCreateEvent} className="mob-flow p-6 flex flex-col gap-5 flex-1 min-h-0 overflow-y-auto">
+          <form id="create-event-form" onSubmit={handleCreateEvent} className="p-4 sm:p-6 flex flex-col gap-5 flex-1 min-h-0 overflow-y-auto">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-zinc-700">Event Name</label>
               <input 

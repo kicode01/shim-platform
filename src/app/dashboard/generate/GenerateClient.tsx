@@ -398,8 +398,7 @@ function GenerateCertificatesContent() {
             <h3 className="text-lg font-semibold text-zinc-700 flex items-center gap-2">
               Live Preview
             </h3>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
               Live Specimen
             </span>
           </div>
@@ -555,7 +554,6 @@ function GenerateCertificatesContent() {
           >
             <Eye size={14} />
             <span>Live Preview</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse ml-0.5" />
           </button>
         </div>
 
@@ -603,7 +601,6 @@ function GenerateCertificatesContent() {
                   <div className="xl:hidden px-6 pt-4">
                     <div className="flex items-center justify-between p-3 bg-zinc-50 border border-zinc-200/80 rounded-xl">
                       <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                         <span className="text-xs font-medium text-zinc-700">Live preview active</span>
                       </div>
                       <button
@@ -845,7 +842,6 @@ function GenerateCertificatesContent() {
                     <div className="xl:hidden mb-4">
                       <div className="flex items-center justify-between p-3 bg-zinc-50 border border-zinc-200/80 rounded-xl">
                         <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                           <span className="text-xs font-medium text-zinc-700">Previewing row {previewIndex + 1} of {csvData.length}</span>
                         </div>
                         <button

@@ -1712,7 +1712,6 @@ export default function TemplateEditor({
         >
           <LayoutTemplate size={14} />
           <span>Canvas Preview</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse ml-0.5" />
         </button>
         <button
           type="button"

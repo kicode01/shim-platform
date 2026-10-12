@@ -147,51 +147,51 @@ export default function EventDetailsClient({
   };
 
   return (
-    <div className="mob-scroll-pane flex-1 flex flex-col max-w-7xl mx-auto w-full px-4 sm:px-8 py-6 min-h-0 overflow-hidden">
+    <div className="flex-1 flex flex-col max-w-7xl mx-auto w-full px-4 sm:px-8 py-4 sm:py-6 min-h-0 overflow-hidden">
       
-      {/* Header (Template Studio Style) */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-6 shrink-0">
+      {/* Header (Sticky top) */}
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 sm:gap-6 mb-3 sm:mb-6 shrink-0">
         <div>
-          <Link href="/dashboard/events" className="inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-zinc-700 transition-colors mb-4">
+          <Link href="/dashboard/events" className="inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-zinc-700 transition-colors mb-2 sm:mb-4">
             <ArrowLeft size={16} /> Back to Events
           </Link>
-          <h1 className="text-3xl font-bold text-zinc-700 flex items-center gap-3 mb-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-zinc-700 flex items-center gap-3 mb-1">
             <div className="p-2 bg-zinc-100 rounded-lg text-zinc-600 shrink-0">
               <Users size={24} />
             </div>
             Event Studio
           </h1>
-          <p className="text-zinc-500 text-sm font-medium">
+          <p className="text-zinc-500 text-xs sm:text-sm font-medium">
             Manage attendees and configure settings for {event.name}.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <Link 
             href={`/kiosk/${event.id}`}
             target="_blank"
-            className="h-10 px-4 bg-white border border-zinc-200 text-zinc-700 text-sm font-semibold rounded-xl hover:bg-zinc-50 transition-colors shadow-sm flex items-center gap-2"
+            className="h-9 sm:h-10 px-3 sm:px-4 bg-white border border-zinc-200 text-zinc-700 text-xs sm:text-sm font-semibold rounded-xl hover:bg-zinc-50 transition-colors shadow-sm flex items-center gap-1.5 sm:gap-2"
           >
             <LayoutTemplate size={16} /> <span className="hidden sm:inline">Open Kiosk</span>
           </Link>
           <Link 
             href={`/scanner/${event.id}`}
-            className="h-10 px-4 bg-zinc-700 text-white text-sm font-semibold rounded-xl hover:bg-zinc-700 transition-colors shadow-sm flex items-center gap-2"
+            className="h-9 sm:h-10 px-3 sm:px-4 bg-zinc-700 text-white text-xs sm:text-sm font-semibold rounded-xl hover:bg-zinc-700 transition-colors shadow-sm flex items-center gap-1.5 sm:gap-2"
           >
             <QrCode size={16} /> <span className="hidden sm:inline">Check In</span>
           </Link>
           <button 
             onClick={handleExportCsv}
             disabled={attendances.length === 0}
-            className="btn-secondary font-medium"
+            className="btn-secondary font-medium h-9 sm:h-10 text-xs sm:text-sm"
           >
             <Download size={16} /> <span className="hidden sm:inline">Export CSV</span>
           </button>
         </div>
       </div>
 
-      {/* Mobile App Segmented Control (Hidden on desktop/tablet lg) */}
-      <div className="lg:hidden flex p-1 bg-zinc-100 rounded-xl mb-6 border border-zinc-200/80 shrink-0">
+      {/* Mobile App Segmented Control (Pinned under header, hidden on desktop lg) */}
+      <div className="lg:hidden flex p-1 bg-zinc-100 rounded-xl mb-3 sm:mb-6 border border-zinc-200/80 shrink-0">
         <button
           type="button"
           onClick={() => setActiveMobileTab("roster")}
@@ -219,16 +219,16 @@ export default function EventDetailsClient({
       </div>
 
       {/* Split Layout: Attendees (Left) & Settings (Right) */}
-      <div className="mob-flow flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0 overflow-hidden">
         
         {/* Left: Attendees Viewer */}
-        <div className={`mob-flow lg:col-span-8 flex-col min-h-0 bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm relative ${
-          activeMobileTab === "roster" ? "flex" : "hidden lg:flex"
+        <div className={`lg:col-span-8 flex-col min-h-0 bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm relative ${
+          activeMobileTab === "roster" ? "flex flex-1" : "hidden lg:flex"
         }`}>
           
           {/* Table Header & Search */}
-          <div className="p-4 border-b border-zinc-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-zinc-50 shrink-0">
-            <div className="flex items-center gap-2 text-zinc-700 font-semibold text-sm">
+          <div className="p-3 sm:p-4 border-b border-zinc-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 bg-zinc-50 shrink-0">
+            <div className="hidden sm:flex items-center gap-2 text-zinc-700 font-semibold text-sm">
               <Users size={18} className="text-zinc-500" />
               Attendees ({attendances.length})
             </div>
@@ -237,10 +237,10 @@ export default function EventDetailsClient({
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
               <input 
                 type="text" 
-                placeholder="Search..." 
+                placeholder="Search attendees..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-8 pr-8 py-1.5 bg-white border border-zinc-200 text-zinc-700 rounded-md focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 transition-all placeholder:text-zinc-400 text-sm h-auto shadow-sm"
+                className="w-full pl-8 pr-8 py-2 sm:py-1.5 bg-white border border-zinc-200 text-zinc-700 rounded-lg focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 transition-all placeholder:text-zinc-400 text-xs sm:text-sm shadow-sm"
               />
               {searchTerm && (
                 <button 
@@ -254,7 +254,7 @@ export default function EventDetailsClient({
           </div>
 
           {/* Content */}
-          <div className="mob-flow flex-1 flex flex-col min-h-0 bg-white">
+          <div className="flex-1 flex flex-col min-h-0 bg-white overflow-hidden">
             {attendances.length === 0 ? (
               <div className="flex flex-col items-center justify-center p-12 text-center h-full text-zinc-400">
                 <Users size={32} className="mx-auto mb-3 opacity-50" />
@@ -268,7 +268,7 @@ export default function EventDetailsClient({
             ) : (
               <>
                 {/* Mobile Cards (Phones & small screens) */}
-                <div className="mob-flow lg:hidden flex-1 min-h-0 overflow-y-auto bg-white divide-y divide-zinc-100">
+                <div className="lg:hidden flex-1 min-h-0 overflow-y-auto bg-white divide-y divide-zinc-100">
                   {filtered.map((att) => (
                     <div key={att.id} className="p-4 flex flex-col gap-2.5">
                       <div className="flex items-start justify-between gap-3">
@@ -409,8 +409,8 @@ export default function EventDetailsClient({
         </div>
         
         {/* Right: Administrative Settings */}
-        <div className={`mob-flow lg:col-span-4 flex-col bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm ${
-          activeMobileTab === "settings" ? "flex" : "hidden lg:flex"
+        <div className={`lg:col-span-4 flex-col bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm ${
+          activeMobileTab === "settings" ? "flex flex-1 min-h-0" : "hidden lg:flex"
         }`}>
           <div className="p-4 border-b border-zinc-200 bg-zinc-50 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">

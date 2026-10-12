@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 
 import DashboardClient from "./DashboardClient";
@@ -21,7 +22,10 @@ export default async function DashboardPage() {
   }
 
   if ((session.user as any).role === "member") {
-    redirect("/portal");
+    const headersList = await headers();
+    const host = headersList.get("host") || "";
+    const isLocal = host.includes("localhost");
+    redirect(isLocal ? "/portal" : "https://shim-wallet.vercel.app");
   }
 
   // Load server-side initial stats and events

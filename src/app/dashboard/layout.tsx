@@ -16,7 +16,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   if ((session.user as any).role === "member") {
-    redirect("/portal");
+    const headersList = await headers();
+    const host = headersList.get("host") || "";
+    const isLocal = host.includes("localhost");
+    redirect(isLocal ? "/portal" : "https://shim-wallet.vercel.app");
   }
 
   return (

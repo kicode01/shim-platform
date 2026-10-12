@@ -47,7 +47,10 @@ export default async function PortalPage() {
   });
 
   if (!user || user.role !== "member") {
-    redirect("/dashboard");
+    const headersList = await headers();
+    const host = headersList.get("host") || "";
+    const isLocal = host.includes("localhost");
+    redirect(isLocal ? "/dashboard" : "https://shim-studio.vercel.app");
   }
 
   // Every member needs a stable membership ID — it is the wallet's identifier,

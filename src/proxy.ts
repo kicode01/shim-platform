@@ -26,10 +26,10 @@ export function proxy(req: NextRequest) {
 
   // Organizer Workspace (shim-studio)
   if (isStudio) {
-    // Block access to portal from studio domain
+    // Redirect access to portal from studio domain to the participant wallet
     if (pathname.startsWith('/portal')) {
-      url.pathname = '/404';
-      return NextResponse.rewrite(url);
+      const rest = pathname.replace(/^\/portal/, '') || '';
+      return NextResponse.redirect(new URL(`https://shim-wallet.vercel.app${rest}`, req.url));
     }
     
     // Map root and subpaths to /dashboard seamlessly
@@ -42,10 +42,10 @@ export function proxy(req: NextRequest) {
 
   // Participant Wallet (shim-wallet)
   if (isWallet) {
-    // Block access to dashboard from wallet domain
+    // Redirect access to dashboard from wallet domain to the organizer studio
     if (pathname.startsWith('/dashboard')) {
-      url.pathname = '/404';
-      return NextResponse.rewrite(url);
+      const rest = pathname.replace(/^\/dashboard/, '') || '';
+      return NextResponse.redirect(new URL(`https://shim-studio.vercel.app${rest}`, req.url));
     }
 
     // Map root and subpaths to /portal seamlessly

@@ -49,8 +49,15 @@ export default function Navbar() {
     const raf = requestAnimationFrame(() => {
       try {
         router.prefetch('/validate');
-        router.prefetch('/dashboard');
-        router.prefetch('/portal');
+        if (typeof window !== "undefined") {
+          const host = window.location.hostname;
+          if (!host.includes("shim-wallet")) {
+            router.prefetch('/dashboard');
+          }
+          if (!host.includes("shim-studio")) {
+            router.prefetch('/portal');
+          }
+        }
       } catch {
         /* Router not ready yet; the next mount will prefetch instead. */
       }

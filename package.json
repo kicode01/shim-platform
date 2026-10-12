@@ -17,6 +17,7 @@
     "@yudiel/react-qr-scanner": "^2.6.0",
     "firebase": "^12.19.0",
     "framer-motion": "^11.18.2",
+    "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
     "inter-ui": "^4.1.1",
     "jspdf": "^4.2.1",

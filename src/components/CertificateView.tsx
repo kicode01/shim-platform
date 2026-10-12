@@ -817,7 +817,7 @@ export default function CertificateView({
 
   return (
     <>
-      {googleFontsUrl && <link href={googleFontsUrl} rel="stylesheet" />}
+      {googleFontsUrl && <link href={googleFontsUrl} rel="stylesheet" crossOrigin="anonymous" />}
       <div 
         ref={containerRef}
         style={{
@@ -866,17 +866,19 @@ export default function CertificateView({
                   {el.src ? (
                     <div style={{ position: "relative", width: "100%", height: "100%" }}>
                       <img crossOrigin="anonymous" src={el.src} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.1)) drop-shadow(0 10px 15px rgba(0,0,0,0.1))" }} />
-                      <div className="animate-badge-shine" style={{
-                        position: "absolute",
-                        top: 0, left: 0, right: 0, bottom: 0,
-                        background: "linear-gradient(110deg, transparent 20%, rgba(255,255,255,0.4) 40%, rgba(255,255,255,0.8) 50%, rgba(255,255,255,0.4) 60%, transparent 80%)",
-                        backgroundSize: "200% 100%",
-                        WebkitMaskImage: `url(${el.src})`,
-                        WebkitMaskSize: "contain",
-                        WebkitMaskPosition: "center",
-                        WebkitMaskRepeat: "no-repeat",
-                        pointerEvents: "none"
-                      }} />
+                      {!printMode && (
+                        <div className="animate-badge-shine" style={{
+                          position: "absolute",
+                          top: 0, left: 0, right: 0, bottom: 0,
+                          background: "linear-gradient(110deg, transparent 20%, rgba(255,255,255,0.4) 40%, rgba(255,255,255,0.8) 50%, rgba(255,255,255,0.4) 60%, transparent 80%)",
+                          backgroundSize: "200% 100%",
+                          WebkitMaskImage: `url(${el.src})`,
+                          WebkitMaskSize: "contain",
+                          WebkitMaskPosition: "center",
+                          WebkitMaskRepeat: "no-repeat",
+                          pointerEvents: "none"
+                        }} />
+                      )}
                     </div>
                   ) : el.type === "badge" ? (
                     <svg viewBox="0 0 120 120" className="w-full h-full drop-shadow-xl" xmlns="http://www.w3.org/2000/svg">
@@ -907,8 +909,10 @@ export default function CertificateView({
                       {/* Sharp Rosette Base */}
                       <path d="M 60.0 10.0 L 65.7 16.4 L 72.9 11.7 L 76.8 19.3 L 85.0 16.7 L 86.8 25.1 L 95.4 24.6 L 94.9 33.2 L 103.3 35.0 L 100.7 43.2 L 108.3 47.1 L 103.6 54.3 L 110.0 60.0 L 103.6 65.7 L 108.3 72.9 L 100.7 76.8 L 103.3 85.0 L 94.9 86.8 L 95.4 95.4 L 86.8 94.9 L 85.0 103.3 L 76.8 100.7 L 72.9 108.3 L 65.7 103.6 L 60.0 110.0 L 54.3 103.6 L 47.1 108.3 L 43.2 100.7 L 35.0 103.3 L 33.2 94.9 L 24.6 95.4 L 25.1 86.8 L 16.7 85.0 L 19.3 76.8 L 11.7 72.9 L 16.4 65.7 L 10.0 60.0 L 16.4 54.3 L 11.7 47.1 L 19.3 43.2 L 16.7 35.0 L 25.1 33.2 L 24.6 24.6 L 33.2 25.1 L 35.0 16.7 L 43.2 19.3 L 47.1 11.7 L 54.3 16.4 Z" fill="url(#goldOuterBadgeV)" />
                       
-                      {/* Animated Shine overlaying the rosette base */}
-                      <path d="M 60.0 10.0 L 65.7 16.4 L 72.9 11.7 L 76.8 19.3 L 85.0 16.7 L 86.8 25.1 L 95.4 24.6 L 94.9 33.2 L 103.3 35.0 L 100.7 43.2 L 108.3 47.1 L 103.6 54.3 L 110.0 60.0 L 103.6 65.7 L 108.3 72.9 L 100.7 76.8 L 103.3 85.0 L 94.9 86.8 L 95.4 95.4 L 86.8 94.9 L 85.0 103.3 L 76.8 100.7 L 72.9 108.3 L 65.7 103.6 L 60.0 110.0 L 54.3 103.6 L 47.1 108.3 L 43.2 100.7 L 35.0 103.3 L 33.2 94.9 L 24.6 95.4 L 25.1 86.8 L 16.7 85.0 L 19.3 76.8 L 11.7 72.9 L 16.4 65.7 L 10.0 60.0 L 16.4 54.3 L 11.7 47.1 L 19.3 43.2 L 16.7 35.0 L 25.1 33.2 L 24.6 24.6 L 33.2 25.1 L 35.0 16.7 L 43.2 19.3 L 47.1 11.7 L 54.3 16.4 Z" fill="url(#badgeShineV)" />
+                      {/* Animated Shine overlaying the rosette base in interactive mode only */}
+                      {!printMode && (
+                        <path d="M 60.0 10.0 L 65.7 16.4 L 72.9 11.7 L 76.8 19.3 L 85.0 16.7 L 86.8 25.1 L 95.4 24.6 L 94.9 33.2 L 103.3 35.0 L 100.7 43.2 L 108.3 47.1 L 103.6 54.3 L 110.0 60.0 L 103.6 65.7 L 108.3 72.9 L 100.7 76.8 L 103.3 85.0 L 94.9 86.8 L 95.4 95.4 L 86.8 94.9 L 85.0 103.3 L 76.8 100.7 L 72.9 108.3 L 65.7 103.6 L 60.0 110.0 L 54.3 103.6 L 47.1 108.3 L 43.2 100.7 L 35.0 103.3 L 33.2 94.9 L 24.6 95.4 L 25.1 86.8 L 16.7 85.0 L 19.3 76.8 L 11.7 72.9 L 16.4 65.7 L 10.0 60.0 L 16.4 54.3 L 11.7 47.1 L 19.3 43.2 L 16.7 35.0 L 25.1 33.2 L 24.6 24.6 L 33.2 25.1 L 35.0 16.7 L 43.2 19.3 L 47.1 11.7 L 54.3 16.4 Z" fill="url(#badgeShineV)" />
+                      )}
                       
                       {/* Inner Bevel / Ring */}
                       <circle cx="60" cy="60" r="41" fill="url(#goldInnerBadgeV)" />
@@ -988,28 +992,29 @@ export default function CertificateView({
     <div
       ref={containerRef}
       style={{
-        width: "100%",
-        height: "100%",
+        width: printMode ? `${baseW}px` : "100%",
+        height: printMode ? `${baseH}px` : "100%",
         position: "relative",
-        overflow: "hidden",
+        overflow: printMode ? "visible" : "hidden",
       }}
     >
       <div
         id="certificate-print-node"
         style={{
-          width: "760px",
-          height: "538px",
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: `translate(-50%, -50%) scale(${scale})`,
+          width: `${baseW}px`,
+          height: `${baseH}px`,
+          position: printMode ? "relative" : "absolute",
+          top: printMode ? "0" : "50%",
+          left: printMode ? "0" : "50%",
+          transform: printMode ? "none" : `translate(-50%, -50%) scale(${scale})`,
           transformOrigin: "center center",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           backgroundImage: parsedDesign.backgroundImageUrl ? `url(${parsedDesign.backgroundImageUrl})` : "none",
           backgroundSize: "100% 100%",
-          backgroundPosition: "center"
+          backgroundPosition: "center",
+          boxShadow: printMode ? "none" : "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
         }}
       >
         {parsedDesign.backgroundImageUrl ? (

@@ -592,10 +592,29 @@ function GenerateCertificatesContent() {
                       <div className="text-sm font-medium text-emerald-700">
                         Ledger ID: <code className="bg-white px-2 py-0.5 rounded border border-emerald-200 font-mono text-emerald-900 ml-1">{singleSuccess.id}</code>
                       </div>
-                      <div className="flex items-center gap-4 mt-2">
+                      <div className="flex flex-wrap items-center gap-3 mt-2">
                         <Link href={`/validate/${singleSuccess.id}`} target="_blank" className="px-4 py-2 bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded-md text-sm font-medium transition-colors shadow-sm">
                           View in Public Portal
                         </Link>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const selectedEvent = events.find(ev => ev.id === singleEventId);
+                            const resolvedEventName = singleSuccess.event?.name || selectedEvent?.name || singleEventId;
+                            await downloadCertificatePdf({
+                              certificateId: singleSuccess.id,
+                              recipientName: singleSuccess.recipientName,
+                              role: singleSuccess.role || selectedTemplate?.name,
+                              eventName: resolvedEventName,
+                              issueDate: singleSuccess.issueDate,
+                              design: selectedTemplate?.designData,
+                              status: singleSuccess.status || "valid",
+                            });
+                          }}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-sm font-medium transition-colors shadow-sm flex items-center gap-1.5"
+                        >
+                          <Download size={14} /> Download PDF
+                        </button>
                         <button 
                           type="button" 
                           onClick={() => {
@@ -603,7 +622,7 @@ function GenerateCertificatesContent() {
                             setSingleName("");
                             setSingleEmail("");
                           }} 
-                          className="text-sm font-medium text-emerald-700 hover:text-emerald-900 hover:underline transition-colors"
+                          className="text-sm font-medium text-emerald-700 hover:text-emerald-900 hover:underline transition-colors ml-auto"
                         >
                           Issue another
                         </button>

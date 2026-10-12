@@ -1,7 +1,7 @@
 "use client";
 
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+import * as htmlToImage from "html-to-image";
 import { createRoot } from "react-dom/client";
 import { flushSync } from "react-dom";
 import React from "react";
@@ -19,13 +19,16 @@ export interface RenderCertOptions {
 
 /**
  * Ensures all web fonts and images in the target container have finished loading
- * before html2canvas takes a snapshot.
+ * before html-to-image captures a pixel-perfect snapshot.
  */
 async function waitForAssetsReady(container: HTMLElement): Promise<void> {
-  // 1. Wait for document fonts to settle
+  // 1. Wait for document fonts to settle with safety timeout
   if (typeof document !== "undefined" && document.fonts) {
     try {
-      await document.fonts.ready;
+      await Promise.race([
+        document.fonts.ready,
+        new Promise((resolve) => setTimeout(resolve, 2000)),
+      ]);
     } catch {
       /* ignore font readiness errors */
     }
@@ -48,12 +51,13 @@ async function waitForAssetsReady(container: HTMLElement): Promise<void> {
   }
 
   // 3. Brief layout settle time to ensure SVG gradients and canvas auto-fit have committed
-  await new Promise((resolve) => setTimeout(resolve, 250));
+  await new Promise((resolve) => setTimeout(resolve, 300));
 }
 
 /**
  * Renders a certificate in an isolated offscreen DOM sandbox with printMode=true,
- * awaits all assets and dynamic text fitting, and captures a 1:1 pixel-perfect HTMLCanvas.
+ * awaits all assets and dynamic text fitting, and captures a 1:1 pixel-perfect HTMLCanvas
+ * using the browser's native rendering engine via html-to-image.
  */
 export async function renderCertToCanvas(options: RenderCertOptions): Promise<HTMLCanvasElement> {
   let parsedDesign: any = {};
@@ -66,8 +70,12 @@ export async function renderCertToCanvas(options: RenderCertOptions): Promise<HT
   }
 
   const isPortrait = parsedDesign.orientation === "portrait";
-  const baseW = isPortrait ? 2480 : 3508;
-  const baseH = isPortrait ? 3508 : 2480;
+  const isCanvasElements = Boolean(parsedDesign.canvasElements);
+  const baseW = isCanvasElements ? (isPortrait ? 2480 : 3508) : (isPortrait ? 538 : 760);
+  const baseH = isCanvasElements ? (isPortrait ? 3508 : 2480) : (isPortrait ? 760 : 538);
+
+  // If legacy template (760x538), use 4.615 pixel ratio so output canvas is true 3508x2480 300 DPI
+  const targetPixelRatio = isCanvasElements ? 1 : 4.615;
 
   // Create isolated sandbox element at (0, 0) behind the view with pointer-events disabled
   const sandbox = document.createElement("div");
@@ -106,19 +114,43 @@ export async function renderCertToCanvas(options: RenderCertOptions): Promise<HT
 
     const targetNode = (sandbox.querySelector("#certificate-print-node") as HTMLElement) || sandbox;
 
-    const canvas = await html2canvas(targetNode, {
-      width: baseW,
-      height: baseH,
-      scale: 1, // 1:1 true 300 DPI resolution (3508x2480 / 2480x3508)
-      useCORS: true,
-      allowTaint: false, // Prevents canvas from becoming tainted
-      backgroundColor: "#ffffff",
-      logging: false,
-      scrollX: 0,
-      scrollY: 0,
-      windowWidth: baseW,
-      windowHeight: baseH,
-    });
+    let canvas: HTMLCanvasElement;
+    try {
+      canvas = await htmlToImage.toCanvas(targetNode, {
+        width: baseW,
+        height: baseH,
+        pixelRatio: targetPixelRatio,
+        backgroundColor: "#ffffff",
+        cacheBust: false,
+      });
+    } catch (imgErr) {
+      console.warn("html-to-image standard rasterization issue, retrying with skipFonts:", imgErr);
+      try {
+        canvas = await htmlToImage.toCanvas(targetNode, {
+          width: baseW,
+          height: baseH,
+          pixelRatio: targetPixelRatio,
+          backgroundColor: "#ffffff",
+          skipFonts: true,
+        });
+      } catch (fallbackErr) {
+        console.warn("html-to-image fallback failed, using html2canvas fallback:", fallbackErr);
+        const html2canvas = (await import("html2canvas")).default;
+        canvas = await html2canvas(targetNode, {
+          width: baseW,
+          height: baseH,
+          scale: targetPixelRatio,
+          useCORS: true,
+          allowTaint: false,
+          backgroundColor: "#ffffff",
+          logging: false,
+          scrollX: 0,
+          scrollY: 0,
+          windowWidth: baseW,
+          windowHeight: baseH,
+        });
+      }
+    }
 
     return canvas;
   } finally {
@@ -130,7 +162,7 @@ export async function renderCertToCanvas(options: RenderCertOptions): Promise<HT
 }
 
 /**
- * Downloads a single certificate as an A4 PDF with 1:1 fidelity matching the live preview.
+ * Downloads a single certificate as an A4 PDF with 1:1 pixel-perfect fidelity matching the live preview.
  */
 export async function downloadCertificatePdf(
   cert: RenderCertOptions,
@@ -150,8 +182,9 @@ export async function downloadCertificatePdf(
   const pdfWidth = pdf.internal.pageSize.getWidth();
   const pdfHeight = pdf.internal.pageSize.getHeight();
 
-  const imgData = canvas.toDataURL("image/jpeg", 0.98);
-  pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
+  // Use lossless PNG to guarantee 1:1 crystal-clear graphics without compression artifacts
+  const imgData = canvas.toDataURL("image/png");
+  pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight, undefined, "FAST");
 
   const cleanName = (cert.recipientName || "Recipient").trim().replace(/[^\w\s-]/g, "").replace(/\s+/g, "_");
   const finalFilename = filename || `Certificate_${cleanName}.pdf`;
@@ -159,7 +192,23 @@ export async function downloadCertificatePdf(
 }
 
 /**
- * Downloads a batch of certificates as a multi-page A4 PDF with 1:1 fidelity.
+ * Downloads a single certificate directly as a high-resolution 300 DPI PNG image.
+ */
+export async function downloadCertificateImage(
+  cert: RenderCertOptions,
+  filename?: string
+): Promise<void> {
+  const canvas = await renderCertToCanvas(cert);
+  const dataUrl = canvas.toDataURL("image/png");
+  const link = document.createElement("a");
+  const cleanName = (cert.recipientName || "Recipient").trim().replace(/[^\w\s-]/g, "").replace(/\s+/g, "_");
+  link.download = filename || `Certificate_${cleanName}.png`;
+  link.href = dataUrl;
+  link.click();
+}
+
+/**
+ * Downloads a batch of certificates as a multi-page A4 PDF with 1:1 pixel-perfect fidelity.
  */
 export async function downloadBatchCertificatesPdf(
   certs: RenderCertOptions[],
@@ -185,8 +234,8 @@ export async function downloadBatchCertificatesPdf(
     if (onProgress) onProgress(i + 1, certs.length);
 
     const canvas = await renderCertToCanvas(certs[i]);
-    const imgData = canvas.toDataURL("image/jpeg", 0.98);
-    pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
+    const imgData = canvas.toDataURL("image/png");
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight, undefined, "FAST");
   }
 
   const finalFilename = filename || `Batch_Certificates_${certs.length}.pdf`;

@@ -70,7 +70,7 @@ export default function AuditClient({ initialLogs }: { initialLogs: AuditLogType
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' };
     return date.toLocaleDateString('en-US', options);
   };
 
@@ -160,7 +160,7 @@ export default function AuditClient({ initialLogs }: { initialLogs: AuditLogType
                       ) : filteredLogs.map((log) => (
                         <tr key={log.id} className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors bg-white">
                           <td className="w-[20%] px-4 py-3 overflow-hidden">
-                            <div className="text-sm text-zinc-500 truncate" title={formatDate(log.createdAt)}>
+                            <div suppressHydrationWarning className="text-sm text-zinc-500 truncate" title={formatDate(log.createdAt)}>
                               {formatDate(log.createdAt)}
                             </div>
                           </td>
@@ -206,7 +206,7 @@ export default function AuditClient({ initialLogs }: { initialLogs: AuditLogType
                           timestamp column and wrapped "Oct 4, 07:16 AM" onto
                           three lines. Stacking gives each its own row. */}
                       <div className="mob-stack-head flex items-center justify-between gap-3">
-                        <div className="text-sm text-zinc-500">{formatDate(log.createdAt)}</div>
+                        <div suppressHydrationWarning className="text-sm text-zinc-500">{formatDate(log.createdAt)}</div>
                         <div className="text-[13px] font-medium text-zinc-700 shrink-0">{getActionText(log.action)}</div>
                       </div>
                       <div className="mt-1 text-sm text-zinc-700">{getActorText(log.action, log.ipAddress)}</div>

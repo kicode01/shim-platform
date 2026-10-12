@@ -370,8 +370,8 @@ export default function DashboardClient({
                   >
                     <div className="flex justify-between items-start mb-1">
                       <h4 className="font-semibold text-zinc-800 text-sm group-hover:text-black transition-colors leading-tight line-clamp-1">{event.name}</h4>
-                      <div className="text-[11px] font-medium text-zinc-400 whitespace-nowrap ml-2 mt-0.5">
-                        {event.date ? new Date(event.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "TBA"}
+                      <div suppressHydrationWarning className="text-[11px] font-medium text-zinc-400 whitespace-nowrap ml-2 mt-0.5">
+                        {event.date ? new Date(event.date).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }) : "TBA"}
                       </div>
                     </div>
                     

@@ -213,13 +213,14 @@ export default function EventsClient({ initialEvents, templates }: EventsClientP
                           </div>
 
                           <div className="mt-2.5 flex items-center justify-between text-xs text-zinc-500">
-                            <span className="inline-flex items-center gap-1.5">
+                            <span suppressHydrationWarning className="inline-flex items-center gap-1.5">
                               <Calendar size={13} className="text-zinc-400" />
                               {evt.date
                                 ? new Date(evt.date).toLocaleDateString("en-US", {
                                     year: "numeric",
                                     month: "short",
                                     day: "numeric",
+                                    timeZone: "UTC",
                                   })
                                 : "Date TBA"}
                             </span>
@@ -285,8 +286,8 @@ export default function EventsClient({ initialEvents, templates }: EventsClientP
                               {evt.description && <div className="text-zinc-500 truncate mt-0.5 text-xs">{evt.description}</div>}
                             </td>
                             <td className="w-[25%] px-6 py-4">
-                              <div className="text-zinc-600">
-                                {evt.date ? new Date(evt.date).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "TBA"}
+                              <div suppressHydrationWarning className="text-zinc-600">
+                                {evt.date ? new Date(evt.date).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" }) : "TBA"}
                               </div>
                             </td>
                             <td className="w-[20%] px-6 py-4 text-center">

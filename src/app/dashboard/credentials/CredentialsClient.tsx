@@ -313,8 +313,8 @@ export default function CredentialsClient({
                         />
                       </td>
                       <td className="w-[12%] px-4 py-3 align-middle text-center">
-                        <div className="text-[13px] font-medium text-zinc-600">
-                          {new Date(cert.issueDate).toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit" })}
+                        <div suppressHydrationWarning className="text-[13px] font-medium text-zinc-600">
+                          {new Date(cert.issueDate).toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "UTC" })}
                         </div>
                       </td>
                       <td className="w-[16%] px-4 py-3">
@@ -418,8 +418,8 @@ export default function CredentialsClient({
                         <span className="text-zinc-300">·</span>
                         <span className="text-zinc-500 truncate">{cert.template?.name || "Standard Template"}</span>
                       </div>
-                      <div className="mt-0.5 text-[12px] text-zinc-400">
-                        {new Date(cert.issueDate).toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit" })}
+                      <div suppressHydrationWarning className="mt-0.5 text-[12px] text-zinc-400">
+                        {new Date(cert.issueDate).toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "UTC" })}
                       </div>
 
                       <div className="mt-3 flex items-center gap-2 flex-wrap">

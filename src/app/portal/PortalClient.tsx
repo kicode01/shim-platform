@@ -112,7 +112,7 @@ function initialsOf(name: string) {
 function formatDate(iso: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
 
 /* ── Component ────────────────────────────────────────────────────────────── */
@@ -280,7 +280,7 @@ export default function PortalClient({ user, certificates, stats, insights }: Po
                 {certificates.length} {certificates.length === 1 ? "record" : "records"} on file
               </p>
             </div>
-            <span className="font-mono text-[10px] font-bold tracking-widest uppercase text-zinc-500 bg-zinc-100 border border-zinc-200/80 px-3 py-1.5 rounded-md shadow-[inset_0_1px_3px_rgba(0,0,0,0.08),0_1px_0_rgba(255,255,255,1)] tabular-nums">
+            <span suppressHydrationWarning className="font-mono text-[10px] font-bold tracking-widest uppercase text-zinc-500 bg-zinc-100 border border-zinc-200/80 px-3 py-1.5 rounded-md shadow-[inset_0_1px_3px_rgba(0,0,0,0.08),0_1px_0_rgba(255,255,255,1)] tabular-nums">
               {String(certificates.length).padStart(2, "0")} / {issuedYear}
             </span>
           </div>
@@ -339,22 +339,23 @@ export default function PortalClient({ user, certificates, stats, insights }: Po
                         <div className="flex items-center gap-2 mt-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-zinc-400">
                           <span className="truncate max-w-[9rem]">{cert.template.name}</span>
                           <span className="text-zinc-300">·</span>
-                          <span className="tabular-nums whitespace-nowrap">
+                          <span suppressHydrationWarning className="tabular-nums whitespace-nowrap">
                             {formatDate(cert.issueDate)}
                           </span>
                           <span className="hidden md:inline text-zinc-300">·</span>
-                          <button
-                            type="button"
+                          <span
+                            role="button"
+                            tabIndex={0}
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
                               copy(cert.id, cert.id);
                             }}
-                            className="hidden md:inline hover:text-zinc-700 transition-colors truncate max-w-[8rem]"
+                            className="hidden md:inline hover:text-zinc-700 transition-colors truncate max-w-[8rem] cursor-pointer"
                             title="Copy credential ID"
                           >
                             {copied === cert.id ? "copied" : cert.id}
-                          </button>
+                          </span>
                         </div>
                       </div>
 

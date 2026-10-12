@@ -34,18 +34,26 @@ async function waitForAssetsReady(container: HTMLElement): Promise<void> {
     }
   }
 
-  // 2. Wait for all <img> tags to complete loading
+  // 2. Wait for all <img> tags to complete loading and decoding
   const images = Array.from(container.querySelectorAll("img"));
   if (images.length > 0) {
     await Promise.all(
-      images.map((img) => {
-        if (img.complete) return Promise.resolve(true);
-        return new Promise((resolve) => {
-          img.onload = () => resolve(true);
-          img.onerror = () => resolve(false);
-          // Safety timeout of 2.5s per image so export never hangs
-          setTimeout(() => resolve(false), 2500);
-        });
+      images.map(async (img) => {
+        if (!img.complete) {
+          await new Promise((resolve) => {
+            img.onload = () => resolve(true);
+            img.onerror = () => resolve(false);
+            // Safety timeout of 2.5s per image so export never hangs
+            setTimeout(() => resolve(false), 2500);
+          });
+        }
+        if (typeof img.decode === "function") {
+          try {
+            await img.decode();
+          } catch {
+            /* ignore decode error */
+          }
+        }
       })
     );
   }
@@ -133,22 +141,29 @@ export async function renderCertToCanvas(options: RenderCertOptions): Promise<HT
           backgroundColor: "#ffffff",
           skipFonts: true,
         });
-      } catch (fallbackErr) {
-        console.warn("html-to-image fallback failed, using html2canvas fallback:", fallbackErr);
-        const html2canvas = (await import("html2canvas")).default;
-        canvas = await html2canvas(targetNode, {
+      } catch (toPngErr) {
+        console.warn("html-to-image toCanvas skipFonts failed, rendering via toPng fallback:", toPngErr);
+        const dataUrl = await htmlToImage.toPng(targetNode, {
           width: baseW,
           height: baseH,
-          scale: targetPixelRatio,
-          useCORS: true,
-          allowTaint: false,
+          pixelRatio: targetPixelRatio,
           backgroundColor: "#ffffff",
-          logging: false,
-          scrollX: 0,
-          scrollY: 0,
-          windowWidth: baseW,
-          windowHeight: baseH,
+          skipFonts: true,
         });
+        const offscreenImg = new Image();
+        offscreenImg.crossOrigin = "anonymous";
+        await new Promise<void>((resolve, reject) => {
+          offscreenImg.onload = () => resolve();
+          offscreenImg.onerror = (e) => reject(e);
+          offscreenImg.src = dataUrl;
+        });
+        canvas = document.createElement("canvas");
+        canvas.width = Math.round(baseW * targetPixelRatio);
+        canvas.height = Math.round(baseH * targetPixelRatio);
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(offscreenImg, 0, 0, canvas.width, canvas.height);
+        }
       }
     }
 

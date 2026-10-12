@@ -108,9 +108,9 @@ export async function POST(req: Request) {
       }
     } else {
       const fallbackEvent = await prisma.event.findFirst({
-        where: { name: "Default Event" }
+        where: { name: "Event Description" }
       }) || await prisma.event.create({
-        data: { name: "Default Event", organizerId: issuerId }
+        data: { name: "Event Description", organizerId: issuerId }
       });
       resolvedEventId = fallbackEvent.id;
     }

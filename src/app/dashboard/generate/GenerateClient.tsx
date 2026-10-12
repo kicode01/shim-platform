@@ -6,8 +6,6 @@ import { flushSync } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Select } from "@/components/ui/Select";
 import Papa from "papaparse";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 import QRCode from "qrcode";
 import { 
   FileSpreadsheet, 
@@ -208,7 +206,7 @@ function GenerateCertificatesContent() {
       if (shouldDownload) {
         try {
           const selectedEvent = events.find(ev => ev.id === singleEventId);
-          const resolvedEventName = certificate.event?.name || selectedEvent?.name || singleEventId;
+          const resolvedEventName = certificate.event?.name || selectedEvent?.name || singleEventId || "Event Description";
           await downloadCertificatePdf({
             certificateId: certificate.id,
             recipientName: certificate.recipientName,
@@ -265,6 +263,7 @@ function GenerateCertificatesContent() {
           if (!evName && bulkEventId) {
             evName = events.find(ev => ev.id === bulkEventId)?.name || bulkEventId;
           }
+          if (!evName) evName = "Event Description";
           return {
             certificateId: cert.id,
             recipientName: cert.recipientName,
@@ -600,7 +599,7 @@ function GenerateCertificatesContent() {
                           type="button"
                           onClick={async () => {
                             const selectedEvent = events.find(ev => ev.id === singleEventId);
-                            const resolvedEventName = singleSuccess.event?.name || selectedEvent?.name || singleEventId;
+                            const resolvedEventName = singleSuccess.event?.name || selectedEvent?.name || singleEventId || "Event Description";
                             await downloadCertificatePdf({
                               certificateId: singleSuccess.id,
                               recipientName: singleSuccess.recipientName,

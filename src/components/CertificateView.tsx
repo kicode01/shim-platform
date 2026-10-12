@@ -843,6 +843,23 @@ export default function CertificateView({
             backgroundPosition: "center",
             boxShadow: printMode ? "none" : "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
           }}>
+          {parsedDesign.backgroundImageUrl && (
+            <img
+              crossOrigin="anonymous"
+              src={parsedDesign.backgroundImageUrl}
+              alt=""
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "fill",
+                pointerEvents: "none",
+                zIndex: 0,
+              }}
+            />
+          )}
           {parsedDesign.canvasElements.map(el => {
             let content = el.text;
             if (el.type === "dynamicText") {
@@ -855,14 +872,14 @@ export default function CertificateView({
 
             if (el.type === "qrCode") {
               return (
-                <div key={el.id} style={{ position: "absolute", left: el.x, top: el.y, width: el.width, height: el.height }}>
+                <div key={el.id} style={{ position: "absolute", zIndex: 1, left: el.x, top: el.y, width: el.width, height: el.height }}>
                   <QrCodeElement url={validateUrl} color={el.color || "#0f172a"} width="100%" height="100%" />
                 </div>
               );
             }
             if (el.type === "image" || el.type === "badge") {
               return (
-                <div key={el.id} style={{ position: "absolute", left: el.x, top: el.y, width: el.width, height: el.height }}>
+                <div key={el.id} style={{ position: "absolute", zIndex: 1, left: el.x, top: el.y, width: el.width, height: el.height }}>
                   {el.src ? (
                     <div style={{ position: "relative", width: "100%", height: "100%" }}>
                       <img crossOrigin="anonymous" src={el.src} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.1)) drop-shadow(0 10px 15px rgba(0,0,0,0.1))" }} />
@@ -932,13 +949,13 @@ export default function CertificateView({
 
             if (el.type === "shape") {
               return (
-                <div key={el.id} style={{ position: "absolute", left: el.x, top: el.y, width: el.width, height: el.height, backgroundColor: el.color || "#000000" }} />
+                <div key={el.id} style={{ position: "absolute", zIndex: 1, left: el.x, top: el.y, width: el.width, height: el.height, backgroundColor: el.color || "#000000" }} />
               );
             }
 
             if (el.type === "signature") {
                 return (
-                  <div key={el.id} style={{ position: "absolute", left: el.x, top: el.y, width: el.width, height: el.height, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}>
+                  <div key={el.id} style={{ position: "absolute", zIndex: 1, left: el.x, top: el.y, width: el.width, height: el.height, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}>
                     {el.src ? (
                       <img crossOrigin="anonymous" src={el.src} alt="Signature" style={{ maxWidth: "100%", maxHeight: "70%", objectFit: "contain", marginBottom: `${el.linePadding ?? 10}px` }} />
                     ) : (
@@ -961,6 +978,7 @@ export default function CertificateView({
                 key={el.id} 
                 style={{ 
                   position: "absolute", 
+                  zIndex: 1,
                   left: el.x, 
                   top: el.y, 
                   width: el.width,
@@ -1019,28 +1037,43 @@ export default function CertificateView({
       >
         {parsedDesign.backgroundImageUrl ? (
           <>
+            <img
+              crossOrigin="anonymous"
+              src={parsedDesign.backgroundImageUrl}
+              alt=""
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "fill",
+                pointerEvents: "none",
+                zIndex: 0,
+              }}
+            />
             {parsedDesign.elements?.recipientName && (
-              <div style={{ position: "absolute", left: parsedDesign.elements.recipientName.x, top: parsedDesign.elements.recipientName.y, width: parsedDesign.elements.recipientName.width, fontSize: parsedDesign.elements.recipientName.fontSize, color: parsedDesign.elements.recipientName.color, textAlign: parsedDesign.elements.recipientName.align as any, fontFamily: "var(--font-serif)", fontWeight: "bold" }}>
+              <div style={{ position: "absolute", zIndex: 1, left: parsedDesign.elements.recipientName.x, top: parsedDesign.elements.recipientName.y, width: parsedDesign.elements.recipientName.width, fontSize: parsedDesign.elements.recipientName.fontSize, color: parsedDesign.elements.recipientName.color, textAlign: parsedDesign.elements.recipientName.align as any, fontFamily: "var(--font-serif)", fontWeight: "bold" }}>
                 {recipientName || "Recipient Name"}
               </div>
             )}
             {parsedDesign.elements?.role && (
-              <div style={{ position: "absolute", left: parsedDesign.elements.role.x, top: parsedDesign.elements.role.y, width: parsedDesign.elements.role.width, fontSize: parsedDesign.elements.role.fontSize, color: parsedDesign.elements.role.color, textAlign: parsedDesign.elements.role.align as any, fontFamily: "var(--font-sans)", fontWeight: "bold" }}>
+              <div style={{ position: "absolute", zIndex: 1, left: parsedDesign.elements.role.x, top: parsedDesign.elements.role.y, width: parsedDesign.elements.role.width, fontSize: parsedDesign.elements.role.fontSize, color: parsedDesign.elements.role.color, textAlign: parsedDesign.elements.role.align as any, fontFamily: "var(--font-sans)", fontWeight: "bold" }}>
                 {IssuedDegree}
               </div>
             )}
             {parsedDesign.elements?.eventName && hasOutcomes && (
-              <div style={{ position: "absolute", left: parsedDesign.elements.eventName.x, top: parsedDesign.elements.eventName.y, width: parsedDesign.elements.eventName.width, fontSize: parsedDesign.elements.eventName.fontSize, color: parsedDesign.elements.eventName.color, textAlign: parsedDesign.elements.eventName.align as any, fontFamily: "var(--font-sans)" }}>
+              <div style={{ position: "absolute", zIndex: 1, left: parsedDesign.elements.eventName.x, top: parsedDesign.elements.eventName.y, width: parsedDesign.elements.eventName.width, fontSize: parsedDesign.elements.eventName.fontSize, color: parsedDesign.elements.eventName.color, textAlign: parsedDesign.elements.eventName.align as any, fontFamily: "var(--font-sans)" }}>
                 {outcomesList.join(", ")}
               </div>
             )}
             {parsedDesign.elements?.issueDate && (
-              <div style={{ position: "absolute", left: parsedDesign.elements.issueDate.x, top: parsedDesign.elements.issueDate.y, width: parsedDesign.elements.issueDate.width, fontSize: parsedDesign.elements.issueDate.fontSize, color: parsedDesign.elements.issueDate.color, textAlign: parsedDesign.elements.issueDate.align as any, fontFamily: "var(--font-sans)" }}>
+              <div style={{ position: "absolute", zIndex: 1, left: parsedDesign.elements.issueDate.x, top: parsedDesign.elements.issueDate.y, width: parsedDesign.elements.issueDate.width, fontSize: parsedDesign.elements.issueDate.fontSize, color: parsedDesign.elements.issueDate.color, textAlign: parsedDesign.elements.issueDate.align as any, fontFamily: "var(--font-sans)" }}>
                 {formattedDate}
               </div>
             )}
             {parsedDesign.elements?.qrCode && parsedDesign.showQr && qrDataUrl && (
-              <img crossOrigin="anonymous" src={qrDataUrl} style={{ position: "absolute", left: parsedDesign.elements.qrCode.x, top: parsedDesign.elements.qrCode.y, width: parsedDesign.elements.qrCode.size, height: parsedDesign.elements.qrCode.size }} alt="QR" />
+              <img crossOrigin="anonymous" src={qrDataUrl} style={{ position: "absolute", zIndex: 1, left: parsedDesign.elements.qrCode.x, top: parsedDesign.elements.qrCode.y, width: parsedDesign.elements.qrCode.size, height: parsedDesign.elements.qrCode.size }} alt="QR" />
             )}
           </>
         ) : (

@@ -13,8 +13,6 @@ import {
 } from "lucide-react";
 import jsQR from "jsqr";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 import CertificateView from "@/components/CertificateView";
 import { downloadCertificatePdf } from "@/lib/pdf-export";
 import Tesseract from "tesseract.js";
@@ -325,7 +323,7 @@ export default function ValidateSearchClient() {
         certificateId: certificate.id,
         recipientName: certificate.recipientName,
         role: certificate.role || certificate.template?.name,
-        eventName: certificate.event?.name || certificate.eventId || "Official Event",
+        eventName: certificate.event?.name || certificate.eventId || "Event Description",
         issueDate: certificate.issueDate,
         design: certificate.template?.designData,
         status: certificate.status,

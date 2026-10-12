@@ -21,6 +21,67 @@ const QrCodeElement = ({ url, color, width, height }: { url: string, color: stri
     />
   );
 };
+
+export const CSS_VAR_TO_FONT: Record<string, string> = {
+  "--font-inter": "'Inter', sans-serif",
+  "--font-outfit": "'Outfit', sans-serif",
+  "--font-cinzel": "'Cinzel', serif",
+  "--font-cormorant": "'Cormorant Garamond', serif",
+  "--font-script": "'Great Vibes', cursive",
+  "--font-playfair": "'Playfair Display', serif",
+  "--font-spacemono": "'Space Mono', monospace",
+  "--font-spacegrotesk": "'Space Grotesk', sans-serif",
+  "--font-sans": "'Inter', sans-serif",
+  "--font-serif": "'Playfair Display', serif",
+  "--font-mono": "'Space Mono', monospace",
+};
+
+export const CSS_VAR_TO_FAMILY_NAME: Record<string, string> = {
+  "--font-inter": "Inter",
+  "--font-outfit": "Outfit",
+  "--font-cinzel": "Cinzel",
+  "--font-cormorant": "Cormorant Garamond",
+  "--font-script": "Great Vibes",
+  "--font-playfair": "Playfair Display",
+  "--font-spacemono": "Space Mono",
+  "--font-spacegrotesk": "Space Grotesk",
+  "--font-sans": "Inter",
+  "--font-serif": "Playfair Display",
+  "--font-mono": "Space Mono",
+};
+
+export function resolveFontFamily(family?: string): string {
+  if (!family) return "'Inter', sans-serif";
+  const trimmed = family.trim();
+  const match = trimmed.match(/var\(\s*(--[\w-]+)(?:\s*,\s*([^)]+))?\s*\)/);
+  if (match) {
+    const varName = match[1];
+    if (CSS_VAR_TO_FONT[varName]) {
+      return CSS_VAR_TO_FONT[varName];
+    }
+    if (match[2]) {
+      return match[2].trim();
+    }
+  }
+  return trimmed;
+}
+
+export function extractFontFamilyName(family?: string): string | null {
+  if (!family) return null;
+  const trimmed = family.trim();
+  const match = trimmed.match(/var\(\s*(--[\w-]+)/);
+  if (match && CSS_VAR_TO_FAMILY_NAME[match[1]]) {
+    return CSS_VAR_TO_FAMILY_NAME[match[1]];
+  }
+  const resolved = resolveFontFamily(family);
+  const first = resolved.split(",")[0].replace(/['"]/g, "").trim();
+  const generics = ["sans-serif", "serif", "monospace", "cursive", "fantasy", "system-ui", "arial"];
+  if (!first || generics.includes(first.toLowerCase())) {
+    return null;
+  }
+  return first;
+}
+
 const FONT_SUPPORTED_WEIGHTS: Record<string, string[]> = {
   "Playfair Display": [
     "400",
@@ -721,20 +782,31 @@ export default function CertificateView({
     const fonts = new Set<string>();
     if (parsedDesign?.canvasElements) {
       parsedDesign.canvasElements.forEach(el => {
-        if (el.fontFamily && !el.fontFamily.startsWith('var(') && el.fontFamily !== 'Arial' && el.fontFamily !== 'sans-serif') {
-          fonts.add(el.fontFamily);
+        const primary = extractFontFamilyName(el.fontFamily);
+        if (primary) fonts.add(primary);
+        const title = extractFontFamilyName((el as any).titleFontFamily);
+        if (title) fonts.add(title);
+      });
+    }
+    if (parsedDesign?.elements) {
+      Object.values(parsedDesign.elements).forEach((el: any) => {
+        if (el?.fontFamily) {
+          const name = extractFontFamilyName(el.fontFamily);
+          if (name) fonts.add(name);
         }
       });
     }
     return Array.from(fonts);
-  }, [parsedDesign?.canvasElements]);
+  }, [parsedDesign?.canvasElements, parsedDesign?.elements]);
 
-  const googleFontsUrl = usedFonts.length > 0
-    ? `https://fonts.googleapis.com/css2?${usedFonts.map(f => {
-        const weights = FONT_SUPPORTED_WEIGHTS[f] || ["400"];
-        return `family=${f.replace(/ /g, '+')}:wght@${weights.join(';')}`;
-      }).join('&')}&display=swap`
-    : null;
+  const googleFontsUrl = useMemo(() => {
+    if (usedFonts.length === 0) return null;
+    const families = usedFonts.map(f => {
+      const weights = FONT_SUPPORTED_WEIGHTS[f] || ["400", "700"];
+      return `family=${f.replace(/ /g, '+')}:wght@${weights.join(';')}`;
+    });
+    return `https://fonts.googleapis.com/css2?${families.join('&')}&display=swap`;
+  }, [usedFonts]);
 
   // Proportional auto-fit: map each element id -> resolved font size so long
   // text shrinks instead of wrapping and colliding with neighbouring elements.
@@ -783,24 +855,25 @@ export default function CertificateView({
 
       // Ceiling: explicit maxFontSize, else the authored fontSize.
       const ceiling = el.maxFontSize ?? el.fontSize ?? 16;
+      const isSingleLine = el.type === "dynamicText" && (el.text === "certificateId" || el.text === "issueDate" || el.text === "recipientName");
+      const maxLines = el.autoFit ? (el.maxLines ?? 1) : (isSingleLine ? 1 : Math.max(1, Math.ceil(content.length / 40)));
 
-      // Only fit when the author opted in, or the text is clearly at risk of
-      // overflowing its box at the authored size.
+      // Measure using resolved font face for true 1:1 Canvas 2D font metric calculation
       const measured = fitFontSize(
         {
           text: content,
-          fontFamily: el.fontFamily || "var(--font-sans, sans-serif)",
+          fontFamily: resolveFontFamily(el.fontFamily),
           fontWeight: el.fontWeight,
           fontStyle: el.fontStyle,
           letterSpacing: el.letterSpacing || 0,
-          maxLines: el.autoFit ? el.maxLines ?? 1 : Math.max(1, Math.ceil(content.length / 40)),
+          maxLines,
           lineHeight: 1.2,
         },
         { width: el.width ?? 0 },
         ceiling
       );
 
-      if (measured < ceiling || el.autoFit) {
+      if (measured < ceiling || el.autoFit || isSingleLine) {
         next[el.id] = measured;
       }
     });
@@ -841,8 +914,20 @@ export default function CertificateView({
             backgroundImage: parsedDesign.backgroundImageUrl ? `url(${parsedDesign.backgroundImageUrl})` : "none",
             backgroundSize: "100% 100%",
             backgroundPosition: "center",
-            boxShadow: printMode ? "none" : "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
-          }}>
+            boxShadow: printMode ? "none" : "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+            // Ensure CSS variables are declared locally inside cloned SVG foreignObject
+            "--font-inter": "'Inter', sans-serif",
+            "--font-outfit": "'Outfit', sans-serif",
+            "--font-cinzel": "'Cinzel', serif",
+            "--font-cormorant": "'Cormorant Garamond', serif",
+            "--font-script": "'Great Vibes', cursive",
+            "--font-playfair": "'Playfair Display', serif",
+            "--font-spacemono": "'Space Mono', monospace",
+            "--font-spacegrotesk": "'Space Grotesk', sans-serif",
+            "--font-sans": "'Inter', sans-serif",
+            "--font-serif": "'Playfair Display', serif",
+            "--font-mono": "'Space Mono', monospace",
+          } as React.CSSProperties}>
           {parsedDesign.backgroundImageUrl && (
             <img
               crossOrigin="anonymous"
@@ -959,14 +1044,14 @@ export default function CertificateView({
                     {el.src ? (
                       <img crossOrigin="anonymous" src={el.src} alt="Signature" style={{ maxWidth: "100%", maxHeight: "70%", objectFit: "contain", marginBottom: `${el.linePadding ?? 10}px` }} />
                     ) : (
-                      <div style={{ whiteSpace: "nowrap", fontFamily: el.fontFamily || "var(--font-script, cursive)", fontSize: `${(el.fontSize || 120) * 1.5}px`, color: el.color || "#000000", paddingTop: "0.3em", paddingBottom: "0.1em", fontStyle: "italic", lineHeight: "normal" }}>
+                      <div style={{ whiteSpace: "nowrap", fontFamily: resolveFontFamily(el.fontFamily || "var(--font-script, cursive)"), fontSize: `${(el.fontSize || 120) * 1.5}px`, color: el.color || "#000000", paddingTop: "0.3em", paddingBottom: "0.1em", fontStyle: "italic", lineHeight: "normal" }}>
                         {el.signatoryName ?? (el.text?.split('|')[0] || "Signature")}
                       </div>
                     )}
                     {!el.hideLine && (
                       <div style={{ width: "100%", borderTop: `${el.lineThickness ?? 4}px solid ${el.lineColor || el.color || "#000000"}`, flexShrink: 0, marginBottom: `${el.linePadding ?? 10}px`, marginTop: `${el.linePadding ?? 10}px` }} />
                     )}
-                    <div style={{ whiteSpace: "nowrap", fontSize: `${(el.fontSize || 120) * (el.titleFontSize ?? 0.4)}px`, fontFamily: el.titleFontFamily || "var(--font-sans, sans-serif)", color: el.titleColor || el.color || "#000000", fontWeight: "bold", textTransform: "uppercase", letterSpacing: `${el.titleLetterSpacing ?? 4}px` }}>
+                    <div style={{ whiteSpace: "nowrap", fontSize: `${(el.fontSize || 120) * (el.titleFontSize ?? 0.4)}px`, fontFamily: resolveFontFamily(el.titleFontFamily || "var(--font-sans, sans-serif)"), color: el.titleColor || el.color || "#000000", fontWeight: "bold", textTransform: "uppercase", letterSpacing: `${el.titleLetterSpacing ?? 4}px` }}>
                       {el.signatoryTitle ?? (el.text?.split('|')[1] || "Title")}
                     </div>
                   </div>
@@ -984,7 +1069,7 @@ export default function CertificateView({
                   width: el.width,
                   height: el.height,
                   fontSize: `${fitSizes[el.id] ?? el.fontSize ?? 16}px`,
-                  fontFamily: el.fontFamily || "var(--font-sans, sans-serif)",
+                  fontFamily: resolveFontFamily(el.fontFamily),
                   color: el.color || "#000000",
                   textAlign: (el.align as any) || "left",
                   fontWeight: el.fontWeight || "normal",
@@ -1053,22 +1138,22 @@ export default function CertificateView({
               }}
             />
             {parsedDesign.elements?.recipientName && (
-              <div style={{ position: "absolute", zIndex: 1, left: parsedDesign.elements.recipientName.x, top: parsedDesign.elements.recipientName.y, width: parsedDesign.elements.recipientName.width, fontSize: parsedDesign.elements.recipientName.fontSize, color: parsedDesign.elements.recipientName.color, textAlign: parsedDesign.elements.recipientName.align as any, fontFamily: "var(--font-serif)", fontWeight: "bold" }}>
+              <div style={{ position: "absolute", zIndex: 1, left: parsedDesign.elements.recipientName.x, top: parsedDesign.elements.recipientName.y, width: parsedDesign.elements.recipientName.width, fontSize: parsedDesign.elements.recipientName.fontSize, color: parsedDesign.elements.recipientName.color, textAlign: parsedDesign.elements.recipientName.align as any, fontFamily: resolveFontFamily((parsedDesign.elements.recipientName as any).fontFamily || "var(--font-serif)"), fontWeight: "bold" }}>
                 {recipientName || "Recipient Name"}
               </div>
             )}
             {parsedDesign.elements?.role && (
-              <div style={{ position: "absolute", zIndex: 1, left: parsedDesign.elements.role.x, top: parsedDesign.elements.role.y, width: parsedDesign.elements.role.width, fontSize: parsedDesign.elements.role.fontSize, color: parsedDesign.elements.role.color, textAlign: parsedDesign.elements.role.align as any, fontFamily: "var(--font-sans)", fontWeight: "bold" }}>
+              <div style={{ position: "absolute", zIndex: 1, left: parsedDesign.elements.role.x, top: parsedDesign.elements.role.y, width: parsedDesign.elements.role.width, fontSize: parsedDesign.elements.role.fontSize, color: parsedDesign.elements.role.color, textAlign: parsedDesign.elements.role.align as any, fontFamily: resolveFontFamily((parsedDesign.elements.role as any).fontFamily || "var(--font-sans)"), fontWeight: "bold" }}>
                 {IssuedDegree}
               </div>
             )}
             {parsedDesign.elements?.eventName && hasOutcomes && (
-              <div style={{ position: "absolute", zIndex: 1, left: parsedDesign.elements.eventName.x, top: parsedDesign.elements.eventName.y, width: parsedDesign.elements.eventName.width, fontSize: parsedDesign.elements.eventName.fontSize, color: parsedDesign.elements.eventName.color, textAlign: parsedDesign.elements.eventName.align as any, fontFamily: "var(--font-sans)" }}>
+              <div style={{ position: "absolute", zIndex: 1, left: parsedDesign.elements.eventName.x, top: parsedDesign.elements.eventName.y, width: parsedDesign.elements.eventName.width, fontSize: parsedDesign.elements.eventName.fontSize, color: parsedDesign.elements.eventName.color, textAlign: parsedDesign.elements.eventName.align as any, fontFamily: resolveFontFamily((parsedDesign.elements.eventName as any).fontFamily || "var(--font-sans)") }}>
                 {outcomesList.join(", ")}
               </div>
             )}
             {parsedDesign.elements?.issueDate && (
-              <div style={{ position: "absolute", zIndex: 1, left: parsedDesign.elements.issueDate.x, top: parsedDesign.elements.issueDate.y, width: parsedDesign.elements.issueDate.width, fontSize: parsedDesign.elements.issueDate.fontSize, color: parsedDesign.elements.issueDate.color, textAlign: parsedDesign.elements.issueDate.align as any, fontFamily: "var(--font-sans)" }}>
+              <div style={{ position: "absolute", zIndex: 1, left: parsedDesign.elements.issueDate.x, top: parsedDesign.elements.issueDate.y, width: parsedDesign.elements.issueDate.width, fontSize: parsedDesign.elements.issueDate.fontSize, color: parsedDesign.elements.issueDate.color, textAlign: parsedDesign.elements.issueDate.align as any, fontFamily: resolveFontFamily((parsedDesign.elements.issueDate as any).fontFamily || "var(--font-sans)") }}>
                 {formattedDate}
               </div>
             )}

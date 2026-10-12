@@ -22,19 +22,37 @@ export interface RenderCertOptions {
  * before html-to-image captures a pixel-perfect snapshot.
  */
 async function waitForAssetsReady(container: HTMLElement): Promise<void> {
-  // 1. Wait for document fonts to settle with safety timeout
+  // 1. Wait for any injected Google Fonts <link> stylesheets to finish downloading
+  const fontLinks = Array.from(container.querySelectorAll<HTMLLinkElement>("link[rel='stylesheet']"));
+  if (fontLinks.length > 0) {
+    await Promise.all(
+      fontLinks.map((link) => {
+        return new Promise((resolve) => {
+          if (link.sheet) {
+            resolve(true);
+            return;
+          }
+          link.addEventListener("load", () => resolve(true), { once: true });
+          link.addEventListener("error", () => resolve(false), { once: true });
+          setTimeout(() => resolve(false), 2000);
+        });
+      })
+    );
+  }
+
+  // 2. Wait for document fonts to settle with safety timeout
   if (typeof document !== "undefined" && document.fonts) {
     try {
       await Promise.race([
         document.fonts.ready,
-        new Promise((resolve) => setTimeout(resolve, 2000)),
+        new Promise((resolve) => setTimeout(resolve, 2500)),
       ]);
     } catch {
       /* ignore font readiness errors */
     }
   }
 
-  // 2. Wait for all <img> tags to complete loading and decoding
+  // 3. Wait for all <img> tags to complete loading and decoding
   const images = Array.from(container.querySelectorAll("img"));
   if (images.length > 0) {
     await Promise.all(
@@ -58,7 +76,7 @@ async function waitForAssetsReady(container: HTMLElement): Promise<void> {
     );
   }
 
-  // 3. Brief layout settle time to ensure SVG gradients and canvas auto-fit have committed
+  // 4. Brief layout settle time to ensure SVG gradients and canvas auto-fit have committed
   await new Promise((resolve) => setTimeout(resolve, 300));
 }
 
@@ -87,6 +105,9 @@ export async function renderCertToCanvas(options: RenderCertOptions): Promise<HT
 
   // Create isolated sandbox element at (0, 0) behind the view with pointer-events disabled
   const sandbox = document.createElement("div");
+  if (typeof document !== "undefined" && document.documentElement) {
+    sandbox.className = document.documentElement.className;
+  }
   sandbox.style.position = "fixed";
   sandbox.style.left = "0px";
   sandbox.style.top = "0px";
@@ -97,6 +118,30 @@ export async function renderCertToCanvas(options: RenderCertOptions): Promise<HT
   sandbox.style.pointerEvents = "none";
   sandbox.style.opacity = "1";
   sandbox.style.backgroundColor = "#ffffff";
+
+  if (typeof window !== "undefined") {
+    const computed = window.getComputedStyle(document.documentElement);
+    const fontVars = [
+      "--font-inter",
+      "--font-outfit",
+      "--font-cinzel",
+      "--font-cormorant",
+      "--font-script",
+      "--font-playfair",
+      "--font-spacemono",
+      "--font-spacegrotesk",
+      "--font-sans",
+      "--font-serif",
+      "--font-mono",
+    ];
+    for (const v of fontVars) {
+      const val = computed.getPropertyValue(v);
+      if (val) {
+        sandbox.style.setProperty(v, val);
+      }
+    }
+  }
+
   document.body.appendChild(sandbox);
 
   const root = createRoot(sandbox);
@@ -256,3 +301,9 @@ export async function downloadBatchCertificatesPdf(
   const finalFilename = filename || `Batch_Certificates_${certs.length}.pdf`;
   pdf.save(finalFilename);
 }
+
+if (typeof window !== "undefined") {
+  (window as any).__renderCertToCanvas = renderCertToCanvas;
+  (window as any).__downloadCertificatePdf = downloadCertificatePdf;
+}
+

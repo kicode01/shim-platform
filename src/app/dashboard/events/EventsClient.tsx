@@ -188,7 +188,10 @@ export default function EventsClient({ initialEvents, templates }: EventsClientP
                   </div>
 
                   {/* Cards stream */}
-                  <div className="mob-flow flex-1 min-h-0 overflow-y-auto divide-y divide-zinc-100">
+                  <div 
+                    className="flex-1 min-h-0 overflow-y-auto divide-y divide-zinc-100 overscroll-contain touch-pan-y"
+                    style={{ WebkitOverflowScrolling: "touch" }}
+                  >
                     {filteredEvents.length === 0 ? (
                       <div className="p-8 text-center text-xs text-zinc-500">
                         No events matching &ldquo;{searchQuery}&rdquo;

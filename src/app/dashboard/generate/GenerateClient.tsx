@@ -395,12 +395,9 @@ function GenerateCertificatesContent() {
       <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-6 flex-1 flex flex-col relative min-h-0 overflow-hidden shadow-sm">
         <div className="flex justify-between items-center mb-4 pb-4 border-b border-zinc-100 shrink-0">
           <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold text-zinc-700 flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-zinc-700">
               Live Preview
             </h3>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              Live Specimen
-            </span>
           </div>
           <span className="text-xs font-medium text-zinc-600 bg-zinc-100 px-3 py-1 rounded-full hidden sm:inline-block">A4 Landscape</span>
         </div>

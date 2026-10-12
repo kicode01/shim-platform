@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import GenerateClient from "./GenerateClient";
 
 export const metadata: Metadata = {
-  title: "Issue Credential",
-  description: "Generate single or bulk certificates for your events.",
+  title: "Issue",
+  description: "Issue event certificates.",
 };
 
 

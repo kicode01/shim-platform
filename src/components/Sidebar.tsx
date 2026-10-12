@@ -19,8 +19,8 @@ export default function Sidebar() {
     { href: "/dashboard/credentials", label: "Credentials", shortLabel: "Creds", icon: BookOpen },
     { href: "/dashboard/events", label: "Events", shortLabel: "Events", icon: Calendar },
     { href: "/dashboard/templates", label: "Templates", shortLabel: "Studio", icon: Stamp },
-    { href: "/dashboard/generate", label: "Generate", shortLabel: "Issue", icon: FileSpreadsheet },
-    { href: "/dashboard/audit", label: "Audit Trail", shortLabel: "Audit", icon: History },
+    { href: "/dashboard/generate", label: "Issue", shortLabel: "Issue", icon: FileSpreadsheet },
+    { href: "/dashboard/audit", label: "Audit", shortLabel: "Audit", icon: History },
   ];
 
   const isTemplateStudio = /^\/dashboard\/templates\/[^/]+$/.test(pathname);

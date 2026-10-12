@@ -320,7 +320,7 @@ function GenerateCertificatesContent() {
     <div className="bg-white border border-zinc-200 rounded-xl p-6 flex flex-col gap-5 shadow-sm">
       <div className="w-full">
         <label className="text-sm font-medium text-zinc-700 mb-2 block">
-          Active Template Profile
+          Template
         </label>
         <div className="relative">
             <Select
@@ -349,11 +349,11 @@ function GenerateCertificatesContent() {
 
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full">
         <Link href="/dashboard/templates/new" className="flex-1 btn-secondary">
-          <Plus size={16} /> New Template
+          <Plus size={16} /> New
         </Link>
         {selectedTemplate && (
           <Link href={`/dashboard/templates/${selectedTemplate.id}`} className="flex-1 btn-primary">
-            Customize
+            Edit
           </Link>
         )}
       </div>
@@ -387,7 +387,7 @@ function GenerateCertificatesContent() {
         <div className="flex justify-between items-center mb-4 pb-4 border-b border-zinc-100 shrink-0">
           <div className="flex items-center gap-2">
             <h3 className="text-lg font-semibold text-zinc-700">
-              Live Preview
+              Preview
             </h3>
           </div>
           <span className="text-xs font-medium text-zinc-600 bg-zinc-100 px-3 py-1 rounded-full hidden sm:inline-block">
@@ -486,10 +486,10 @@ function GenerateCertificatesContent() {
         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 sm:gap-6 mb-4 sm:mb-6 shrink-0">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-zinc-700 tracking-tight mb-1">
-              Generation Studio
+              Issue
             </h1>
             <p className="text-zinc-500 text-xs sm:text-sm font-medium">
-              Issue credentials individually or bulk generate via CSV.
+              Single or batch credential issuance
             </p>
           </div>
 
@@ -503,7 +503,7 @@ function GenerateCertificatesContent() {
                   : "text-zinc-500 hover:text-zinc-800 hover:bg-zinc-200/50"
               }`}
             >
-              <UserCheck size={15} /> <span>Individual</span>
+              <UserCheck size={15} /> <span>Single</span>
             </button>
             <button 
               type="button" 
@@ -514,7 +514,7 @@ function GenerateCertificatesContent() {
                   : "text-zinc-500 hover:text-zinc-800 hover:bg-zinc-200/50"
               }`}
             >
-              <FileSpreadsheet size={15} /> <span>CSV Batch</span>
+              <FileSpreadsheet size={15} /> <span>Batch</span>
             </button>
           </div>
         </div>
@@ -531,7 +531,7 @@ function GenerateCertificatesContent() {
             }`}
           >
             <UserCheck size={14} />
-            <span>{mode === "single" ? "Recipient Details" : `Batch Setup (${bulkStep === 1 ? "Upload" : "Review"})`}</span>
+            <span>{mode === "single" ? "Recipient" : `Batch (${bulkStep === 1 ? "Upload" : "Review"})`}</span>
           </button>
           <button
             type="button"
@@ -543,7 +543,7 @@ function GenerateCertificatesContent() {
             }`}
           >
             <Eye size={14} />
-            <span>Live Preview</span>
+            <span>Preview</span>
           </button>
         </div>
 
@@ -567,9 +567,9 @@ function GenerateCertificatesContent() {
                 <div className="mob-flow bg-white border border-zinc-200 rounded-xl flex-1 flex flex-col shadow-sm overflow-hidden min-h-0">
                   <div className="border-b border-zinc-100 shrink-0 flex justify-between items-start px-6 sm:px-8 py-5 sm:py-6">
                     <div>
-                      <h3 className="text-xl font-semibold text-zinc-700">Recipient Details</h3>
+                      <h3 className="text-xl font-semibold text-zinc-700">Recipient</h3>
                       <p className="text-sm font-medium text-zinc-500 mt-1">
-                        Enter the details to generate a credential instantly.
+                        Enter recipient details to issue credential.
                       </p>
                     </div>
                     <button 

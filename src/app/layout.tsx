@@ -4,6 +4,7 @@ import "./globals.css";
 import AuthProvider from "@/components/AuthProvider";
 import Navbar from "@/components/Navbar";
 import SurfaceMarker from "@/components/SurfaceMarker";
+import DynamicFavicon from "@/components/DynamicFavicon";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -67,10 +68,10 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "shim | credential platform",
+    default: "shim",
     template: "shim | %s",
   },
-  description: "Digital Certificate Generation and Authentication System with QR-Based Verification for events, seminars, and webinars.",
+  description: "Cryptographic credential platform with instant verification.",
   keywords: ["Digital Certificates", "QR Verification", "Event Management", "Certificate Generator", "Seminar Certificates"],
   manifest: "/manifest.json",
   appleWebApp: {
@@ -80,10 +81,17 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/logo-light.svg", media: "(prefers-color-scheme: light)", type: "image/svg+xml" },
+      { url: "/logo-dark.svg", media: "(prefers-color-scheme: dark)", type: "image/svg+xml" },
     ],
-    shortcut: "/icon.svg",
-    apple: "/icon.svg",
+    shortcut: [
+      { url: "/logo-light.svg", media: "(prefers-color-scheme: light)" },
+      { url: "/logo-dark.svg", media: "(prefers-color-scheme: dark)" },
+    ],
+    apple: [
+      { url: "/logo-light.svg", media: "(prefers-color-scheme: light)" },
+      { url: "/logo-dark.svg", media: "(prefers-color-scheme: dark)" },
+    ],
   },
 };
 
@@ -92,6 +100,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${inter.variable} ${outfit.variable} ${cinzel.variable} ${cormorant.variable} ${greatVibes.variable} ${playfair.variable} ${spaceMono.variable} ${spaceGrotesk.variable}`}>
       <body className="flex flex-col h-screen w-full overflow-hidden bg-[#0a0a0a]">
         <AuthProvider>
+          <DynamicFavicon />
           <Navbar />
           {/* <main> is the app-wide scroll container, so it owns the page
               surface.

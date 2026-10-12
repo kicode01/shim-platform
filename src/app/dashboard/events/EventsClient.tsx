@@ -78,10 +78,10 @@ export default function EventsClient({ initialEvents, templates }: EventsClientP
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6 mb-4 sm:mb-6 shrink-0">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-zinc-700 tracking-tight mb-1">
-            Events Management
+            Events
           </h1>
           <p className="text-zinc-500 text-xs sm:text-sm font-medium">
-            Organize events and issue batch certificates efficiently.
+            Organize events and batch credentials
           </p>
         </div>
       </div>

@@ -1606,7 +1606,7 @@ export default function TemplateEditor({
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 sm:gap-6 mb-4 sm:mb-6 shrink-0">
         <div>
           <Link href="/dashboard/templates" className="inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-zinc-700 transition-colors mb-4">
-            <ArrowLeft size={16} /> Back to Templates
+            <ArrowLeft size={16} /> Templates
           </Link>
           <div className="flex items-start gap-3 w-full max-w-2xl">
             <div className="p-2 bg-zinc-100 rounded-lg text-zinc-600 shrink-0 mt-1.5">
@@ -1625,7 +1625,7 @@ export default function TemplateEditor({
                   e.target.style.height = `${e.target.scrollHeight}px`;
                 }}
                 rows={1}
-                placeholder="Name your template..."
+                placeholder="Template name..."
                 required
               />
               <textarea
@@ -1637,7 +1637,7 @@ export default function TemplateEditor({
                   e.target.style.height = `${e.target.scrollHeight}px`;
                 }}
                 rows={1}
-                placeholder="Add an optional description..."
+                placeholder="Description (optional)..."
               />
             </div>
           </div>
@@ -1693,8 +1693,8 @@ export default function TemplateEditor({
               )}
             </AnimatePresence>
           </button>
-          <button onClick={handleSave} className="btn-primary font-medium flex-1 sm:flex-initial sm:min-w-[160px] justify-center text-xs sm:text-sm py-2 px-3 sm:px-4" disabled={saving}>
-            {saving ? <><Loader2 size={15} className="animate-spin mr-1.5" /> Saving...</> : savedSuccess ? <><CheckCircle2 size={15} className="mr-1.5" /> Saved</> : <><Save size={15} className="mr-1.5" /> {isEdit ? "Update Template" : "Create Template"}</>}
+          <button onClick={handleSave} className="btn-primary font-medium flex-1 sm:flex-initial sm:min-w-[120px] justify-center text-xs sm:text-sm py-2 px-3 sm:px-4" disabled={saving}>
+            {saving ? <><Loader2 size={15} className="animate-spin mr-1.5" /> Saving...</> : savedSuccess ? <><CheckCircle2 size={15} className="mr-1.5" /> Saved</> : <><Save size={15} className="mr-1.5" /> {isEdit ? "Save" : "Create"}</>}
           </button>
         </div>
       </div>

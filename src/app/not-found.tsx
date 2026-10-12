@@ -3,8 +3,8 @@ import { Search, Home, FileQuestion, ArrowLeft, AlertTriangle } from "lucide-rea
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Page Not Found",
-  description: "The requested registry resource could not be found.",
+  title: "404",
+  description: "Page not found.",
 };
 
 export default function NotFound() {

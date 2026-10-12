@@ -8,7 +8,7 @@ import TemplatesListClient from "./TemplatesListClient";
 
 export const metadata: Metadata = {
   title: "Templates",
-  description: "Manage your certificate templates and designs for events.",
+  description: "Certificate templates.",
 };
 
 export default async function TemplatesPage() {

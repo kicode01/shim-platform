@@ -6,8 +6,8 @@ import { prisma } from "@/lib/prisma";
 import CredentialsClient from "./CredentialsClient";
 
 export const metadata: Metadata = {
-  title: "Credentials Ledger",
-  description: "Manage your issued digital certificates.",
+  title: "Credentials",
+  description: "Manage issued credentials.",
 };
 
 export default async function CredentialsPage() {
@@ -41,7 +41,7 @@ export default async function CredentialsPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6 mb-4 sm:mb-6 shrink-0">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-zinc-700 tracking-tight mb-1">Credentials</h1>
-          <p className="text-zinc-500 text-xs sm:text-sm font-medium">Manage and view all your issued event credentials</p>
+          <p className="text-zinc-500 text-xs sm:text-sm font-medium">Manage all issued credentials</p>
         </div>
       </div>
       

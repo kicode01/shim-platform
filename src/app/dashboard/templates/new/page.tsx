@@ -7,7 +7,7 @@ import TemplateEditor from "@/components/TemplateEditor";
 
 export const metadata: Metadata = {
   title: "New Template",
-  description: "Create a new visual template design for your event certificates.",
+  description: "Create a template.",
 };
 
 export default async function NewTemplatePage() {

@@ -6,8 +6,8 @@ import EventDetailsClient from "./EventDetailsClient";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Event Attendees | Shim",
-  description: "View and manage event attendees",
+  title: "Attendees",
+  description: "Manage attendees.",
 };
 
 export default async function EventDetailsPage({ params }: { params: Promise<{ id: string }> }) {

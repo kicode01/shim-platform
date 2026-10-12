@@ -405,10 +405,10 @@ export default function ValidateSearchClient() {
             >
               <div className="text-center mb-10 w-full">
                 <h1 className="text-4xl sm:text-5xl font-serif text-zinc-100 mb-4 tracking-tight">
-                  Verify a Credential
+                  Verify Credential
                 </h1>
                 <p className="text-zinc-400 text-sm sm:text-base max-w-lg mx-auto leading-relaxed">
-                  Enter the unique credential ID or upload the certificate document to verify its authenticity on the ledger.
+                  Enter credential ID or upload document to verify on ledger.
                 </p>
               </div>
 

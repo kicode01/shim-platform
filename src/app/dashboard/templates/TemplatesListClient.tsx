@@ -61,14 +61,14 @@ export default function TemplatesListClient({ initialTemplates }: { initialTempl
         <div>
           <div className="flex items-center gap-2.5 mb-1">
             <h1 className="text-2xl sm:text-3xl font-bold text-zinc-700 tracking-tight">
-              Certificate Templates
+              Templates
             </h1>
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 border border-zinc-200">
               {templates.length}
             </span>
           </div>
           <p className="text-zinc-500 text-xs sm:text-sm font-medium">
-            Design and manage visual layouts for your event credentials.
+            Manage certificate designs and layouts
           </p>
         </div>
 
@@ -86,7 +86,7 @@ export default function TemplatesListClient({ initialTemplates }: { initialTempl
           </div>
           <Link href="/dashboard/templates/new" className="btn-primary shrink-0 py-2 px-3.5 sm:px-4 text-xs sm:text-sm">
             <Plus size={15} />
-            <span>New Template</span>
+            <span>New</span>
           </Link>
         </div>
       </div>

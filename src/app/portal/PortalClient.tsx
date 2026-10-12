@@ -230,13 +230,13 @@ export default function PortalClient({ user, certificates, stats, insights }: Po
                 className="inline-flex items-center justify-center gap-2 bg-zinc-900 text-white rounded-xl px-4 h-10 hover:bg-zinc-800 active:translate-y-px transition-all shadow-sm"
               >
                 <QRGlyph size={13} />
-                <span className="text-sm font-medium">Show check-in pass</span>
+                <span className="text-sm font-medium">Check-in pass</span>
               </button>
               <Link
                 href="/validate"
                 className="group inline-flex items-center justify-center gap-2 text-sm font-medium text-zinc-600 hover:text-zinc-900 border border-zinc-200 bg-white rounded-xl px-4 h-10 hover:bg-zinc-50 transition-colors shadow-sm"
               >
-                Verify a credential
+                Verify credential
                 <ArrowUpRight size={14} strokeWidth={1.9} className="text-zinc-400 group-hover:text-zinc-700 transition-colors" />
               </Link>
             </div>
@@ -275,9 +275,9 @@ export default function PortalClient({ user, certificates, stats, insights }: Po
         >
           <div className="p-6 border-b border-zinc-200 flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-zinc-800 tracking-tight">Held credentials</h2>
+              <h2 className="text-lg font-bold text-zinc-800 tracking-tight">Credentials</h2>
               <p className="text-zinc-500 text-sm font-medium mt-0.5">
-                {certificates.length} {certificates.length === 1 ? "record" : "records"} on file
+                {certificates.length} {certificates.length === 1 ? "credential" : "credentials"}
               </p>
             </div>
             <span suppressHydrationWarning className="font-mono text-[10px] font-bold tracking-widest uppercase text-zinc-500 bg-zinc-100 border border-zinc-200/80 px-3 py-1.5 rounded-md shadow-[inset_0_1px_3px_rgba(0,0,0,0.08),0_1px_0_rgba(255,255,255,1)] tabular-nums">

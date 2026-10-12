@@ -15,9 +15,10 @@ export async function generateMetadata(props: { params: Promise<{ id: string }> 
   if (!template) {
     return { title: "Template Not Found" };
   }
+  const displayName = template.name.length > 20 ? `${template.name.slice(0, 20)}…` : template.name;
   return {
-    title: `${template.name} — Template Editor`,
-    description: `Edit visual design, layout rules, and configurations for ${template.name}.`,
+    title: displayName,
+    description: `Edit ${template.name}.`,
   };
 }
 

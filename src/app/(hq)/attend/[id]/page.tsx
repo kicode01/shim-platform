@@ -4,8 +4,8 @@ import AttendClient from "./AttendClient";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Check-in | Shim",
-  description: "Register your attendance and claim your certificate.",
+  title: "Check-in",
+  description: "Register attendance.",
 };
 
 export default async function AttendPage({ params }: { params: Promise<{ id: string }> }) {

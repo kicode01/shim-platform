@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import RegisterClient from "./RegisterClient";
 
 export const metadata: Metadata = {
-  title: "Get Started",
-  description: "Create an institutional account to start issuing certificates.",
+  title: "Register",
+  description: "Create an account.",
 };
 
 export default function RegisterPage() {

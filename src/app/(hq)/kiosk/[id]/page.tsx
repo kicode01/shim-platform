@@ -6,8 +6,8 @@ import KioskClient from "./KioskClient";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Kiosk Mode | Shim",
-  description: "Event check-in kiosk.",
+  title: "Kiosk",
+  description: "Event check-in.",
 };
 
 export default async function KioskPage({ params }: { params: Promise<{ id: string }> }) {

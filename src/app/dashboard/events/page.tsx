@@ -8,7 +8,7 @@ import EventsClient from "./EventsClient";
 
 export const metadata: Metadata = {
   title: "Events",
-  description: "Manage events and generated certificates.",
+  description: "Manage events.",
 };
 
 export default async function EventsPage() {

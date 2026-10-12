@@ -70,8 +70,8 @@ export default function Navbar() {
     { href: "/dashboard/credentials", label: "Credentials", icon: BookOpen },
     { href: "/dashboard/events", label: "Events", icon: Calendar },
     { href: "/dashboard/templates", label: "Templates", icon: Stamp },
-    { href: "/dashboard/generate", label: "Generate", icon: FileSpreadsheet },
-    { href: "/dashboard/audit", label: "Audit Trail", icon: History },
+    { href: "/dashboard/generate", label: "Issue", icon: FileSpreadsheet },
+    { href: "/dashboard/audit", label: "Audit", icon: History },
   ];
 
   if (pathname.startsWith("/kiosk") || pathname.startsWith("/scanner")) return null;

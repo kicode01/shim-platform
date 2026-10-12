@@ -5,6 +5,12 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { linkCertificatesToUser } from "@/lib/claim";
 import PortalClient from "./PortalClient";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Wallet",
+  description: "Your digital credentials.",
+};
 
 /**
  * Mint a unique attendee membership ID of the form `ATT-M-#####`.

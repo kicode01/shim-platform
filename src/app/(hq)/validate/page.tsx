@@ -3,8 +3,8 @@ import { Suspense } from "react";
 import ValidateSearchClient from "./ValidateSearchClient";
 
 export const metadata: Metadata = {
-  title: "Verify Credential",
-  description: "Verify the authenticity of a digital certificate.",
+  title: "Verify",
+  description: "Verify credentials.",
 };
 
 export default function ValidatePage() {

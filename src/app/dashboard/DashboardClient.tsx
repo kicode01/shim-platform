@@ -185,7 +185,7 @@ export default function DashboardClient({
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6 mb-4 sm:mb-6 shrink-0">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-zinc-700 tracking-tight mb-1">Overview</h1>
-          <p className="text-zinc-500 text-xs sm:text-sm font-medium">Manage your event credentials and templates</p>
+          <p className="text-zinc-500 text-xs sm:text-sm font-medium">Credentials and templates</p>
         </div>
         
         <div className="mob-dash-actions flex items-center gap-3">
@@ -212,7 +212,7 @@ export default function DashboardClient({
           </Link>
           <Link href="/dashboard/generate" className="flex items-center gap-2 bg-zinc-900 text-white hover:bg-zinc-800 px-4 py-2 rounded-xl font-medium text-sm transition-all shadow-sm active:scale-[0.98] h-9">
             <Plus size={16} strokeWidth={2.5} />
-            <span>Issue Credential</span>
+            <span>Issue</span>
           </Link>
         </div>
       </div>
@@ -287,9 +287,9 @@ export default function DashboardClient({
           <div className="p-6 border-b border-zinc-200 flex justify-between items-center bg-white shrink-0">
             <div>
               <h3 className="text-lg font-bold text-zinc-700">
-                Issuance Analytics
+                Issuance
               </h3>
-              <p className="text-sm font-medium text-zinc-500 mt-1">Monthly generation volume</p>
+              <p className="text-sm font-medium text-zinc-500 mt-1">Generation volume</p>
             </div>
             
             <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold tracking-widest uppercase text-zinc-500 bg-zinc-100 border border-zinc-200/80 px-3 py-1.5 rounded-md shadow-[inset_0_1px_3px_rgba(0,0,0,0.08),0_1px_0_rgba(255,255,255,1)] shrink-0 select-none cursor-default">
@@ -343,7 +343,7 @@ export default function DashboardClient({
         {/* Right Col: Recent Events (Takes 1 column for a compact list view) */}
         <div id="mob-panel-events" className="mob-panel xl:col-span-1 bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm flex flex-col h-full min-h-0">
           <div className="p-6 border-b border-zinc-200 flex justify-between items-center bg-white shrink-0">
-            <h2 className="text-lg font-bold text-zinc-700">Recent Events</h2>
+            <h2 className="text-lg font-bold text-zinc-700">Events</h2>
             <Link href="/dashboard/events" className="mob-link text-sm font-medium text-zinc-600 hover:text-zinc-700 flex items-center gap-1">
               View all <ArrowRight size={16} />
             </Link>

@@ -150,20 +150,11 @@ export default async function DashboardPage() {
   }
 
   return (
-    /* `100%` + `overflow: hidden` rather than `100vh` + `auto`: the root
-       <main data-app-scroll> in layout.tsx is already viewport-height minus the
-       64px navbar and is the app's only scroller. A child claiming 100vh
-       overflows it by exactly the navbar height and, with `overflow: auto`,
-       adds a second scrollbar (which rendered as the unstyled native one). */
-    <div className="dashboard-bg" style={{ height: "100%", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-      <main className="page-container-wide animate-fade-in" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, paddingBottom: "2rem", paddingTop: "2rem" }}>
-        <DashboardClient 
-          initialEvents={finalEvents} 
-          initialStats={finalStats} 
-          allCertificates={allCertificates}
-          allVerifications={allVerifications}
-        />
-      </main>
-    </div>
+    <DashboardClient 
+      initialEvents={finalEvents} 
+      initialStats={finalStats} 
+      allCertificates={allCertificates}
+      allVerifications={allVerifications}
+    />
   );
 }

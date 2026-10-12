@@ -1599,11 +1599,11 @@ export default function TemplateEditor({
   }, [design.orientation]);
 
   return (
-    <div className="flex-1 flex flex-col w-full px-4 sm:px-6 py-6 min-h-0 overflow-hidden">
+    <div className="flex-1 flex flex-col w-full px-4 sm:px-8 py-4 sm:py-6 min-h-0 overflow-hidden">
 
       {googleFontsUrl && <link href={googleFontsUrl} rel="stylesheet" />}
       {/* Header */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-6 shrink-0">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 sm:gap-6 mb-4 sm:mb-6 shrink-0">
         <div>
           <Link href="/dashboard/templates" className="inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-zinc-700 transition-colors mb-4">
             <ArrowLeft size={16} /> Back to Templates

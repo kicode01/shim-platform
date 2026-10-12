@@ -532,6 +532,7 @@ interface CertificateViewProps {
   issueDate?: string | Date;
   design?: CertificateDesignConfig | string;
   status?: string;
+  printMode?: boolean;
 }
 
 export default function CertificateView({
@@ -542,6 +543,7 @@ export default function CertificateView({
   issueDate = new Date(),
   design,
   status = "valid",
+  printMode = false,
 }: CertificateViewProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState<number>(0);
@@ -587,14 +589,16 @@ export default function CertificateView({
     return def;
   }, [design]);
 
+  const isPortrait = parsedDesign.orientation === "portrait";
+  const baseW = parsedDesign.canvasElements ? (isPortrait ? 2480 : 3508) : (isPortrait ? 538 : 760);
+  const baseH = parsedDesign.canvasElements ? (isPortrait ? 3508 : 2480) : (isPortrait ? 760 : 538);
+
   useEffect(() => {
     const updateScale = () => {
       if (containerRef.current) {
         const width = containerRef.current.offsetWidth;
         const height = containerRef.current.offsetHeight;
         if (width > 0) {
-          const baseW = parsedDesign.canvasElements ? 3508 : 760;
-          const baseH = parsedDesign.canvasElements ? 2480 : 538;
           const scaleW = width / baseW;
           const scaleH = height > 0 ? height / baseH : scaleW;
           setScale(Math.min(scaleW, scaleH));
@@ -608,7 +612,7 @@ export default function CertificateView({
       observer.observe(containerRef.current);
     }
     return () => observer.disconnect();
-  }, [parsedDesign.canvasElements]);
+  }, [baseW, baseH]);
 
   const isEmerald = parsedDesign.theme === "emerald";
   const isGoldOnly = parsedDesign.theme === "gold";
@@ -735,9 +739,9 @@ export default function CertificateView({
   // Proportional auto-fit: map each element id -> resolved font size so long
   // text shrinks instead of wrapping and colliding with neighbouring elements.
   // Runs once fonts are ready so measurement uses the real glyph metrics.
-  const [fitSizes, setFitSizes] = useState<Record<string, number>>({});
-  // Increments each time a font batch finishes loading, so the fit effect
-  // re-runs even after the initial `ready` (late web fonts change metrics).
+  // Proportional auto-fit: map each element id -> resolved font size so long
+  // text shrinks instead of wrapping and colliding with neighbouring elements.
+  // Calculated synchronously and recalculates whenever web fonts load.
   const [fontsReady, setFontsReady] = useState(0);
 
   useEffect(() => {
@@ -760,8 +764,8 @@ export default function CertificateView({
     };
   }, []);
 
-  useEffect(() => {
-    if (!fontsReady || !parsedDesign.canvasElements) return;
+  const fitSizes = useMemo(() => {
+    if (!parsedDesign.canvasElements) return {};
 
     const next: Record<string, number> = {};
     parsedDesign.canvasElements.forEach((el) => {
@@ -800,7 +804,7 @@ export default function CertificateView({
         next[el.id] = measured;
       }
     });
-    setFitSizes(next);
+    return next;
   }, [
     fontsReady,
     parsedDesign.canvasElements,
@@ -817,28 +821,28 @@ export default function CertificateView({
       <div 
         ref={containerRef}
         style={{
-          width: "100%",
-          height: "100%",
+          width: printMode ? `${baseW}px` : "100%",
+          height: printMode ? `${baseH}px` : "100%",
           position: "relative",
-          overflow: "hidden",
+          overflow: printMode ? "visible" : "hidden",
         }}
       >
         <div 
           id="certificate-print-node"
           style={{
-            width: "3508px",
-            height: "2480px",
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: `translate(-50%, -50%) scale(${scale})`,
-          transformOrigin: "center center",
-          backgroundColor: "#ffffff",
-          backgroundImage: parsedDesign.backgroundImageUrl ? `url(${parsedDesign.backgroundImageUrl})` : "none",
-          backgroundSize: "100% 100%",
-          backgroundPosition: "center",
-          boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
-        }}>
+            width: `${baseW}px`,
+            height: `${baseH}px`,
+            position: printMode ? "relative" : "absolute",
+            top: printMode ? "0" : "50%",
+            left: printMode ? "0" : "50%",
+            transform: printMode ? "none" : `translate(-50%, -50%) scale(${scale})`,
+            transformOrigin: "center center",
+            backgroundColor: "#ffffff",
+            backgroundImage: parsedDesign.backgroundImageUrl ? `url(${parsedDesign.backgroundImageUrl})` : "none",
+            backgroundSize: "100% 100%",
+            backgroundPosition: "center",
+            boxShadow: printMode ? "none" : "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
+          }}>
           {parsedDesign.canvasElements.map(el => {
             let content = el.text;
             if (el.type === "dynamicText") {
@@ -861,7 +865,7 @@ export default function CertificateView({
                 <div key={el.id} style={{ position: "absolute", left: el.x, top: el.y, width: el.width, height: el.height }}>
                   {el.src ? (
                     <div style={{ position: "relative", width: "100%", height: "100%" }}>
-                      <img src={el.src} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.1)) drop-shadow(0 10px 15px rgba(0,0,0,0.1))" }} />
+                      <img crossOrigin="anonymous" src={el.src} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.1)) drop-shadow(0 10px 15px rgba(0,0,0,0.1))" }} />
                       <div className="animate-badge-shine" style={{
                         position: "absolute",
                         top: 0, left: 0, right: 0, bottom: 0,
@@ -932,7 +936,7 @@ export default function CertificateView({
                 return (
                   <div key={el.id} style={{ position: "absolute", left: el.x, top: el.y, width: el.width, height: el.height, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}>
                     {el.src ? (
-                      <img src={el.src} alt="Signature" style={{ maxWidth: "100%", maxHeight: "70%", objectFit: "contain", marginBottom: `${el.linePadding ?? 10}px` }} />
+                      <img crossOrigin="anonymous" src={el.src} alt="Signature" style={{ maxWidth: "100%", maxHeight: "70%", objectFit: "contain", marginBottom: `${el.linePadding ?? 10}px` }} />
                     ) : (
                       <div style={{ whiteSpace: "nowrap", fontFamily: el.fontFamily || "var(--font-script, cursive)", fontSize: `${(el.fontSize || 120) * 1.5}px`, color: el.color || "#000000", paddingTop: "0.3em", paddingBottom: "0.1em", fontStyle: "italic", lineHeight: "normal" }}>
                         {el.signatoryName ?? (el.text?.split('|')[0] || "Signature")}
@@ -1031,7 +1035,7 @@ export default function CertificateView({
               </div>
             )}
             {parsedDesign.elements?.qrCode && parsedDesign.showQr && qrDataUrl && (
-              <img src={qrDataUrl} style={{ position: "absolute", left: parsedDesign.elements.qrCode.x, top: parsedDesign.elements.qrCode.y, width: parsedDesign.elements.qrCode.size, height: parsedDesign.elements.qrCode.size }} alt="QR" />
+              <img crossOrigin="anonymous" src={qrDataUrl} style={{ position: "absolute", left: parsedDesign.elements.qrCode.x, top: parsedDesign.elements.qrCode.y, width: parsedDesign.elements.qrCode.size, height: parsedDesign.elements.qrCode.size }} alt="QR" />
             )}
           </>
         ) : (

@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import CertificateView from "@/components/CertificateView";
+import { downloadCertificatePdf, downloadBatchCertificatesPdf } from "@/lib/pdf-export";
 
 function GenerateCertificatesContent() {
   const router = useRouter();
@@ -101,13 +102,13 @@ function GenerateCertificatesContent() {
     if (eventParam) setSingleEventId(eventParam);
   }, [searchParams]);
 
-  // Download Sample CSV Helper
+  // Download Sample CSV Helper with proper UTF-8 BOM and memory cleanup
   const downloadSampleCsv = () => {
     const csvContent = 
-`name,email,role,event
-"Jane Doe","jane@example.com","Participant","Global Tech Summit 2026"
-"John Smith","john@example.com","Keynote Speaker","Global Tech Summit 2026"
-"Alice Johnson","alice@example.com","VIP Guest","Global Tech Summit 2026"`;
+      "\uFEFFname,email,role,event\n" +
+      '"Jane Doe","jane@example.com","Participant","Global Tech Summit 2026"\n' +
+      '"John Smith","john@example.com","Keynote Speaker","Global Tech Summit 2026"\n' +
+      '"Alice Johnson","alice@example.com","VIP Guest","Global Tech Summit 2026"';
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -117,6 +118,7 @@ function GenerateCertificatesContent() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const processFile = (file: File) => {
@@ -171,65 +173,6 @@ function GenerateCertificatesContent() {
     if (file) processFile(file);
   };
 
-  // Helper to draw a single certificate on jsPDF
-  const renderCertToPdf = async (pdf: jsPDF, cert: any, design: any, isFirst: boolean) => {
-    if (!isFirst) pdf.addPage();
-
-    const container = document.createElement("div");
-    container.style.position = "fixed";
-    container.style.top = "-9999px";
-    container.style.left = "-9999px";
-    container.style.width = "3508px";
-    container.style.height = "2480px";
-    document.body.appendChild(container);
-
-    const root = createRoot(container);
-    flushSync(() => {
-      root.render(
-        <CertificateView 
-          certificateId={cert.id}
-          recipientName={cert.recipientName}
-          role={cert.role || selectedTemplate?.name}
-          eventId={cert.eventId || "Unknown Event"}
-          issueDate={cert.issueDate}
-          design={selectedTemplate?.designData}
-          status={"valid"}
-        />
-      );
-    });
-
-    // Wait a short moment to ensure DOM updates, effects run (QR Code), and images render
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    const node = container.querySelector("#certificate-print-node") || container;
-    
-    // Temporarily remove transform scaling to capture full resolution if it exists
-    const originalTransform = (node as HTMLElement).style.transform;
-    (node as HTMLElement).style.transform = "translate(-50%, -50%) scale(1)";
-
-    try {
-      const canvas = await html2canvas(node as HTMLElement, {
-        scale: 1, // Full 3508x2480 resolution
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: "#ffffff",
-      });
-
-      const imgData = canvas.toDataURL("image/jpeg", 0.95);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      
-      pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
-    } catch (e) {
-      console.error("html2canvas generation failed", e);
-    }
-
-    (node as HTMLElement).style.transform = originalTransform;
-
-    root.unmount();
-    document.body.removeChild(container);
-  };
-
   // Handle Single Issue
   const handleSingleIssue = async (e: React.FormEvent | null, shouldDownload: boolean = true) => {
     if (e) e.preventDefault();
@@ -264,15 +207,17 @@ function GenerateCertificatesContent() {
 
       if (shouldDownload) {
         try {
-          // Generate PDF
-          const pdf = new jsPDF("l", "mm", "a4");
-          let design = {};
-          try {
-            design = JSON.parse(selectedTemplate.designData);
-          } catch (e) {}
-
-          await renderCertToPdf(pdf, certificate, design, true);
-          pdf.save(`Certificate_${certificate.recipientName.replace(/\s+/g, "_")}.pdf`);
+          const selectedEvent = events.find(ev => ev.id === singleEventId);
+          const resolvedEventName = certificate.event?.name || selectedEvent?.name || singleEventId;
+          await downloadCertificatePdf({
+            certificateId: certificate.id,
+            recipientName: certificate.recipientName,
+            role: certificate.role || selectedTemplate.name,
+            eventName: resolvedEventName,
+            issueDate: certificate.issueDate,
+            design: selectedTemplate.designData,
+            status: certificate.status || "valid",
+          });
         } catch (pdfErr) {
           console.error("PDF generation/download error:", pdfErr);
         }
@@ -311,19 +256,27 @@ function GenerateCertificatesContent() {
       const { certificates } = await res.json();
       setIssuedCerts(certificates);
 
-      // Generate multi-page PDF
+      // Generate multi-page PDF with 1:1 preview fidelity
       try {
-        const pdf = new jsPDF("l", "mm", "a4");
-        let design = {};
-        try {
-          design = JSON.parse(selectedTemplate.designData);
-        } catch (e) {}
+        const certRenderList = certificates.map((cert: any, idx: number) => {
+          const row = csvData[idx];
+          let evName = cert.event?.name;
+          if (!evName && row?.event) evName = row.event;
+          if (!evName && bulkEventId) {
+            evName = events.find(ev => ev.id === bulkEventId)?.name || bulkEventId;
+          }
+          return {
+            certificateId: cert.id,
+            recipientName: cert.recipientName,
+            role: cert.role || selectedTemplate.name,
+            eventName: evName,
+            issueDate: cert.issueDate,
+            design: selectedTemplate.designData,
+            status: cert.status || "valid",
+          };
+        });
 
-        for (let i = 0; i < certificates.length; i++) {
-          await renderCertToPdf(pdf, certificates[i], design, i === 0);
-        }
-
-        pdf.save(`Batch_Certificates_${certificates.length}.pdf`);
+        await downloadBatchCertificatesPdf(certRenderList);
       } catch (pdfErr) {
         console.error("Bulk PDF export error:", pdfErr);
       }
@@ -414,7 +367,9 @@ function GenerateCertificatesContent() {
               Live Preview
             </h3>
           </div>
-          <span className="text-xs font-medium text-zinc-600 bg-zinc-100 px-3 py-1 rounded-full hidden sm:inline-block">A4 Landscape</span>
+          <span className="text-xs font-medium text-zinc-600 bg-zinc-100 px-3 py-1 rounded-full hidden sm:inline-block">
+            {(parsedPreviewDesign as any)?.orientation === "portrait" ? "A4 Portrait" : "A4 Landscape"}
+          </span>
         </div>
 
         <div className="w-full relative flex-1 min-h-[260px] sm:min-h-[340px] flex flex-col justify-center items-center overflow-hidden p-2 lg:p-4">
@@ -425,7 +380,7 @@ function GenerateCertificatesContent() {
                 <p className="text-sm font-medium text-zinc-500">Loading template...</p>
               </div>
             ) : (
-              <div className="w-full aspect-[1.414/1] max-w-full relative overflow-hidden rounded-lg shadow-sm border border-zinc-200/80 bg-white">
+              <div className={`w-full ${(parsedPreviewDesign as any)?.orientation === "portrait" ? "aspect-[1/1.414] max-w-md" : "aspect-[1.414/1] max-w-full"} relative overflow-hidden rounded-lg shadow-sm border border-zinc-200/80 bg-white`}>
                 <CertificateView 
                   certificateId="PENDING-ISSUE"
                   recipientName={previewName}

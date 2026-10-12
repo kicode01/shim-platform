@@ -99,23 +99,29 @@ export default function EventDetailsClient({
   };
 
   const handleExportCsv = () => {
-    if (attendances.length === 0) return;
+    if (attendances.length === 0) {
+      alert("No attendee records available to export.");
+      return;
+    }
     const headers = ["name", "email", "role"];
+    const escapeCsv = (val: string | null | undefined) => `"${String(val || "").replace(/"/g, '""')}"`;
     const rows = filtered.map(a => [
-      `"${a.name}"`,
-      `"${a.email}"`,
-      `"${a.role}"`
+      escapeCsv(a.name),
+      escapeCsv(a.email),
+      escapeCsv(a.role)
     ]);
-    const csvContent = [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute("download", `Attendees_${event.name.replace(/\s+/g, '_')}.csv`);
+    const safeTitle = (event.name || "Event").replace(/[^\w\s-]/g, "").replace(/\s+/g, '_');
+    link.setAttribute("download", `Attendees_${safeTitle}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleSaveSettings = async () => {

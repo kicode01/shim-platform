@@ -16,6 +16,7 @@ import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import CertificateView from "@/components/CertificateView";
+import { downloadCertificatePdf } from "@/lib/pdf-export";
 import Tesseract from "tesseract.js";
 
 // Initialize pdfjs worker
@@ -320,38 +321,18 @@ export default function ValidateSearchClient() {
     if (!certificate) return;
     setDownloading(true);
     try {
-      const node = document.getElementById("certificate-print-node");
-      if (!node) throw new Error("Certificate node not found");
-
-      // Temporarily remove transform scaling to capture full resolution
-      const originalTransform = node.style.transform;
-      node.style.transform = "translate(-50%, -50%) scale(1)";
-      
-      // Wait a tick for DOM to update
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      const canvas = await html2canvas(node, {
-        scale: 2, // 2x resolution for better print quality
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: "#ffffff",
-      });
-
-      // Restore original scale
-      node.style.transform = originalTransform;
-
-      const imgData = canvas.toDataURL("image/jpeg", 0.95);
-
-      // Certificate is always landscape (3508x2480 or similar)
-      const pdf = new jsPDF("l", "mm", "a4");
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-
-      pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
-
-      pdf.save(`Credential-${certificate.id.substring(0, 10)}.pdf`);
+      await downloadCertificatePdf({
+        certificateId: certificate.id,
+        recipientName: certificate.recipientName,
+        role: certificate.role || certificate.template?.name,
+        eventName: certificate.event?.name || certificate.eventId || "Official Event",
+        issueDate: certificate.issueDate,
+        design: certificate.template?.designData,
+        status: certificate.status,
+      }, `Credential-${certificate.id.substring(0, 10)}.pdf`);
     } catch (e) {
       console.error("PDF generation failed:", e);
+      alert("Failed to export certificate PDF. Please try again.");
     } finally {
       setDownloading(false);
     }
@@ -565,7 +546,7 @@ export default function ValidateSearchClient() {
                   initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
                   className="w-full max-w-3xl mx-auto flex flex-col items-center"
                 >
-                  <div className="w-full aspect-[1.414/1] bg-white relative shadow-2xl ring-1 ring-white/10 rounded-sm overflow-hidden mb-6">
+                  <div className={`w-full ${certificate.template.designData?.includes('"orientation":"portrait"') ? "aspect-[1/1.414] max-w-xl" : "aspect-[1.414/1]"} bg-white relative shadow-2xl ring-1 ring-white/10 rounded-sm overflow-hidden mb-6`}>
                     <CertificateView 
                       certificateId={certificate.id}
                       recipientName={certificate.recipientName}

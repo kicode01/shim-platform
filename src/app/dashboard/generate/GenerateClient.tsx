@@ -254,25 +254,32 @@ function GenerateCertificatesContent() {
         })
       });
 
-      if (!res.ok) throw new Error("Failed to issue single certificate");
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => null);
+        throw new Error(errJson?.message || errJson?.error || `Failed to issue certificate (HTTP ${res.status})`);
+      }
 
       const certificate = await res.json();
       setSingleSuccess(certificate);
 
       if (shouldDownload) {
-        // Generate PDF
-        const pdf = new jsPDF("l", "mm", "a4");
-        let design = {};
         try {
-          design = JSON.parse(selectedTemplate.designData);
-        } catch (e) {}
+          // Generate PDF
+          const pdf = new jsPDF("l", "mm", "a4");
+          let design = {};
+          try {
+            design = JSON.parse(selectedTemplate.designData);
+          } catch (e) {}
 
-        await renderCertToPdf(pdf, certificate, design, true);
-        pdf.save(`Certificate_${certificate.recipientName.replace(/\s+/g, "_")}.pdf`);
+          await renderCertToPdf(pdf, certificate, design, true);
+          pdf.save(`Certificate_${certificate.recipientName.replace(/\s+/g, "_")}.pdf`);
+        } catch (pdfErr) {
+          console.error("PDF generation/download error:", pdfErr);
+        }
       }
-    } catch (err) {
-      console.error(err);
-      alert("Error issuing credential.");
+    } catch (err: any) {
+      console.error("Issuance error:", err);
+      alert(err.message || "Error issuing credential.");
     } finally {
       setSingleIssuing(false);
     }
@@ -296,28 +303,36 @@ function GenerateCertificatesContent() {
         })
       });
 
-      if (!res.ok) throw new Error("Bulk issuance failed");
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => null);
+        throw new Error(errJson?.message || errJson?.error || `Bulk issuance failed (HTTP ${res.status})`);
+      }
 
       const { certificates } = await res.json();
       setIssuedCerts(certificates);
 
       // Generate multi-page PDF
-      const pdf = new jsPDF("l", "mm", "a4");
-      let design = {};
       try {
-        design = JSON.parse(selectedTemplate.designData);
-      } catch (e) {}
+        const pdf = new jsPDF("l", "mm", "a4");
+        let design = {};
+        try {
+          design = JSON.parse(selectedTemplate.designData);
+        } catch (e) {}
 
-      for (let i = 0; i < certificates.length; i++) {
-        await renderCertToPdf(pdf, certificates[i], design, i === 0);
+        for (let i = 0; i < certificates.length; i++) {
+          await renderCertToPdf(pdf, certificates[i], design, i === 0);
+        }
+
+        pdf.save(`Batch_Certificates_${certificates.length}.pdf`);
+      } catch (pdfErr) {
+        console.error("Bulk PDF export error:", pdfErr);
       }
 
-      pdf.save(`Batch_Certificates_${certificates.length}.pdf`);
-      setBulkSuccessMsg(`Successfully generated, issued, and downloaded ${certificates.length} validated credentials.`);
+      setBulkSuccessMsg(`Successfully generated, issued, and registered ${certificates.length} validated credentials.`);
       setBulkStep(3);
-    } catch (err) {
-      console.error(err);
-      alert("Error processing batch credential issuance.");
+    } catch (err: any) {
+      console.error("Bulk issuance error:", err);
+      alert(err.message || "Error processing batch credential issuance.");
     } finally {
       setBulkIssuing(false);
     }
@@ -603,10 +618,11 @@ function GenerateCertificatesContent() {
                       <button
                         type="button"
                         onClick={() => setMobileViewTab("preview")}
-                        className="text-xs font-semibold text-zinc-900 bg-white border border-zinc-200 px-3 py-1.5 rounded-lg shadow-xs hover:bg-zinc-50 flex items-center gap-1.5"
+                        title="Inspect Live Certificate"
+                        aria-label="Inspect Live Certificate"
+                        className="h-8 w-8 text-zinc-700 bg-white border border-zinc-200 rounded-lg shadow-xs hover:bg-zinc-100 hover:text-zinc-900 flex items-center justify-center transition-colors active:scale-95 shrink-0"
                       >
-                        <Eye size={12} />
-                        <span>Inspect Live Certificate →</span>
+                        <Eye size={16} />
                       </button>
                     </div>
                   </div>
@@ -844,10 +860,11 @@ function GenerateCertificatesContent() {
                         <button
                           type="button"
                           onClick={() => setMobileViewTab("preview")}
-                          className="text-xs font-semibold text-zinc-900 bg-white border border-zinc-200 px-3 py-1.5 rounded-lg shadow-xs hover:bg-zinc-50 flex items-center gap-1.5"
+                          title="View Specimen Preview"
+                          aria-label="View Specimen Preview"
+                          className="h-8 w-8 text-zinc-700 bg-white border border-zinc-200 rounded-lg shadow-xs hover:bg-zinc-100 hover:text-zinc-900 flex items-center justify-center transition-colors active:scale-95 shrink-0"
                         >
-                          <Eye size={12} />
-                          <span>View Specimen →</span>
+                          <Eye size={16} />
                         </button>
                       </div>
                     </div>

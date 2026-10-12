@@ -17,6 +17,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Template ID and a valid list of recipients are required." }, { status: 400 });
     }
 
+    let issuerId = (session.user as any).id;
+    if (!issuerId && session.user.email) {
+      const dbUser = await prisma.user.findUnique({
+        where: { email: session.user.email.toLowerCase().trim() },
+        select: { id: true }
+      });
+      if (dbUser) issuerId = dbUser.id;
+    }
+
+    if (!issuerId) {
+      return NextResponse.json({ message: "Issuer account not found. Please log in again." }, { status: 401 });
+    }
+
     const certificates = [];
     for (const recipient of recipients) {
       if (!recipient.name || !recipient.name.trim()) continue;
@@ -41,7 +54,7 @@ export async function POST(req: Request) {
           const newEvent = await prisma.event.create({
             data: {
               name: rawEvent,
-              organizerId: (session.user as any).id
+              organizerId: issuerId
             }
           });
           resolvedEventId = newEvent.id;
@@ -51,7 +64,7 @@ export async function POST(req: Request) {
         const fallbackEvent = await prisma.event.findFirst({
           where: { name: "Default Event" }
         }) || await prisma.event.create({
-          data: { name: "Default Event", organizerId: (session.user as any).id }
+          data: { name: "Default Event", organizerId: issuerId }
         });
         resolvedEventId = fallbackEvent.id;
       }
@@ -63,7 +76,7 @@ export async function POST(req: Request) {
           role: recipient.role ? recipient.role.trim() : (defaultRole || "Participant"),
           eventId: resolvedEventId,
           templateId,
-          issuerId: (session.user as any).id,
+          issuerId,
           status: "valid"
         },
         include: {
@@ -125,8 +138,8 @@ export async function POST(req: Request) {
       count: certificates.length,
       message: `Successfully issued ${certificates.length} credentials.`
     }, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Bulk certificate generation error:", error);
-    return NextResponse.json({ message: "Error issuing batch certificates" }, { status: 500 });
+    return NextResponse.json({ message: error?.message || "Error issuing batch certificates" }, { status: 500 });
   }
 }

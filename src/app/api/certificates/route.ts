@@ -58,27 +58,51 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user || ((session.user as any).role !== "organizer" && (session.user as any).role !== "admin")) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ message: "Unauthorized. Please sign in as an organizer or admin." }, { status: 401 });
   }
 
   try {
     const body = await req.json();
     const { recipientName, recipientEmail, role, eventId, templateId } = body;
 
-    if (!recipientName || !templateId || !eventId) {
-      return NextResponse.json({ message: "Recipient Name, Event, and Template are required" }, { status: 400 });
+    if (!recipientName?.trim() || !templateId?.trim()) {
+      return NextResponse.json({ message: "Recipient Name and Template are required" }, { status: 400 });
     }
 
-    let resolvedEventId = eventId;
-    if (eventId) {
+    // Safely resolve issuer ID from session or database fallback
+    let issuerId = (session.user as any).id;
+    if (!issuerId && session.user.email) {
+      const dbUser = await prisma.user.findUnique({
+        where: { email: session.user.email.toLowerCase().trim() },
+        select: { id: true }
+      });
+      if (dbUser) issuerId = dbUser.id;
+    }
+
+    if (!issuerId) {
+      return NextResponse.json({ message: "Issuer account not found. Please log in again." }, { status: 401 });
+    }
+
+    // Verify template exists
+    const template = await prisma.template.findUnique({
+      where: { id: templateId.trim() },
+      select: { id: true, name: true }
+    });
+
+    if (!template) {
+      return NextResponse.json({ message: "The selected template was not found." }, { status: 404 });
+    }
+
+    let resolvedEventId = eventId?.trim() || "";
+    if (resolvedEventId) {
       const existingEvent = await prisma.event.findFirst({
-        where: { OR: [{ id: eventId }, { name: eventId }] }
+        where: { OR: [{ id: resolvedEventId }, { name: resolvedEventId }] }
       });
       if (existingEvent) {
         resolvedEventId = existingEvent.id;
       } else {
         const newEvent = await prisma.event.create({
-          data: { name: eventId, organizerId: (session.user as any).id }
+          data: { name: resolvedEventId, organizerId: issuerId }
         });
         resolvedEventId = newEvent.id;
       }
@@ -86,7 +110,7 @@ export async function POST(req: Request) {
       const fallbackEvent = await prisma.event.findFirst({
         where: { name: "Default Event" }
       }) || await prisma.event.create({
-        data: { name: "Default Event", organizerId: (session.user as any).id }
+        data: { name: "Default Event", organizerId: issuerId }
       });
       resolvedEventId = fallbackEvent.id;
     }
@@ -95,10 +119,10 @@ export async function POST(req: Request) {
       data: {
         recipientName: recipientName.trim(),
         recipientEmail: recipientEmail?.trim() || null,
-        role: role?.trim() || "Participant",
+        role: role?.trim() || template.name || "Participant",
         eventId: resolvedEventId,
-        templateId,
-        issuerId: (session.user as any).id,
+        templateId: template.id,
+        issuerId,
         status: "valid"
       },
       include: {
@@ -139,8 +163,8 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ...certificate, accountExists }, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creating certificate:", error);
-    return NextResponse.json({ message: "Error issuing certificate" }, { status: 500 });
+    return NextResponse.json({ message: error?.message || "Error issuing certificate" }, { status: 500 });
   }
 }

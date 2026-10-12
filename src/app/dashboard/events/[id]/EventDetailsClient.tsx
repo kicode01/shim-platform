@@ -268,7 +268,10 @@ export default function EventDetailsClient({
             ) : (
               <>
                 {/* Mobile Cards (Phones & small screens) */}
-                <div className="lg:hidden flex-1 min-h-0 overflow-y-auto bg-white divide-y divide-zinc-100">
+                <div 
+                  className="lg:hidden flex-1 min-h-0 overflow-y-auto bg-white divide-y divide-zinc-100 overscroll-contain touch-pan-y"
+                  style={{ WebkitOverflowScrolling: "touch" }}
+                >
                   {filtered.map((att) => (
                     <div key={att.id} className="p-4 flex flex-col gap-2.5">
                       <div className="flex items-start justify-between gap-3">

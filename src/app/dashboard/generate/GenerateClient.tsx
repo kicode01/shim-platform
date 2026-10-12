@@ -37,6 +37,7 @@ function GenerateCertificatesContent() {
   const preselectedTemplateId = searchParams.get("templateId");
 
   const [mode, setMode] = useState<"single" | "bulk">("single");
+  const [mobileViewTab, setMobileViewTab] = useState<"form" | "preview">("form");
   
   const [events, setEvents] = useState<any[]>([]);
   useEffect(() => {
@@ -390,41 +391,49 @@ function GenerateCertificatesContent() {
     }
 
   const livePreviewBlock = (
-    <div className="flex flex-col h-full min-h-0">
+    <div className={`flex-col h-full min-h-0 ${mobileViewTab === "preview" ? "flex" : "hidden xl:flex"}`}>
       <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-6 flex-1 flex flex-col relative min-h-0 overflow-hidden shadow-sm">
         <div className="flex justify-between items-center mb-4 pb-4 border-b border-zinc-100 shrink-0">
-          <h3 className="text-lg font-semibold text-zinc-700 flex items-center gap-2">
-            Live Preview
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-zinc-700 flex items-center gap-2">
+              Live Preview
+            </h3>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Live Specimen
+            </span>
+          </div>
           <span className="text-xs font-medium text-zinc-600 bg-zinc-100 px-3 py-1 rounded-full hidden sm:inline-block">A4 Landscape</span>
         </div>
 
-        <div className="w-full relative flex-1 min-h-0 flex flex-col justify-center overflow-hidden p-2 lg:p-4">
-          <div className="w-full h-full relative mx-auto max-w-5xl">
+        <div className="w-full relative flex-1 min-h-[260px] sm:min-h-[340px] flex flex-col justify-center items-center overflow-hidden p-2 lg:p-4">
+          <div className="w-full h-full relative mx-auto max-w-5xl flex items-center justify-center">
             {isLoadingTemplates ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-50/50 backdrop-blur-sm rounded-lg border border-zinc-100 z-10 animate-in fade-in">
                 <Loader2 size={32} className="animate-spin text-zinc-400 mb-3" />
                 <p className="text-sm font-medium text-zinc-500">Loading template...</p>
               </div>
             ) : (
-              <CertificateView 
-                certificateId="PENDING-ISSUE"
-                recipientName={previewName}
-                role={previewRole}
-                eventId={previewEvent}
-                design={parsedPreviewDesign}
-                status="valid"
-              />
+              <div className="w-full aspect-[1.414/1] max-w-full relative overflow-hidden rounded-lg shadow-sm border border-zinc-200/80 bg-white">
+                <CertificateView 
+                  certificateId="PENDING-ISSUE"
+                  recipientName={previewName}
+                  role={previewRole}
+                  eventId={previewEvent}
+                  design={parsedPreviewDesign}
+                  status="valid"
+                />
+              </div>
             )}
           </div>
         </div>
 
         <div className="flex justify-between items-center mt-4 pt-4 border-t border-zinc-100 shrink-0 min-h-[32px]">
-          <div className="text-xs font-medium text-zinc-400">
+          <div className="text-xs font-medium text-zinc-400 truncate">
             Cryptographically secured on the ledger
           </div>
           {mode === "bulk" && csvData.length > 0 && (
-            <div className="flex items-center border border-zinc-200 rounded-md bg-white h-8 ml-4 shadow-sm overflow-hidden">
+            <div className="flex items-center border border-zinc-200 rounded-md bg-white h-8 ml-4 shadow-sm overflow-hidden shrink-0">
               <button 
                 onClick={() => setPreviewIndex(p => Math.max(0, p - 1))}
                 disabled={previewIndex === 0}
@@ -444,6 +453,38 @@ function GenerateCertificatesContent() {
               </button>
             </div>
           )}
+        </div>
+
+        {/* Mobile Quick Action Bar inside Preview Tab */}
+        <div className="xl:hidden flex items-center gap-2 mt-4 pt-3 border-t border-zinc-100 shrink-0">
+          <button
+            type="button"
+            onClick={() => setMobileViewTab("form")}
+            className="flex-1 py-3 px-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-xs font-semibold rounded-xl transition-colors text-center"
+          >
+            ← Edit Details
+          </button>
+          {mode === "single" ? (
+            <button
+              type="button"
+              onClick={() => handleSingleIssue(null, false)}
+              disabled={singleIssuing || !singleName.trim()}
+              className="flex-1 py-3 px-3 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold rounded-xl transition-colors disabled:opacity-50 text-center flex items-center justify-center gap-1.5"
+            >
+              {singleIssuing && <Loader2 size={14} className="animate-spin" />}
+              <span>Issue Credential</span>
+            </button>
+          ) : bulkStep === 2 ? (
+            <button
+              type="button"
+              onClick={handleBulkIssue}
+              disabled={bulkIssuing || csvData.length === 0}
+              className="flex-1 py-3 px-3 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold rounded-xl transition-colors disabled:opacity-50 text-center flex items-center justify-center gap-1.5"
+            >
+              {bulkIssuing && <Loader2 size={14} className="animate-spin" />}
+              <span>Issue Batch ({csvData.length})</span>
+            </button>
+          ) : null}
         </div>
       </div>
     </div>
@@ -489,6 +530,35 @@ function GenerateCertificatesContent() {
           </div>
         </div>
 
+        {/* Mobile App Segmented Switcher (Hidden on desktop xl) */}
+        <div className="xl:hidden flex p-1 bg-zinc-100 rounded-xl mb-4 border border-zinc-200/80 shrink-0">
+          <button
+            type="button"
+            onClick={() => setMobileViewTab("form")}
+            className={`flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+              mobileViewTab === "form"
+                ? "bg-white text-zinc-900 shadow-sm"
+                : "text-zinc-500 hover:text-zinc-800"
+            }`}
+          >
+            <UserCheck size={14} />
+            <span>{mode === "single" ? "Recipient Details" : `Batch Setup (${bulkStep === 1 ? "Upload" : "Review"})`}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileViewTab("preview")}
+            className={`flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+              mobileViewTab === "preview"
+                ? "bg-white text-zinc-900 shadow-sm"
+                : "text-zinc-500 hover:text-zinc-800"
+            }`}
+          >
+            <Eye size={14} />
+            <span>Live Preview</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse ml-0.5" />
+          </button>
+        </div>
+
         {/* Main Content Area.
             `mob-scroll-pane` (mobile only): the desktop layout relies on the
             page being short and lets an inner panel scroll. Once the panels
@@ -500,15 +570,14 @@ function GenerateCertificatesContent() {
           {mode === "single" && (
             <div className="mob-flow grid grid-cols-1 xl:grid-cols-2 gap-4 xl:gap-8 items-stretch h-full">
               
-              {/* Left Column (Template Selector & Form).
-                  `h-full` here is what squeezed the Recipient Details card on a
-                  phone — the two stacked children shared one viewport-height
-                  column, so the second was clipped mid-heading. */}
-              <div className="mob-flow flex flex-col gap-8 h-full min-h-0 pr-4">
+              {/* Left Column (Template Selector & Form) */}
+              <div className={`mob-flow flex-col gap-6 xl:gap-8 h-full min-h-0 pr-0 xl:pr-4 ${
+                mobileViewTab === "form" ? "flex" : "hidden xl:flex"
+              }`}>
                 {templateSelectorBlock}
 
-                  <div className="mob-flow bg-white border border-zinc-200 rounded-xl flex-1 flex flex-col shadow-sm overflow-hidden min-h-0">
-                  <div className="border-b border-zinc-100 shrink-0 flex justify-between items-start px-8 py-6">
+                <div className="mob-flow bg-white border border-zinc-200 rounded-xl flex-1 flex flex-col shadow-sm overflow-hidden min-h-0">
+                  <div className="border-b border-zinc-100 shrink-0 flex justify-between items-start px-6 sm:px-8 py-5 sm:py-6">
                     <div>
                       <h3 className="text-xl font-semibold text-zinc-700">Recipient Details</h3>
                       <p className="text-sm font-medium text-zinc-500 mt-1">
@@ -528,6 +597,24 @@ function GenerateCertificatesContent() {
                     >
                       Clear
                     </button>
+                  </div>
+
+                  {/* Mobile-only Preview Trigger Banner */}
+                  <div className="xl:hidden px-6 pt-4">
+                    <div className="flex items-center justify-between p-3 bg-zinc-50 border border-zinc-200/80 rounded-xl">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-xs font-medium text-zinc-700">Live preview active</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setMobileViewTab("preview")}
+                        className="text-xs font-semibold text-zinc-900 bg-white border border-zinc-200 px-3 py-1.5 rounded-lg shadow-xs hover:bg-zinc-50 flex items-center gap-1.5"
+                      >
+                        <Eye size={12} />
+                        <span>Inspect Live Certificate →</span>
+                      </button>
+                    </div>
                   </div>
 
                   <div className="px-8 pb-8 pt-6 flex flex-col flex-1 overflow-y-auto custom-scrollbar min-h-0">
@@ -647,7 +734,9 @@ function GenerateCertificatesContent() {
           {mode === "bulk" && (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 xl:gap-8 items-stretch h-full">
               {/* Left Column */}
-              <div className="flex flex-col gap-8 h-full min-h-0 pr-4">
+              <div className={`flex-col gap-6 xl:gap-8 h-full min-h-0 pr-0 xl:pr-4 ${
+                mobileViewTab === "form" ? "flex" : "hidden xl:flex"
+              }`}>
                 {templateSelectorBlock}
                 
                 {bulkStep === 1 && (
@@ -751,8 +840,26 @@ function GenerateCertificatesContent() {
                     </button>
                   </div>
 
-                  <div className="px-8 pb-8 pt-6 flex flex-col flex-1 overflow-y-auto custom-scrollbar min-h-0">
-                    <div className="border border-zinc-200 rounded-lg overflow-hidden mb-8 max-h-[400px] overflow-y-auto shadow-sm">
+                  <div className="px-6 sm:px-8 pb-8 pt-6 flex flex-col flex-1 overflow-y-auto custom-scrollbar min-h-0">
+                    {/* Mobile-only Preview Trigger Banner */}
+                    <div className="xl:hidden mb-4">
+                      <div className="flex items-center justify-between p-3 bg-zinc-50 border border-zinc-200/80 rounded-xl">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="text-xs font-medium text-zinc-700">Previewing row {previewIndex + 1} of {csvData.length}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setMobileViewTab("preview")}
+                          className="text-xs font-semibold text-zinc-900 bg-white border border-zinc-200 px-3 py-1.5 rounded-lg shadow-xs hover:bg-zinc-50 flex items-center gap-1.5"
+                        >
+                          <Eye size={12} />
+                          <span>View Specimen →</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="border border-zinc-200 rounded-lg overflow-x-auto mb-8 max-h-[400px] overflow-y-auto shadow-sm">
                       <table className="w-full text-left border-collapse">
                         <thead className="bg-zinc-50 sticky top-0 z-10 border-b border-zinc-200">
                           <tr className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">

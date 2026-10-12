@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, Stamp, Edit3, Trash2, FileSpreadsheet, Maximize2, X, Sparkles, Loader2 } from "lucide-react";
+import { Plus, Stamp, Edit3, Trash2, FileSpreadsheet, Maximize2, X, Sparkles, Loader2, Search, Eye } from "lucide-react";
 import CertificateView, { CertificateDesignConfig } from "@/components/CertificateView";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -17,6 +17,7 @@ interface TemplateItem {
 
 export default function TemplatesListClient({ initialTemplates }: { initialTemplates: TemplateItem[] }) {
   const [templates, setTemplates] = useState<TemplateItem[]>(initialTemplates);
+  const [searchQuery, setSearchQuery] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -47,27 +48,50 @@ export default function TemplatesListClient({ initialTemplates }: { initialTempl
 
 
 
+  const filteredTemplates = templates.filter(t => 
+    t.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (t.description || "").toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 min-h-0 overflow-hidden flex flex-col">
       
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-6 shrink-0">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-5 shrink-0">
         <div>
-          <h1 className="text-3xl font-bold text-zinc-700 mb-1">
-            Certificate Templates
-          </h1>
+          <div className="flex items-center gap-2.5 mb-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-zinc-700">
+              Certificate Templates
+            </h1>
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 border border-zinc-200">
+              {templates.length}
+            </span>
+          </div>
           <p className="text-zinc-500 text-sm font-medium">
             Design and manage visual layouts for your event credentials.
           </p>
         </div>
 
-        <Link href="/dashboard/templates/new" className="btn-primary">
-          <Plus size={16} />
-          <span>New Template</span>
-        </Link>
+        <div className="flex items-center gap-2.5 w-full md:w-auto">
+          {/* Mobile & Desktop Instant Search Input */}
+          <div className="relative flex-1 md:w-64">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+            <input
+              type="text"
+              placeholder="Search templates..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-zinc-200 bg-white placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-800 shadow-xs"
+            />
+          </div>
+          <Link href="/dashboard/templates/new" className="btn-primary shrink-0 py-2 px-3.5 sm:px-4 text-xs sm:text-sm">
+            <Plus size={15} />
+            <span>New Template</span>
+          </Link>
+        </div>
       </div>
 
-      {/* Templates Grid */}
+      {/* Templates Grid / List */}
       {templates.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-white border border-zinc-200 rounded-xl shadow-sm min-h-0">
           <div className="w-16 h-16 bg-zinc-50 border border-zinc-200 rounded-xl flex items-center justify-center mb-6">
@@ -82,10 +106,110 @@ export default function TemplatesListClient({ initialTemplates }: { initialTempl
             <span>Create First Template</span>
           </Link>
         </div>
+      ) : filteredTemplates.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center p-10 text-center bg-white border border-zinc-200 rounded-xl shadow-sm min-h-0">
+          <p className="text-sm font-semibold text-zinc-700 mb-1">No matching templates found</p>
+          <p className="text-xs text-zinc-500 mb-4">Try searching with a different term.</p>
+          <button onClick={() => setSearchQuery("")} className="btn-secondary text-xs px-3 py-1.5">
+            Clear Search
+          </button>
+        </div>
       ) : (
-        <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 pr-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {templates.map(t => {
+        <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 pr-1 pb-16 lg:pb-0">
+          
+          {/* ================= MOBILE CARDS (lg:hidden) ================= */}
+          <div className="lg:hidden flex flex-col gap-4">
+            {filteredTemplates.map(t => {
+              let parsedDesign: CertificateDesignConfig = {};
+              try { parsedDesign = JSON.parse(t.designData); } catch (e) {}
+
+              return (
+                <div
+                  key={t.id}
+                  className="bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-sm flex flex-col"
+                >
+                  {/* Card Header */}
+                  <div className="p-4 pb-2.5 flex items-start justify-between gap-2 border-b border-zinc-100/80">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-base font-semibold text-zinc-800 leading-tight truncate">
+                        {t.name}
+                      </h3>
+                      <p className="text-xs text-zinc-500 mt-0.5 line-clamp-1">
+                        {t.description || "Custom certificate template layout."}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-zinc-600 bg-zinc-100 px-2.5 py-1 rounded-full border border-zinc-200/60">
+                      {t._count?.certificates || 0} Issued
+                    </span>
+                  </div>
+
+                  {/* Certificate Specimen Thumbnail Frame */}
+                  <div
+                    className="p-3 cursor-pointer group"
+                    onClick={() => setInspectingTemplate(t)}
+                  >
+                    <div className="relative w-full aspect-[1.414/1] bg-zinc-50 border border-zinc-200/80 rounded-xl overflow-hidden shadow-xs">
+                      <CertificateView 
+                        certificateId={`PREVIEW-${t.id.slice(0, 4).toUpperCase()}`}
+                        recipientName="Jane Doe"
+                        role={t.name}
+                        design={parsedDesign}
+                      />
+                      <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/60 to-transparent flex items-center justify-center">
+                        <span className="text-[11px] font-medium text-white flex items-center gap-1.5 bg-black/40 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20">
+                          <Eye size={12} /> Inspect Specimen
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mobile Tactile Action Buttons */}
+                  {deleteError && confirmDeleteId === t.id && (
+                    <div className="px-4 py-2 bg-red-50 text-red-700 text-xs font-medium text-center border-t border-zinc-100">
+                      {deleteError}
+                    </div>
+                  )}
+                  <div className="p-3 pt-0 flex items-center gap-2">
+                    <Link
+                      href={`/dashboard/templates/${t.id}`}
+                      className="flex-1 py-2.5 px-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-xs font-semibold rounded-xl text-center flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <Edit3 size={14} /> Studio
+                    </Link>
+                    <Link
+                      href={`/dashboard/generate?templateId=${t.id}`}
+                      className="flex-1 py-2.5 px-3 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold rounded-xl text-center flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                    >
+                      <FileSpreadsheet size={14} /> Issue
+                    </Link>
+                    {confirmDeleteId === t.id ? (
+                      <div className="flex items-center gap-1 bg-red-50 p-1 rounded-xl border border-red-200">
+                        <button onClick={() => executeDelete(t.id)} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1.5 rounded-lg text-xs font-semibold shadow-xs">
+                          {deletingId === t.id ? <Loader2 size={12} className="animate-spin" /> : "Yes"}
+                        </button>
+                        <button onClick={() => { setConfirmDeleteId(null); setDeleteError(null); }} className="bg-white text-zinc-700 px-2 py-1.5 rounded-lg text-xs font-medium border border-zinc-200">
+                          No
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => { setConfirmDeleteId(t.id); setDeleteError(null); }}
+                        disabled={deletingId === t.id}
+                        className="p-2.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-50"
+                        title="Delete Template"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ================= DESKTOP GRID (hidden lg:grid) ================= */}
+          <div className="hidden lg:grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {filteredTemplates.map(t => {
               let parsedDesign: CertificateDesignConfig = {};
               try {
                 parsedDesign = JSON.parse(t.designData);
@@ -208,7 +332,7 @@ export default function TemplatesListClient({ initialTemplates }: { initialTempl
                     Previewing custom certificate template
                   </p>
                 </div>
-  
+
                 <button 
                   onClick={() => setInspectingTemplate(null)}
                   className="p-2 rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
@@ -216,10 +340,10 @@ export default function TemplatesListClient({ initialTemplates }: { initialTempl
                   <X size={20} />
                 </button>
               </div>
-  
+
               {/* High-Resolution Certificate Render */}
-              <div className="p-6 md:p-10 bg-zinc-50 flex-1 overflow-y-auto flex items-center justify-center">
-                <div className="w-full max-w-3xl mx-auto aspect-[1.414/1] bg-white rounded shadow-md overflow-hidden relative ring-1 ring-zinc-200 shrink-0">
+              <div className="p-4 sm:p-6 md:p-10 bg-zinc-50 flex-1 overflow-y-auto flex items-center justify-center">
+                <div className="w-full max-w-3xl mx-auto aspect-[1.414/1] bg-white rounded shadow-md overflow-hidden relative ring-1 border border-zinc-200 shrink-0">
                   <CertificateView 
                     certificateId={`PREVIEW-${inspectingTemplate.id.slice(0, 8).toUpperCase()}`}
                     recipientName="Jane Doe"
@@ -227,6 +351,22 @@ export default function TemplatesListClient({ initialTemplates }: { initialTempl
                     design={inspectingTemplate.designData}
                   />
                 </div>
+              </div>
+
+              {/* Mobile & Desktop Action Bar in Modal */}
+              <div className="p-4 bg-white border-t border-zinc-100 flex items-center gap-3 shrink-0">
+                <Link
+                  href={`/dashboard/templates/${inspectingTemplate.id}`}
+                  className="flex-1 py-3 px-4 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-xs font-semibold rounded-xl text-center flex items-center justify-center gap-2 transition-colors"
+                >
+                  <Edit3 size={15} /> Edit in Studio
+                </Link>
+                <Link
+                  href={`/dashboard/generate?templateId=${inspectingTemplate.id}`}
+                  className="flex-1 py-3 px-4 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold rounded-xl text-center flex items-center justify-center gap-2 transition-colors shadow-sm"
+                >
+                  <FileSpreadsheet size={15} /> Issue With This
+                </Link>
               </div>
             </motion.div>
           </motion.div>

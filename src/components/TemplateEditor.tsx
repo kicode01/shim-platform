@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Layers, Save, ArrowLeft, Stamp, Sliders, Code2, ShieldCheck, CheckCircle2, RotateCcw, Image as ImageIcon, Move, LayoutTemplate, Loader2, Sparkles, Type, FileImage, MousePointer2, Minus, Plus, Trash2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, Database, QrCode, Undo, Redo, Hand, X, ArrowUp, ArrowDown, ChevronDown, Lock, Unlock } from "lucide-react";
+import { Layers, Save, ArrowLeft, Stamp, Sliders, Code2, ShieldCheck, CheckCircle2, RotateCcw, Image as ImageIcon, Move, LayoutTemplate, Loader2, Sparkles, Type, FileImage, MousePointer2, Minus, Plus, Trash2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, Database, QrCode, Undo, Redo, Hand, X, ArrowUp, ArrowDown, ChevronDown, Lock, Unlock, Eye } from "lucide-react";
 import { Rnd } from 'react-rnd';
 import CertificateView, { CertificateDesignConfig, CanvasElement, CanvasElementType } from "@/components/CertificateView";
 import { v4 as uuidv4 } from "uuid";
@@ -1083,6 +1083,7 @@ export default function TemplateEditor({
   const [design, setDesign] = useState<CertificateDesignConfig>(parsedInitial);
   const [activeTab, setActiveTab] = useState<"components" | "builder" | "json" | "background" | "presets">("components");
   const [previousTab, setPreviousTab] = useState<"components" | "builder" | "json" | "background" | "presets">("components");
+  const [mobileEditorMode, setMobileEditorMode] = useState<"canvas" | "tools">("canvas");
 
 
   const [jsonText, setJsonText] = useState(JSON.stringify(parsedInitial, null, 2));
@@ -1581,8 +1582,9 @@ export default function TemplateEditor({
     const observer = new ResizeObserver((entries) => {
       if (entries[0]) {
         const { width, height } = entries[0].contentRect;
-        const availableW = width - 64; // 32px padding on each side
-        const availableH = height - 64;
+        const padding = width < 640 ? 16 : 64;
+        const availableW = Math.max(16, width - padding);
+        const availableH = Math.max(16, height - padding);
         const isPortrait = design.orientation === 'portrait';
         const canvasW = isPortrait ? 2480 : 3508;
         const canvasH = isPortrait ? 3508 : 2480;
@@ -1641,28 +1643,26 @@ export default function TemplateEditor({
           </div>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center justify-between xl:justify-end gap-2 sm:gap-3 w-full xl:w-auto shrink-0">
 
           <div className="flex items-center rounded-xl overflow-hidden border border-zinc-200 shrink-0 h-[38px]">
             <button
               onClick={handleUndo}
               disabled={historyIndex <= 0}
-              className="bg-white hover:bg-zinc-50 text-zinc-700 w-10 h-full border-r border-zinc-200 flex items-center justify-center disabled:opacity-50 transition-colors"
+              className="bg-white hover:bg-zinc-50 text-zinc-700 w-9 sm:w-10 h-full border-r border-zinc-200 flex items-center justify-center disabled:opacity-50 transition-colors"
               title="Undo"
             >
-              <Undo size={16} />
+              <Undo size={15} />
             </button>
             <button
               onClick={handleRedo}
               disabled={historyIndex >= history.length - 1}
-              className="bg-white hover:bg-zinc-50 text-zinc-700 w-10 h-full flex items-center justify-center disabled:opacity-50 transition-colors"
+              className="bg-white hover:bg-zinc-50 text-zinc-700 w-9 sm:w-10 h-full flex items-center justify-center disabled:opacity-50 transition-colors"
               title="Redo"
             >
-              <Redo size={16} />
+              <Redo size={15} />
             </button>
           </div>
-
-
 
           <button
             title="Reset to Default"
@@ -1693,14 +1693,43 @@ export default function TemplateEditor({
               )}
             </AnimatePresence>
           </button>
-          <button onClick={handleSave} className="btn-primary font-medium min-w-[160px] justify-center" disabled={saving}>
-            {saving ? <><Loader2 size={16} className="animate-spin mr-2" /> Saving...</> : savedSuccess ? <><CheckCircle2 size={16} className="mr-2" /> Saved</> : <><Save size={16} className="mr-2" /> {isEdit ? "Update Template" : "Create Template"}</>}
+          <button onClick={handleSave} className="btn-primary font-medium flex-1 sm:flex-initial sm:min-w-[160px] justify-center text-xs sm:text-sm py-2 px-3 sm:px-4" disabled={saving}>
+            {saving ? <><Loader2 size={15} className="animate-spin mr-1.5" /> Saving...</> : savedSuccess ? <><CheckCircle2 size={15} className="mr-1.5" /> Saved</> : <><Save size={15} className="mr-1.5" /> {isEdit ? "Update Template" : "Create Template"}</>}
           </button>
         </div>
       </div>
 
+      {/* Mobile-only Segmented Mode Switcher (Canvas Preview vs Design Tools) */}
+      <div className="lg:hidden flex p-1 bg-zinc-100 rounded-xl mb-4 border border-zinc-200/80 shrink-0">
+        <button
+          type="button"
+          onClick={() => setMobileEditorMode("canvas")}
+          className={`flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+            mobileEditorMode === "canvas"
+              ? "bg-white text-zinc-900 shadow-sm"
+              : "text-zinc-500 hover:text-zinc-800"
+          }`}
+        >
+          <LayoutTemplate size={14} />
+          <span>Canvas Preview</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse ml-0.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileEditorMode("tools")}
+          className={`flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+            mobileEditorMode === "tools"
+              ? "bg-white text-zinc-900 shadow-sm"
+              : "text-zinc-500 hover:text-zinc-800"
+          }`}
+        >
+          <Sliders size={14} />
+          <span>Design Tools</span>
+        </button>
+      </div>
+
       {/* Main Layout */}
-      <div className="flex-1 flex gap-6 min-h-0 overflow-hidden w-full max-w-none px-4 lg:px-0">
+      <div className="flex-1 flex gap-6 min-h-0 overflow-hidden w-full max-w-none px-0 lg:px-0">
 
         {/* Canva-Style Far Left Toolbar (Tab Switcher) */}
         <div className="hidden lg:flex flex-col gap-2 w-20 shrink-0 bg-zinc-900 rounded-xl overflow-hidden shadow-sm py-4 items-center">
@@ -1733,7 +1762,58 @@ export default function TemplateEditor({
         </div>
 
         {/* Left: Administrative Controls */}
-        <div className="w-full lg:w-[340px] lg:shrink-0 flex flex-col bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
+        <div className={`w-full lg:w-[340px] lg:shrink-0 flex-col bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm ${
+          mobileEditorMode === "tools" ? "flex flex-1 min-h-0" : "hidden lg:flex"
+        }`}>
+
+          {/* Mobile Horizontal Tool Strip (Phone only: provides access to all tabs) */}
+          <div className="lg:hidden flex items-center gap-1 p-2 bg-zinc-900 text-white overflow-x-auto no-scrollbar shrink-0 border-b border-zinc-800">
+            <button
+              type="button"
+              onClick={() => setActiveTab("components")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 shrink-0 transition-colors ${
+                activeTab === "components" ? "bg-zinc-800 text-white font-semibold shadow-xs" : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              <LayoutTemplate size={13} /> Elements
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("background")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 shrink-0 transition-colors ${
+                activeTab === "background" ? "bg-zinc-800 text-white font-semibold shadow-xs" : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              <ImageIcon size={13} /> Background
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("builder")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 shrink-0 transition-colors ${
+                activeTab === "builder" ? "bg-zinc-800 text-white font-semibold shadow-xs" : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              <Layers size={13} /> Settings
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("presets")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 shrink-0 transition-colors ${
+                activeTab === "presets" ? "bg-zinc-800 text-white font-semibold shadow-xs" : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              <LayoutTemplate size={13} /> Presets
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("json")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 shrink-0 transition-colors ${
+                activeTab === "json" ? "bg-zinc-800 text-white font-semibold shadow-xs" : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              <Code2 size={13} /> JSON
+            </button>
+          </div>
 
 
           <div className="flex-1 flex flex-col min-h-0 overflow-x-hidden">
@@ -2560,10 +2640,24 @@ export default function TemplateEditor({
               )}
           </div>
 
+          {/* Mobile Bottom Return to Canvas */}
+          <div className="lg:hidden p-3 bg-zinc-50 border-t border-zinc-200 shrink-0 flex items-center justify-between">
+            <span className="text-xs text-zinc-500 font-medium">Changes sync live</span>
+            <button
+              type="button"
+              onClick={() => setMobileEditorMode("canvas")}
+              className="px-4 py-2 bg-zinc-900 text-white text-xs font-semibold rounded-lg hover:bg-zinc-800 transition-colors flex items-center gap-1.5 shadow-sm"
+            >
+              <Eye size={13} />
+              <span>View Canvas →</span>
+            </button>
+          </div>
         </div>
 
         {/* Right: Live Canvas Builder */}
-        <div className="flex-1 flex flex-col min-h-0 bg-zinc-50 border border-zinc-200 rounded-xl overflow-hidden shadow-sm relative">
+        <div className={`flex-1 flex-col min-h-0 bg-zinc-50 border border-zinc-200 rounded-xl overflow-hidden shadow-sm relative ${
+          mobileEditorMode === "canvas" ? "flex" : "hidden lg:flex"
+        }`}>
 
           {/* Pan Mode Notification */}
           <AnimatePresence>
@@ -2757,11 +2851,24 @@ export default function TemplateEditor({
                 <button onClick={() => setUserZoom(p => Math.max(0.1, p - (0.1 / scale)))} className="p-1 hover:bg-zinc-100 rounded text-zinc-600 transition-colors" title="Zoom Out">
                   <Minus size={14} />
                 </button>
-                <button onClick={() => setUserZoom(1)} className="px-2 py-1 hover:bg-zinc-100 rounded text-zinc-600 transition-colors text-xs font-medium w-[140px] text-center" title="Reset Zoom">
-                  {design.orientation === 'portrait' ? '2480 x 3508' : '3508 x 2480'} ({Math.round(scale * userZoom * 100)}%)
+                <button onClick={() => setUserZoom(1)} className="px-2 py-1 hover:bg-zinc-100 rounded text-zinc-600 transition-colors text-xs font-medium w-auto sm:w-[140px] text-center" title="Reset Zoom">
+                  <span className="hidden sm:inline">{design.orientation === 'portrait' ? '2480 x 3508 ' : '3508 x 2480 '}</span>
+                  <span>{Math.round(scale * userZoom * 100)}%</span>
                 </button>
                 <button onClick={() => setUserZoom(p => Math.min(20, p + (0.1 / scale)))} className="p-1 hover:bg-zinc-100 rounded text-zinc-600 transition-colors" title="Zoom In">
                   <Plus size={14} />
+                </button>
+              </div>
+
+              {/* Mobile Quick Floating Switcher to Tools */}
+              <div className="lg:hidden ml-2">
+                <button
+                  type="button"
+                  onClick={() => setMobileEditorMode("tools")}
+                  className="px-3 py-1.5 bg-zinc-900 text-white rounded-lg text-xs font-semibold shadow-sm flex items-center gap-1.5 hover:bg-zinc-800 transition-colors"
+                >
+                  <Sliders size={13} />
+                  <span>Tools</span>
                 </button>
               </div>
             </div>

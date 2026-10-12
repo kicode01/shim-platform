@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Select } from "@/components/ui/Select";
-import { Plus, Calendar, Loader2, QrCode, Users } from "lucide-react";
+import { Plus, Calendar, Loader2, QrCode, Users, Search, Award } from "lucide-react";
 
 interface EventItem {
   id: string;
@@ -23,12 +23,19 @@ interface EventsClientProps {
 export default function EventsClient({ initialEvents, templates }: EventsClientProps) {
   const [events, setEvents] = useState<EventItem[]>(initialEvents);
   const [activeMobileTab, setActiveMobileTab] = useState<"list" | "create">("list");
+  const [searchQuery, setSearchQuery] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [newEventName, setNewEventName] = useState("");
   const [newEventDate, setNewEventDate] = useState("");
   const [newEventDesc, setNewEventDesc] = useState("");
   const [defaultTemplateId, setDefaultTemplateId] = useState("");
   const [defaultRole, setDefaultRole] = useState("Participant");
+
+  const totalCertificates = events.reduce((sum, e) => sum + (e._count?.certificates || 0), 0);
+  const filteredEvents = events.filter(e =>
+    e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (e.description && e.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,60 +139,120 @@ export default function EventsClient({ initialEvents, templates }: EventsClientP
               </div>
             ) : (
               <>
-                {/* Phones: one card per event. The table below is
-                    `table-fixed`, whose minimum width comes from its header
-                    text plus cell padding — under that width the Actions
-                    column was silently clipped, and four columns at 390px is
-                    unreadable anyway. Cards also match what
-                    /dashboard/credentials and /dashboard/audit already do.
-                    `lg:hidden` keeps the desktop rendering untouched. */}
-                <div className="mob-flow lg:hidden flex-1 min-h-0 overflow-y-auto bg-white divide-y divide-zinc-100">
-                  {events.map((evt) => (
-                    <div key={evt.id} className="px-4 py-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="font-medium text-zinc-800 truncate">{evt.name}</div>
-                          {evt.description && (
-                            <div className="mt-0.5 truncate text-xs text-zinc-500">{evt.description}</div>
-                          )}
-                        </div>
-                        <span className="shrink-0 inline-flex items-center justify-center rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700">
-                          {evt._count.certificates}
-                        </span>
+                {/* Mobile: stats, search, and touch-optimized card list */}
+                <div className="mob-flow lg:hidden flex-1 min-h-0 flex flex-col overflow-hidden bg-white">
+                  {/* Stats pills */}
+                  <div className="p-3 bg-zinc-50 border-b border-zinc-100 grid grid-cols-2 gap-2 shrink-0">
+                    <div className="bg-white p-2.5 rounded-lg border border-zinc-200/70 shadow-xs flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-700 shrink-0">
+                        <Calendar size={15} />
                       </div>
-
-                      <div className="mt-3 flex items-center justify-between gap-3">
-                        <span className="text-sm text-zinc-500">
-                          {evt.date
-                            ? new Date(evt.date).toLocaleDateString("en-US", {
-                                year: "numeric",
-                                month: "short",
-                                day: "numeric",
-                              })
-                            : "TBA"}
-                        </span>
-                        <div className="flex gap-2">
-                          <Link
-                            href={`/dashboard/events/${evt.id}`}
-                            title="View Attendees"
-                            className="mob-card-action inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
-                          >
-                            <Users size={14} />
-                            <span>Roster</span>
-                          </Link>
-                          <Link
-                            href={`/kiosk/${evt.id}`}
-                            target="_blank"
-                            title="Launch Kiosk"
-                            className="mob-card-action inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-900 text-white hover:bg-zinc-800 transition-colors"
-                          >
-                            <QrCode size={14} />
-                            <span>Kiosk</span>
-                          </Link>
-                        </div>
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">Events</div>
+                        <div className="text-sm font-bold text-zinc-900 leading-tight">{events.length}</div>
                       </div>
                     </div>
-                  ))}
+                    <div className="bg-white p-2.5 rounded-lg border border-zinc-200/70 shadow-xs flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+                        <Award size={15} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">Issued</div>
+                        <div className="text-sm font-bold text-zinc-900 leading-tight">{totalCertificates}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Search bar */}
+                  <div className="p-3 border-b border-zinc-100 bg-white shrink-0">
+                    <div className="relative">
+                      <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search events..."
+                        className="w-full pl-9 pr-7 py-2 text-xs bg-zinc-50 border border-zinc-200 rounded-lg text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:bg-white focus:border-zinc-500 transition-colors"
+                      />
+                      {searchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setSearchQuery("")}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-zinc-400 hover:text-zinc-600 px-1 py-0.5"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Cards stream */}
+                  <div className="mob-flow flex-1 min-h-0 overflow-y-auto divide-y divide-zinc-100">
+                    {filteredEvents.length === 0 ? (
+                      <div className="p-8 text-center text-xs text-zinc-500">
+                        No events matching &ldquo;{searchQuery}&rdquo;
+                      </div>
+                    ) : (
+                      filteredEvents.map((evt) => (
+                        <div key={evt.id} className="p-4 hover:bg-zinc-50/50 transition-colors">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="font-semibold text-zinc-800 text-sm leading-snug truncate">{evt.name}</div>
+                              {evt.description && (
+                                <div className="mt-0.5 line-clamp-2 text-xs text-zinc-500">{evt.description}</div>
+                              )}
+                            </div>
+                            <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-700 border border-zinc-200/50">
+                              <Award size={12} className="text-zinc-500" />
+                              {evt._count.certificates}
+                            </span>
+                          </div>
+
+                          <div className="mt-2.5 flex items-center justify-between text-xs text-zinc-500">
+                            <span className="inline-flex items-center gap-1.5">
+                              <Calendar size={13} className="text-zinc-400" />
+                              {evt.date
+                                ? new Date(evt.date).toLocaleDateString("en-US", {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                  })
+                                : "Date TBA"}
+                            </span>
+                          </div>
+
+                          {/* Action triad: Roster, Issue, Kiosk */}
+                          <div className="mt-3 grid grid-cols-3 gap-2">
+                            <Link
+                              href={`/dashboard/events/${evt.id}`}
+                              title="View Attendees Roster"
+                              className="mob-card-action flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-xs font-semibold bg-zinc-100 text-zinc-800 hover:bg-zinc-200 active:scale-[0.98] transition-all min-h-[44px]"
+                            >
+                              <Users size={14} />
+                              <span>Roster</span>
+                            </Link>
+                            <Link
+                              href={`/dashboard/generate?event=${evt.id}`}
+                              title="Issue Certificate for Event"
+                              className="mob-card-action flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/80 hover:bg-emerald-100 active:scale-[0.98] transition-all min-h-[44px]"
+                            >
+                              <Award size={14} />
+                              <span>Issue</span>
+                            </Link>
+                            <Link
+                              href={`/kiosk/${evt.id}`}
+                              target="_blank"
+                              title="Launch Self-Check-in Kiosk"
+                              className="mob-card-action flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-xs font-semibold bg-zinc-900 text-white hover:bg-zinc-800 active:scale-[0.98] transition-all min-h-[44px]"
+                            >
+                              <QrCode size={14} />
+                              <span>Kiosk</span>
+                            </Link>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
 
                 {/* Desktop: the original table, now behind `hidden lg:flex`.
@@ -335,6 +402,27 @@ export default function EventsClient({ initialEvents, templates }: EventsClientP
               <p className="text-xs text-zinc-500">
                 If selected, attendees get this certificate instantly when they scan in at the Kiosk.
               </p>
+            </div>
+
+            {/* Mobile Submit Button */}
+            <div className="pt-2 xl:hidden shrink-0">
+              <button
+                type="submit"
+                disabled={isCreating || !newEventName}
+                className="w-full py-3 bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-sm rounded-xl flex items-center justify-center gap-2 shadow-sm active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+              >
+                {isCreating ? (
+                  <>
+                    <Loader2 className="animate-spin" size={16} />
+                    <span>Creating Event...</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus size={16} strokeWidth={2.5} />
+                    <span>Create Event</span>
+                  </>
+                )}
+              </button>
             </div>
 
           </form>

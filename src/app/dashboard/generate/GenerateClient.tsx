@@ -515,28 +515,28 @@ function GenerateCertificatesContent() {
             </p>
           </div>
 
-          <div className="flex p-1 bg-zinc-100 rounded-lg shrink-0 w-fit">
+          <div className="flex p-1 bg-zinc-100 rounded-xl shrink-0 w-full xl:w-auto border border-zinc-200/80">
             <button 
               type="button" 
               onClick={() => setMode("single")}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
+              className={`flex-1 xl:flex-initial flex items-center justify-center gap-2 px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold rounded-lg transition-all ${
                 mode === "single" 
-                  ? "bg-white text-zinc-700 shadow-sm" 
-                  : "text-zinc-500 hover:text-zinc-700 hover:bg-zinc-200/50"
+                  ? "bg-white text-zinc-900 shadow-sm" 
+                  : "text-zinc-500 hover:text-zinc-800 hover:bg-zinc-200/50"
               }`}
             >
-              <UserCheck size={16} /> Individual
+              <UserCheck size={15} /> <span>Individual</span>
             </button>
             <button 
               type="button" 
               onClick={() => setMode("bulk")}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
+              className={`flex-1 xl:flex-initial flex items-center justify-center gap-2 px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold rounded-lg transition-all ${
                 mode === "bulk" 
-                  ? "bg-white text-zinc-700 shadow-sm" 
-                  : "text-zinc-500 hover:text-zinc-700 hover:bg-zinc-200/50"
+                  ? "bg-white text-zinc-900 shadow-sm" 
+                  : "text-zinc-500 hover:text-zinc-800 hover:bg-zinc-200/50"
               }`}
             >
-              <FileSpreadsheet size={16} /> CSV Batch
+              <FileSpreadsheet size={15} /> <span>CSV Batch</span>
             </button>
           </div>
         </div>

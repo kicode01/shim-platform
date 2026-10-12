@@ -308,7 +308,12 @@ function GenerateCertificatesContent() {
               value={selectedTemplate?.id || ""}
               onChange={(value) => {
                 const t = templates.find(item => item.id === value);
-                if (t) setSelectedTemplate(t);
+                if (t) {
+                  setSelectedTemplate(t);
+                  if (singleSuccess && singleSuccess.templateId !== t.id) {
+                    setSingleSuccess(null);
+                  }
+                }
               }}
               options={templates.map(t => ({
                 value: t.id,
@@ -588,8 +593,15 @@ function GenerateCertificatesContent() {
                         <CheckCircle size={20} />
                         <span>Credential Generated Successfully</span>
                       </div>
-                      <div className="text-sm font-medium text-emerald-700">
-                        Ledger ID: <code className="bg-white px-2 py-0.5 rounded border border-emerald-200 font-mono text-emerald-900 ml-1">{singleSuccess.id}</code>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-medium text-emerald-700">
+                        <div>
+                          Ledger ID: <code className="bg-white px-2 py-0.5 rounded border border-emerald-200 font-mono text-emerald-900 ml-1">{singleSuccess.id}</code>
+                        </div>
+                        {singleSuccess.template?.name && (
+                          <div className="text-xs text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded border border-emerald-200">
+                            Template: <span className="font-semibold">{singleSuccess.template.name}</span>
+                          </div>
+                        )}
                       </div>
                       <div className="flex flex-wrap items-center gap-3 mt-2">
                         <Link href={`/validate/${singleSuccess.id}`} target="_blank" className="px-4 py-2 bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded-md text-sm font-medium transition-colors shadow-sm">
@@ -603,10 +615,10 @@ function GenerateCertificatesContent() {
                             await downloadCertificatePdf({
                               certificateId: singleSuccess.id,
                               recipientName: singleSuccess.recipientName,
-                              role: singleSuccess.role || selectedTemplate?.name,
+                              role: singleSuccess.role || singleSuccess.template?.name || selectedTemplate?.name,
                               eventName: resolvedEventName,
                               issueDate: singleSuccess.issueDate,
-                              design: selectedTemplate?.designData,
+                              design: singleSuccess.template?.designData || selectedTemplate?.designData,
                               status: singleSuccess.status || "valid",
                             });
                           }}

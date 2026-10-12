@@ -24,6 +24,7 @@ export default function DynamicFavicon() {
 
       if (links.length > 0) {
         links.forEach((link) => {
+          link.removeAttribute("media");
           link.href = iconUrl;
         });
       } else {

@@ -58,7 +58,7 @@ export async function POST(
       to: certificate.recipientEmail,
       recipientName: certificate.recipientName,
       role: certificate.role,
-      eventName: certificate.event.name,
+      eventName: certificate.event?.name || "Event",
       certificateId: certificate.id,
       accountExists,
     });

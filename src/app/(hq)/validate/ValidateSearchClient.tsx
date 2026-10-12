@@ -214,6 +214,9 @@ export default function ValidateSearchClient() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Reset input value so the same file can be selected again if needed
+    e.target.value = "";
+
     setLoading(true);
     setScanError(null);
 
@@ -296,19 +299,25 @@ export default function ValidateSearchClient() {
 
   const handleScannedUrl = async (url: string, fileOrImage?: File | string) => {
     // Extract ID from URL (e.g. https://shim.app/validate/cmtzoowrv0008... or https://shim.app/validate?id=cmtzoowrv0008...)
-    let idToFetch = url;
+    let idToFetch = url.trim();
     
-    // Check for query param ?id=
-    const urlObj = new URL(url, window.location.origin);
-    const idParam = urlObj.searchParams.get("id");
-    
-    if (idParam) {
-      idToFetch = idParam;
-    } else {
-      // Fallback to path param /validate/
-      const match = url.match(/\/validate\/([a-zA-Z0-9]+)/);
+    try {
+      const parsedUrl = url.includes("://") ? new URL(url) : new URL(url, window.location.origin);
+      const idParam = parsedUrl.searchParams.get("id");
+      
+      if (idParam) {
+        idToFetch = idParam.trim();
+      } else {
+        const match = parsedUrl.pathname.match(/\/validate\/([a-zA-Z0-9_-]+)/);
+        if (match && match[1]) {
+          idToFetch = match[1].trim();
+        }
+      }
+    } catch {
+      // Fallback regex matching if URL parsing fails
+      const match = url.match(/\/validate\/([a-zA-Z0-9_-]+)/);
       if (match && match[1]) {
-        idToFetch = match[1];
+        idToFetch = match[1].trim();
       }
     }
     

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Check, Loader2 } from "lucide-react";
@@ -34,7 +34,11 @@ export function Select({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [isMounted, setIsMounted] = useState(false);
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({
     position: "fixed",
     top: -9999,
@@ -42,10 +46,6 @@ export function Select({
   });
 
   const selectedOption = options.find((opt) => opt.value === value);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   const updatePosition = () => {
     if (containerRef.current) {

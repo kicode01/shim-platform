@@ -140,7 +140,7 @@ export async function POST(req: Request) {
       }).catch(err => console.error("Email failed:", err)));
 
     if (emailPromises.length > 0) {
-      Promise.allSettled(emailPromises);
+      await Promise.allSettled(emailPromises);
     }
 
     return NextResponse.json({ 

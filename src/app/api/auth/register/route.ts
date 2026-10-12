@@ -25,9 +25,26 @@ export async function POST(req: Request) {
 
     // Determine role and membership ID
     const validRole = role === "member" ? "member" : "organizer";
-    const membershipId = validRole === "member"
-      ? `ATT-M-${Math.floor(10000 + Math.random() * 90000)}`
-      : null;
+    let membershipId: string | null = null;
+    if (validRole === "member") {
+      const taken = await prisma.user.count({
+        where: { membershipId: { startsWith: "ATT-M-" } },
+      });
+      for (let attempt = 0; attempt < 25; attempt++) {
+        const candidate = `ATT-M-${String(10000 + taken + attempt).padStart(5, "0")}`;
+        const clash = await prisma.user.findFirst({
+          where: { membershipId: candidate },
+          select: { id: true },
+        });
+        if (!clash) {
+          membershipId = candidate;
+          break;
+        }
+      }
+      if (!membershipId) {
+        membershipId = `ATT-M-${Date.now().toString(36).toUpperCase()}${taken}`;
+      }
+    }
 
     // Usually hash password here using bcrypt, omitted for dev simplicity
     const user = await prisma.user.create({

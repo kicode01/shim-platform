@@ -1461,13 +1461,13 @@ export default function TemplateEditor({
     applyDesignUpdate(updated);
   };
 
-  const updateElement = (id: string, updates: Partial<CanvasElement>) => {
+  const updateElement = (id: string, updates: Partial<CanvasElement>, pushToHistory: boolean = true) => {
     if (!design.canvasElements) return;
     const updatedElements = design.canvasElements.map(el =>
       el.id === id ? { ...el, ...updates } : el
     );
     const updated = { ...design, canvasElements: updatedElements };
-    applyDesignUpdate(updated);
+    applyDesignUpdate(updated, pushToHistory);
   };
 
   const deleteSelectedElement = () => {
@@ -2941,6 +2941,10 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         const elH = data.node.offsetHeight;
         let finalX = data.x;
         let finalY = data.y;
+        if (isNaN(finalX) || isNaN(finalY)) {
+          setActiveGuides({ vertical: null, horizontal: null });
+          return;
+        }
         const centerX = finalX + elW / 2;
         const centerY = finalY + elH / 2;
         const snap = 25;
@@ -2959,8 +2963,11 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         // because react-rnd passes scale to re-resizable.
         const newWidth = parseFloat(ref.style.width) || ref.offsetWidth;
         const newHeight = el.height ? (parseFloat(ref.style.height) || ref.offsetHeight) : undefined;
+        if (isNaN(newWidth) || newWidth <= 0) return;
 
-        let updates: any = { x: Math.round(position.x), y: Math.round(position.y) };
+        const safeX = isNaN(position.x) ? el.x : Math.round(position.x);
+        const safeY = isNaN(position.y) ? el.y : Math.round(position.y);
+        let updates: any = { x: safeX, y: safeY };
 
         const isCorner = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'].includes(direction);
         if (isCorner && !isProportional && el.type !== 'shape') {
@@ -2972,14 +2979,20 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         }
 
         updates.width = (el.type === 'signature' && !el.src) ? ref.offsetWidth : Math.round(newWidth);
-        if (newHeight !== undefined) updates.height = (el.type === 'signature' && !el.src) ? ref.offsetHeight : Math.round(newHeight);
+        if (newHeight !== undefined && !isNaN(newHeight)) {
+          updates.height = (el.type === 'signature' && !el.src) ? ref.offsetHeight : Math.round(newHeight);
+        }
 
-        updateSelectedElement(updates);
+        updateElement(el.id, updates, false);
       }}
       onResizeStop={(e, direction, ref, delta, position) => {
         const newWidth = parseFloat(ref.style.width) || ref.offsetWidth;
         const newHeight = el.height ? (parseFloat(ref.style.height) || ref.offsetHeight) : undefined;
-        let updates: any = { x: Math.round(position.x), y: Math.round(position.y) };
+        if (isNaN(newWidth) || newWidth <= 0) return;
+
+        const safeX = isNaN(position.x) ? el.x : Math.round(position.x);
+        const safeY = isNaN(position.y) ? el.y : Math.round(position.y);
+        let updates: any = { x: safeX, y: safeY };
 
         const isCorner = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'].includes(direction);
         if (isCorner && !isProportional && el.type !== 'shape') {
@@ -2991,9 +3004,11 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         }
 
         updates.width = (el.type === 'signature' && !el.src) ? ref.offsetWidth : Math.round(newWidth);
-        if (newHeight !== undefined) updates.height = (el.type === 'signature' && !el.src) ? ref.offsetHeight : Math.round(newHeight);
+        if (newHeight !== undefined && !isNaN(newHeight)) {
+          updates.height = (el.type === 'signature' && !el.src) ? ref.offsetHeight : Math.round(newHeight);
+        }
 
-        updateSelectedElement(updates);
+        updateElement(el.id, updates, true);
       }}
       scale={scale}
       bounds="parent"
@@ -3060,14 +3075,14 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
               fontWeight: 'inherit', fontStyle: 'inherit', lineHeight: 'inherit'
             }}
             value={el.text || ''}
-            onChange={(e) => updateSelectedElement({ text: e.target.value })}
+            onChange={(e) => updateElement(el.id, { text: e.target.value })}
             onBlur={() => {
               setIsEditing(false);
               if (el.type === 'signature' && !el.src) {
                 setTimeout(() => {
                   const node = document.getElementById(`rnd-${el.id}`);
                   if (node) {
-                    updateSelectedElement({ width: node.offsetWidth, height: node.offsetHeight });
+                    updateElement(el.id, { width: node.offsetWidth, height: node.offsetHeight });
                   }
                 }, 50);
               }

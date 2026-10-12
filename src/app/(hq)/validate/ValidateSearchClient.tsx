@@ -529,24 +529,24 @@ export default function ValidateSearchClient() {
             >
               {/* Top Navigation */}
               {((session?.user as any)?.role !== "member") && (
-                <div className="max-w-5xl mx-auto px-6 pt-8 pb-4">
-                   <button onClick={handleReset} className="text-sm font-medium text-zinc-500 hover:text-zinc-300 transition-colors flex items-center gap-2">
+                <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-4 sm:pt-8 pb-2 sm:pb-4">
+                   <button onClick={handleReset} className="text-xs sm:text-sm font-medium text-zinc-500 hover:text-zinc-300 transition-colors flex items-center gap-2">
                      &larr; Verify Another Credential
                    </button>
                 </div>
               )}
 
-              <div className={`max-w-4xl mx-auto px-6 pb-20 flex flex-col gap-12 ${((session?.user as any)?.role === "member") ? "mt-16" : "mt-4"}`}>
+              <div className={`max-w-4xl mx-auto px-4 sm:px-6 pb-12 sm:pb-20 flex flex-col gap-6 sm:gap-12 ${((session?.user as any)?.role === "member") ? "mt-6 sm:mt-16" : "mt-2 sm:mt-4"}`}>
                 
                 {/* 1. Minimal Status Header */}
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
                   className="flex flex-col items-center text-center"
                 >
-                  <div className="text-[10px] font-semibold tracking-widest uppercase text-zinc-500 mb-3">
+                  <div className="text-[10px] font-semibold tracking-widest uppercase text-zinc-500 mb-1.5 sm:mb-3">
                     Registry Status
                   </div>
-                  <h2 className="text-3xl sm:text-4xl font-serif text-zinc-100 mb-4 tracking-tight">
+                  <h2 className="text-2xl sm:text-4xl font-serif text-zinc-100 mb-2.5 sm:mb-4 tracking-tight">
                     {certificate.status === "valid" ? "Verified Genuine" : "Certificate Invalid"}
                   </h2>
                   {certificate.status === "valid" ? (
@@ -577,8 +577,34 @@ export default function ValidateSearchClient() {
                     />
                   </div>
                   
-                  {/* Subtle actions under certificate */}
-                  <div className="flex gap-6">
+                  {/* Mobile Actions: Native App Touch Pills (Hidden on desktop/tablet) */}
+                  <div className="sm:hidden flex items-center justify-center gap-2 w-full max-w-sm mt-2">
+                    <button 
+                      onClick={handleDownloadPdf} 
+                      disabled={downloading} 
+                      className="flex-1 min-h-[44px] px-3 py-2.5 rounded-xl bg-zinc-800/80 hover:bg-zinc-800 text-zinc-200 text-xs font-semibold flex items-center justify-center gap-1.5 border border-zinc-700/60 active:scale-[0.98] transition-all disabled:opacity-50 shadow-sm"
+                    >
+                      <Download size={14} />
+                      <span>{downloading ? "PDF..." : "Download"}</span>
+                    </button>
+                    <button 
+                      onClick={handlePrint} 
+                      className="flex-1 min-h-[44px] px-3 py-2.5 rounded-xl bg-zinc-800/80 hover:bg-zinc-800 text-zinc-200 text-xs font-semibold flex items-center justify-center gap-1.5 border border-zinc-700/60 active:scale-[0.98] transition-all shadow-sm"
+                    >
+                      <Printer size={14} />
+                      <span>Print</span>
+                    </button>
+                    <button 
+                      onClick={handleCopy} 
+                      className="flex-1 min-h-[44px] px-3 py-2.5 rounded-xl bg-zinc-800/80 hover:bg-zinc-800 text-zinc-200 text-xs font-semibold flex items-center justify-center gap-1.5 border border-zinc-700/60 active:scale-[0.98] transition-all shadow-sm"
+                    >
+                      {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                      <span>{copied ? "Copied" : "Share"}</span>
+                    </button>
+                  </div>
+
+                  {/* Desktop: Subtle text links separated by pipes */}
+                  <div className="hidden sm:flex gap-6">
                     <button onClick={handleDownloadPdf} disabled={downloading} className="text-[11px] font-semibold text-zinc-400 hover:text-zinc-200 uppercase tracking-widest transition-colors disabled:opacity-50">
                       {downloading ? "Generating..." : "Download PDF"}
                     </button>

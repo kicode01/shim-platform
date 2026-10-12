@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Outfit, Cinzel, Cormorant_Garamond, Great_Vibes, Playfair_Display, Space_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import AuthProvider from "@/components/AuthProvider";
@@ -56,6 +56,15 @@ const spaceGrotesk = Space_Grotesk({
   display: "swap",
 });
 
+export const viewport: Viewport = {
+  themeColor: "#0a0a0a",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+};
+
 export const metadata: Metadata = {
   title: {
     default: "shim | credential platform",
@@ -63,6 +72,12 @@ export const metadata: Metadata = {
   },
   description: "Digital Certificate Generation and Authentication System with QR-Based Verification for events, seminars, and webinars.",
   keywords: ["Digital Certificates", "QR Verification", "Event Management", "Certificate Generator", "Seminar Certificates"],
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Shim",
+  },
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" },

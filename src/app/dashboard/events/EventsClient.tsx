@@ -22,6 +22,7 @@ interface EventsClientProps {
 
 export default function EventsClient({ initialEvents, templates }: EventsClientProps) {
   const [events, setEvents] = useState<EventItem[]>(initialEvents);
+  const [activeMobileTab, setActiveMobileTab] = useState<"list" | "create">("list");
   const [isCreating, setIsCreating] = useState(false);
   const [newEventName, setNewEventName] = useState("");
   const [newEventDate, setNewEventDate] = useState("");
@@ -55,6 +56,7 @@ export default function EventsClient({ initialEvents, templates }: EventsClientP
         setNewEventDesc("");
         setDefaultTemplateId("");
         setDefaultRole("Participant");
+        setActiveMobileTab("list");
       }
     } catch (error) {
       console.error(error);
@@ -77,10 +79,40 @@ export default function EventsClient({ initialEvents, templates }: EventsClientP
         </div>
       </div>
 
+      {/* Mobile App Segmented Control (Hidden on desktop/tablet xl) */}
+      <div className="xl:hidden flex p-1 bg-zinc-100 rounded-xl mb-6 border border-zinc-200/80 shrink-0">
+        <button
+          type="button"
+          onClick={() => setActiveMobileTab("list")}
+          className={`flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+            activeMobileTab === "list"
+              ? "bg-white text-zinc-900 shadow-sm"
+              : "text-zinc-500 hover:text-zinc-800"
+          }`}
+        >
+          <Calendar size={14} />
+          <span>All Events ({events.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveMobileTab("create")}
+          className={`flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+            activeMobileTab === "create"
+              ? "bg-white text-zinc-900 shadow-sm"
+              : "text-zinc-500 hover:text-zinc-800"
+          }`}
+        >
+          <Plus size={14} />
+          <span>New Event</span>
+        </button>
+      </div>
+
       <div className="mob-flow grid grid-cols-1 xl:grid-cols-3 gap-6 flex-1 min-h-0">
         
         {/* LEFT COLUMN: Event List */}
-        <div className="mob-flow xl:col-span-2 bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden flex flex-col h-full min-h-0">
+        <div className={`mob-flow xl:col-span-2 bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden flex-col h-full min-h-0 ${
+          activeMobileTab === "list" ? "flex" : "hidden xl:flex"
+        }`}>
           <div className="px-6 py-5 border-b border-zinc-100 bg-white shrink-0 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-zinc-700">
               Your Events
@@ -136,17 +168,19 @@ export default function EventsClient({ initialEvents, templates }: EventsClientP
                           <Link
                             href={`/dashboard/events/${evt.id}`}
                             title="View Attendees"
-                            className="mob-card-action inline-flex items-center justify-center rounded-xl px-3 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800"
+                            className="mob-card-action inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors"
                           >
-                            <Users size={18} />
+                            <Users size={14} />
+                            <span>Roster</span>
                           </Link>
                           <Link
                             href={`/kiosk/${evt.id}`}
                             target="_blank"
                             title="Launch Kiosk"
-                            className="mob-card-action inline-flex items-center justify-center rounded-xl px-3 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800"
+                            className="mob-card-action inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-900 text-white hover:bg-zinc-800 transition-colors"
                           >
-                            <QrCode size={18} />
+                            <QrCode size={14} />
+                            <span>Kiosk</span>
                           </Link>
                         </div>
                       </div>
@@ -220,7 +254,9 @@ export default function EventsClient({ initialEvents, templates }: EventsClientP
         </div>
 
         {/* RIGHT COLUMN: Create Event Form */}
-        <div className="mob-flow bg-white border border-zinc-200 rounded-xl shadow-sm flex flex-col h-full min-h-0 overflow-hidden">
+        <div className={`mob-flow bg-white border border-zinc-200 rounded-xl shadow-sm flex-col h-full min-h-0 overflow-hidden ${
+          activeMobileTab === "create" ? "flex" : "hidden xl:flex"
+        }`}>
           <div className="px-6 py-4 border-b border-zinc-100 bg-white shrink-0 flex justify-between items-center">
             <h3 className="text-lg font-semibold text-zinc-700">
               Create New Event

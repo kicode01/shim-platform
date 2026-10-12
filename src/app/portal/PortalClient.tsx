@@ -166,7 +166,7 @@ export default function PortalClient({ user, certificates, stats, insights }: Po
 
   return (
     <div className="flex-1 w-full font-sans">
-      <div className="max-w-5xl mx-auto w-full px-6 sm:px-8 py-6">
+      <div className="max-w-5xl mx-auto w-full px-4 sm:px-8 py-6">
 
         {/* ══ Holder card — the page's one statement of identity ══════════
              This absorbs what used to be a separate "Wallet / Credentials

@@ -42,6 +42,7 @@ export default function EventDetailsClient({
   templates: TemplateItem[] 
 }) {
   const router = useRouter();
+  const [activeMobileTab, setActiveMobileTab] = useState<"roster" | "settings">("roster");
   const [searchTerm, setSearchTerm] = useState("");
   const [event, setEvent] = useState(initialEvent);
   const [saving, setSaving] = useState(false);
@@ -146,7 +147,7 @@ export default function EventDetailsClient({
   };
 
   return (
-    <div className="flex-1 flex flex-col max-w-7xl mx-auto w-full px-4 sm:px-8 py-6 min-h-0 overflow-hidden">
+    <div className="mob-scroll-pane flex-1 flex flex-col max-w-7xl mx-auto w-full px-4 sm:px-8 py-6 min-h-0 overflow-hidden">
       
       {/* Header (Template Studio Style) */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-6 shrink-0">
@@ -189,11 +190,41 @@ export default function EventDetailsClient({
         </div>
       </div>
 
+      {/* Mobile App Segmented Control (Hidden on desktop/tablet lg) */}
+      <div className="lg:hidden flex p-1 bg-zinc-100 rounded-xl mb-6 border border-zinc-200/80 shrink-0">
+        <button
+          type="button"
+          onClick={() => setActiveMobileTab("roster")}
+          className={`flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+            activeMobileTab === "roster"
+              ? "bg-white text-zinc-900 shadow-sm"
+              : "text-zinc-500 hover:text-zinc-800"
+          }`}
+        >
+          <Users size={14} />
+          <span>Attendees ({attendances.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveMobileTab("settings")}
+          className={`flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+            activeMobileTab === "settings"
+              ? "bg-white text-zinc-900 shadow-sm"
+              : "text-zinc-500 hover:text-zinc-800"
+          }`}
+        >
+          <Settings2 size={14} />
+          <span>Settings</span>
+        </button>
+      </div>
+
       {/* Split Layout: Attendees (Left) & Settings (Right) */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0 overflow-hidden">
+      <div className="mob-flow flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
         
         {/* Left: Attendees Viewer */}
-        <div className="lg:col-span-8 flex flex-col min-h-0 bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm relative">
+        <div className={`mob-flow lg:col-span-8 flex-col min-h-0 bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm relative ${
+          activeMobileTab === "roster" ? "flex" : "hidden lg:flex"
+        }`}>
           
           {/* Table Header & Search */}
           <div className="p-4 border-b border-zinc-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-zinc-50 shrink-0">
@@ -222,8 +253,8 @@ export default function EventDetailsClient({
             </div>
           </div>
 
-          {/* Table Content */}
-          <div className="flex-1 flex flex-col min-h-0 bg-white">
+          {/* Content */}
+          <div className="mob-flow flex-1 flex flex-col min-h-0 bg-white">
             {attendances.length === 0 ? (
               <div className="flex flex-col items-center justify-center p-12 text-center h-full text-zinc-400">
                 <Users size={32} className="mx-auto mb-3 opacity-50" />
@@ -236,78 +267,141 @@ export default function EventDetailsClient({
               </div>
             ) : (
               <>
-                <div className="overflow-y-auto overflow-x-hidden invisible-scrollbar bg-white border-b border-zinc-100 shrink-0">
-                  <table className="w-full table-fixed text-sm">
-                    <thead>
-                      <tr>
-                        <th className="w-[35%] px-5 py-3 text-left text-xs font-semibold text-zinc-500 tracking-wide">Attendee</th>
-                        <th className="w-[20%] px-5 py-3 text-left text-xs font-semibold text-zinc-500 tracking-wide">Role</th>
-                        <th className="w-[25%] px-5 py-3 text-left text-xs font-semibold text-zinc-500 tracking-wide">Checked In</th>
-                        <th className="w-[20%] px-5 py-3 text-left text-xs font-semibold text-zinc-500 tracking-wide">Status</th>
-                      </tr>
-                    </thead>
-                  </table>
-                </div>
-                <div className="overflow-y-auto overflow-x-hidden flex-1 min-h-0 bg-white">
-                  <table className="w-full table-fixed text-sm">
-                    <tbody className="divide-y divide-zinc-100">
-                      {filtered.map((att) => (
-                        <tr key={att.id} className="hover:bg-zinc-50/80 transition-colors group">
-                          <td className="w-[35%] px-5 py-3 overflow-hidden">
-                            <div className="font-medium text-zinc-700 truncate">{att.name}</div>
-                            <div className="text-zinc-500 truncate mt-0.5 text-xs">{att.email}</div>
-                          </td>
-                          <td className="w-[20%] px-5 py-3">
-                            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md text-xs font-medium bg-zinc-100 text-zinc-700 border border-zinc-200/50">
-                              {att.role}
-                            </span>
-                          </td>
-                          <td className="w-[25%] px-5 py-3">
-                            <div className="text-zinc-600 text-xs">
-                              {new Date(att.checkedInAt).toLocaleString("en-US", { 
-                                month: "short", day: "numeric", hour: "numeric", minute: "2-digit" 
-                              })}
-                            </div>
-                          </td>
-                          <td className="w-[20%] px-5 py-3">
-                            {att.hasCertificate ? (
-                              att.certificateStatus === "revoked" ? (
-                                <div className="flex items-center gap-2">
-                                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-700 border border-red-200">
-                                    <ShieldAlert size={10} /> Revoked
-                                  </span>
-                                  <button
-                                    onClick={() => toggleRevoke(att)}
-                                    disabled={revokingId === att.certificateId}
-                                    className="text-[10px] uppercase font-bold text-zinc-500 hover:text-zinc-700 underline disabled:opacity-50"
-                                  >
-                                    {revokingId === att.certificateId ? "Wait..." : "Restore"}
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                    <CheckCircle2 size={10} /> Issued
-                                  </span>
-                                  <button
-                                    onClick={() => toggleRevoke(att)}
-                                    disabled={revokingId === att.certificateId}
-                                    className="text-[10px] uppercase font-bold text-red-500 hover:text-red-700 underline opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
-                                  >
-                                    {revokingId === att.certificateId ? "Wait..." : "Revoke"}
-                                  </button>
-                                </div>
-                              )
+                {/* Mobile Cards (Phones & small screens) */}
+                <div className="mob-flow lg:hidden flex-1 min-h-0 overflow-y-auto bg-white divide-y divide-zinc-100">
+                  {filtered.map((att) => (
+                    <div key={att.id} className="p-4 flex flex-col gap-2.5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="font-semibold text-sm text-zinc-800 truncate">{att.name}</div>
+                          <div className="text-xs text-zinc-500 truncate mt-0.5">{att.email}</div>
+                        </div>
+                        <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-zinc-100 text-zinc-700 border border-zinc-200/60">
+                          {att.role}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-zinc-50 text-xs">
+                        <span className="text-zinc-500">
+                          {new Date(att.checkedInAt).toLocaleString("en-US", { 
+                            month: "short", day: "numeric", hour: "numeric", minute: "2-digit" 
+                          })}
+                        </span>
+                        <div>
+                          {att.hasCertificate ? (
+                            att.certificateStatus === "revoked" ? (
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-700 border border-red-200">
+                                  <ShieldAlert size={10} /> Revoked
+                                </span>
+                                <button
+                                  onClick={() => toggleRevoke(att)}
+                                  disabled={revokingId === att.certificateId}
+                                  className="text-[11px] uppercase font-bold text-zinc-600 underline disabled:opacity-50"
+                                >
+                                  {revokingId === att.certificateId ? "Wait..." : "Restore"}
+                                </button>
+                              </div>
                             ) : (
-                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-100 text-zinc-600 border border-zinc-200">
-                                <CircleDashed size={10} /> Pending
-                              </span>
-                            )}
-                          </td>
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  <CheckCircle2 size={10} /> Issued
+                                </span>
+                                <button
+                                  onClick={() => toggleRevoke(att)}
+                                  disabled={revokingId === att.certificateId}
+                                  className="text-[11px] uppercase font-bold text-red-600 underline disabled:opacity-50"
+                                >
+                                  {revokingId === att.certificateId ? "Wait..." : "Revoke"}
+                                </button>
+                              </div>
+                            )
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-100 text-zinc-600 border border-zinc-200">
+                              <CircleDashed size={10} /> Pending
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop: original full table behind hidden lg:flex */}
+                <div className="hidden lg:flex flex-1 flex-col min-h-0">
+                  <div className="overflow-y-auto overflow-x-hidden invisible-scrollbar bg-white border-b border-zinc-100 shrink-0">
+                    <table className="w-full table-fixed text-sm">
+                      <thead>
+                        <tr>
+                          <th className="w-[35%] px-5 py-3 text-left text-xs font-semibold text-zinc-500 tracking-wide">Attendee</th>
+                          <th className="w-[20%] px-5 py-3 text-left text-xs font-semibold text-zinc-500 tracking-wide">Role</th>
+                          <th className="w-[25%] px-5 py-3 text-left text-xs font-semibold text-zinc-500 tracking-wide">Checked In</th>
+                          <th className="w-[20%] px-5 py-3 text-left text-xs font-semibold text-zinc-500 tracking-wide">Status</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                    </table>
+                  </div>
+                  <div className="overflow-y-auto overflow-x-hidden flex-1 min-h-0 bg-white">
+                    <table className="w-full table-fixed text-sm">
+                      <tbody className="divide-y divide-zinc-100">
+                        {filtered.map((att) => (
+                          <tr key={att.id} className="hover:bg-zinc-50/80 transition-colors group">
+                            <td className="w-[35%] px-5 py-3 overflow-hidden">
+                              <div className="font-medium text-zinc-700 truncate">{att.name}</div>
+                              <div className="text-zinc-500 truncate mt-0.5 text-xs">{att.email}</div>
+                            </td>
+                            <td className="w-[20%] px-5 py-3">
+                              <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md text-xs font-medium bg-zinc-100 text-zinc-700 border border-zinc-200/50">
+                                {att.role}
+                              </span>
+                            </td>
+                            <td className="w-[25%] px-5 py-3">
+                              <div className="text-zinc-600 text-xs">
+                                {new Date(att.checkedInAt).toLocaleString("en-US", { 
+                                  month: "short", day: "numeric", hour: "numeric", minute: "2-digit" 
+                                })}
+                              </div>
+                            </td>
+                            <td className="w-[20%] px-5 py-3">
+                              {att.hasCertificate ? (
+                                att.certificateStatus === "revoked" ? (
+                                  <div className="flex items-center gap-2">
+                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-700 border border-red-200">
+                                      <ShieldAlert size={10} /> Revoked
+                                    </span>
+                                    <button
+                                      onClick={() => toggleRevoke(att)}
+                                      disabled={revokingId === att.certificateId}
+                                      className="text-[10px] uppercase font-bold text-zinc-500 hover:text-zinc-700 underline disabled:opacity-50"
+                                    >
+                                      {revokingId === att.certificateId ? "Wait..." : "Restore"}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                      <CheckCircle2 size={10} /> Issued
+                                    </span>
+                                    <button
+                                      onClick={() => toggleRevoke(att)}
+                                      disabled={revokingId === att.certificateId}
+                                      className="text-[10px] uppercase font-bold text-red-500 hover:text-red-700 underline opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                                    >
+                                      {revokingId === att.certificateId ? "Wait..." : "Revoke"}
+                                    </button>
+                                  </div>
+                                )
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-100 text-zinc-600 border border-zinc-200">
+                                  <CircleDashed size={10} /> Pending
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </>
             )}
@@ -315,7 +409,9 @@ export default function EventDetailsClient({
         </div>
         
         {/* Right: Administrative Settings */}
-        <div className="lg:col-span-4 flex flex-col bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
+        <div className={`mob-flow lg:col-span-4 flex-col bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm ${
+          activeMobileTab === "settings" ? "flex" : "hidden lg:flex"
+        }`}>
           <div className="p-4 border-b border-zinc-200 bg-zinc-50 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
               <Settings2 size={18} className="text-zinc-500" />

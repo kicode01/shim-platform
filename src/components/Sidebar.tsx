@@ -15,12 +15,12 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-    { href: "/dashboard/credentials", label: "Credentials", icon: BookOpen },
-    { href: "/dashboard/events", label: "Events", icon: Calendar },
-    { href: "/dashboard/templates", label: "Templates", icon: Stamp },
-    { href: "/dashboard/generate", label: "Generate", icon: FileSpreadsheet },
-    { href: "/dashboard/audit", label: "Audit Trail", icon: History },
+    { href: "/dashboard", label: "Overview", shortLabel: "Home", icon: LayoutDashboard },
+    { href: "/dashboard/credentials", label: "Credentials", shortLabel: "Creds", icon: BookOpen },
+    { href: "/dashboard/events", label: "Events", shortLabel: "Events", icon: Calendar },
+    { href: "/dashboard/templates", label: "Templates", shortLabel: "Studio", icon: Stamp },
+    { href: "/dashboard/generate", label: "Generate", shortLabel: "Issue", icon: FileSpreadsheet },
+    { href: "/dashboard/audit", label: "Audit Trail", shortLabel: "Audit", icon: History },
   ];
 
   const isTemplateStudio = /^\/dashboard\/templates\/[^/]+$/.test(pathname);
@@ -45,12 +45,13 @@ export default function Sidebar() {
                 href={item.href}
                 className={`relative flex items-center justify-center lg:justify-start gap-3 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors duration-200 z-10 group ${
                   isActive 
-                    ? "text-zinc-800 bg-zinc-100" 
+                    ? "text-zinc-900 bg-zinc-100 font-semibold" 
                     : "text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50/50"
                 }`}
                 title={item.label}
               >
-                <Icon size={18} className={`shrink-0 transition-colors duration-200 ${isActive ? "text-zinc-800" : "text-zinc-400 group-hover:text-zinc-600"}`} strokeWidth={isActive ? 2.5 : 2} />
+                <Icon size={18} className={`shrink-0 transition-colors duration-200 ${isActive ? "text-zinc-900" : "text-zinc-400 group-hover:text-zinc-600"}`} strokeWidth={isActive ? 2.5 : 2} />
+                <span className="lg:hidden text-[10px] font-semibold tracking-tight mt-0.5 truncate leading-none">{item.shortLabel}</span>
                 <span className="hidden lg:block whitespace-nowrap overflow-hidden text-ellipsis">{item.label}</span>
               </Link>
             );

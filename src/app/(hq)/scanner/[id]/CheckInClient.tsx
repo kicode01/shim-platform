@@ -48,17 +48,17 @@ export default function CheckInClient({ event }: CheckInClientProps) {
   };
 
   return (
-    <div className="flex-1 p-6 md:p-8 max-w-5xl mx-auto w-full overflow-y-auto">
-      <div className="flex items-center gap-4 mb-8">
+    <div className="flex-1 px-4 py-6 md:p-8 max-w-5xl mx-auto w-full overflow-y-auto">
+      <div className="flex items-center gap-3.5 mb-6 md:mb-8">
         <Link 
           href={`/dashboard/events/${event.id}`}
-          className="w-10 h-10 rounded-xl bg-white border border-zinc-200 flex items-center justify-center text-zinc-600 hover:bg-zinc-50 transition-colors shadow-sm"
+          className="w-10 h-10 rounded-xl bg-white border border-zinc-200 flex items-center justify-center text-zinc-600 hover:bg-zinc-50 active:scale-[0.98] transition-all shadow-sm"
         >
           <ArrowLeft size={18} />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-zinc-800 tracking-tight">Event Check-in</h1>
-          <p className="text-sm text-zinc-500">{event.name}</p>
+          <h1 className="text-xl md:text-2xl font-bold text-zinc-800 tracking-tight leading-tight">Event Check-in</h1>
+          <p className="text-xs md:text-sm text-zinc-500 truncate max-w-[240px] sm:max-w-none">{event.name}</p>
         </div>
       </div>
 

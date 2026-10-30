@@ -23,8 +23,6 @@
 
 ---
 
----
-
 ## ⚡ What is shim?
 
 Traditional digital certificates are broken: organizers waste hours editing Canva templates, manually mailing PDFs, and reconciling chaotic CSV check-in rosters. Worse, traditional certificates are trivially forged with basic image editors.

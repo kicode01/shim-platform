@@ -2,29 +2,23 @@
 
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="public/logo-dark.svg">
-    <img src="public/logo-light.svg" alt="shim logo" width="80" height="80">
+    <img src="public/logo-light.svg" alt="shim logo" width="84" height="84">
   </picture>
 
-```
-  ██████╗ ██╗  ██╗██╗███╗   ███╗
-  ██╔════╝ ██║  ██║██║████╗ ████║
-  ███████╗ ███████║██║██╔████╔██║
-  ╚════██║ ██╔══██║██║██║╚██╔╝██║
-  ██████╔╝ ██║  ██║██║██║ ╚═╝ ██║
-  ╚═════╝  ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝
-```
+  <h1>shim</h1>
 
-### Cryptographic Credential Infrastructure & Attendee Wallet
+  <p><strong>Cryptographic Credential Infrastructure &amp; Attendee Wallet</strong></p>
+  <p>Instant tamper verification &bull; Visual design studio &bull; Self-service venue check-in</p>
 
-**Instant tamper verification. Visual design studio. Self-service venue check-in.**
-
-[![Next.js 16](https://img.shields.io/badge/Next.js-16.3-000000?style=flat&logo=next.js&logoColor=white)](https://nextjs.org/)
-[![React 19](https://img.shields.io/badge/React-19.2-61DAFB?style=flat&logo=react&logoColor=black)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Prisma](https://img.shields.io/badge/Prisma-5.22-2D3748?style=flat&logo=prisma&logoColor=white)](https://www.prisma.io/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-336791?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38B2AC?style=flat&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-zinc.svg?style=flat)](LICENSE)
+  <p>
+    <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-16.3-000000?style=flat&logo=next.js&logoColor=white" alt="Next.js 16"></a>
+    <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-19.2-61DAFB?style=flat&logo=react&logoColor=black" alt="React 19"></a>
+    <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.0-3178C6?style=flat&logo=typescript&logoColor=white" alt="TypeScript 5"></a>
+    <a href="https://www.prisma.io/"><img src="https://img.shields.io/badge/Prisma-5.22-2D3748?style=flat&logo=prisma&logoColor=white" alt="Prisma 5.22"></a>
+    <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-Database-336791?style=flat&logo=postgresql&logoColor=white" alt="PostgreSQL"></a>
+    <a href="https://tailwindcss.com/"><img src="https://img.shields.io/badge/Tailwind-3.4-38B2AC?style=flat&logo=tailwind-css&logoColor=white" alt="Tailwind 3.4"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-zinc.svg?style=flat" alt="License: MIT"></a>
+  </p>
 
 </div>
 

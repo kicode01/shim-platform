@@ -23,24 +23,6 @@
 
 ---
 
-</div>
-
-## 📌 Short Descriptions
-
-Use these copy blocks for project listings, social cards, marketplaces, and submission decks:
-
-* **One-Liner (GitHub About / Tagline — 88 chars):**
-  > Cryptographic credential platform with instant verification, drag-and-drop design, and attendee wallets.
-
-* **Micro Bio (Twitter/X / Metadata — 144 chars):**
-  > shim automates tamper-proof, QR-verified digital certificates for summits, hackathons, and institutions. Real-time check-in, zero manual work.
-
-* **Elevator Pitch (SaaS / Product Hunt / Overview):**
-  > **shim** bridges event operations and verifiable credentials. It replaces fragile manual PDFs with a unified system: organizers design vector credentials in a visual studio, manage live venue check-in kiosks, and batch-issue thousands of certificates cryptographically sealed with deterministic SHA-256 hashes—while attendees receive a dedicated mobile wallet to claim, store, and prove their credentials at the door in sub-second time.
-
-* **Technical Summary (Engineering & Architecture):**
-  > A full-stack Next.js 16 / React 19 application backed by PostgreSQL and Prisma ORM, featuring client-side isomorphic SHA-256 certificate fingerprinting, client-side OCR (`tesseract.js`) and PDF canvas extraction (`pdfjs-dist`), multi-channel check-in scanners (`@yudiel/react-qr-scanner`), dynamic vector rendering (`react-rnd`, `jspdf`), NextAuth RBAC, and optional Google Gemini 2.5 Flash curriculum synthesis.
-
 ---
 
 ## ⚡ What is shim?

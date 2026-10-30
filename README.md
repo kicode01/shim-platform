@@ -1,5 +1,10 @@
 <div align="center">
 
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="public/logo-dark.svg">
+    <img src="public/logo-light.svg" alt="shim logo" width="80" height="80">
+  </picture>
+
 ```
   ██████╗ ██╗  ██╗██╗███╗   ███╗
   ██╔════╝ ██║  ██║██║████╗ ████║
@@ -20,6 +25,8 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-336791?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38B2AC?style=flat&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-zinc.svg?style=flat)](LICENSE)
+
+</div>
 
 ---
 

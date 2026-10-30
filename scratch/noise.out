@@ -1,9 +1,0 @@
-Capturing 3 desktop shots of /dashboard/generate...
-shot 1: scratch/dt-noise/gen1.png
-shot 2: scratch/dt-noise/gen2.png
-shot 3: scratch/dt-noise/gen3.png
-
-=== NOISE FLOOR (pairwise diffs of fresh same-route runs) ===
-  gen1 vs gen2: diffPx=     0 (0.0000%)  mean=0.00  max=0
-  gen1 vs gen3: diffPx=     0 (0.0000%)  mean=0.00  max=0
-  gen2 vs gen3: diffPx=     0 (0.0000%)  mean=0.00  max=0

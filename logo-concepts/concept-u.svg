@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-  <rect width="256" height="256" fill="#FFFFFF" />
-  
-  <!-- Brutalist / High Fashion S -->
-  <!-- A perfectly continuous, ultra-thick, sharp-edged geometric 'S' built from pure arcs -->
-  <path d="M 176 96 A 48 48 0 0 0 80 96 A 48 48 0 0 0 128 144 A 48 48 0 0 1 176 192 A 48 48 0 0 1 80 192" fill="none" stroke="#000000" stroke-width="32" stroke-linecap="square" />
-</svg>

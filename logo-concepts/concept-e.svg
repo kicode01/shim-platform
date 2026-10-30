@@ -1,5 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-  <!-- Right angled infinite spiral S -->
-  <path d="M 144,112 L 144,48 L 48,48 L 48,144 L 112,144" fill="none" stroke="#000000" stroke-width="32" stroke-linejoin="miter" stroke-linecap="square"/>
-  <path d="M 112,144 L 112,208 L 208,208 L 208,112 L 144,112" fill="none" stroke="#000000" stroke-width="32" stroke-linejoin="miter" stroke-linecap="square"/>
-</svg>

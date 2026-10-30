@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-  <!-- Outer circle / Seal base -->
-  <circle cx="128" cy="128" r="104" fill="none" stroke="#000000" stroke-width="24" />
-  
-  <!-- Continuous ribbon forming an S -->
-  <path d="M72,96 C72,64 128,48 152,72 C176,96 128,128 128,128 C128,128 80,160 104,184 C128,208 184,192 184,160" fill="none" stroke="#000000" stroke-width="24" stroke-linecap="square" />
-</svg>

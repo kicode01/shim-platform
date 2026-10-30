@@ -1,6 +1,7 @@
 {
-  "name": "digital-certificate-system",
-  "version": "0.1.0",
+  "name": "shim",
+  "version": "1.0.0",
+  "description": "Cryptographic credential platform with instant verification, visual design studio, and attendee wallets.",
   "private": true,
   "scripts": {
     "dev": "next dev",

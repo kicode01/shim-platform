@@ -1100,7 +1100,7 @@ export default function TemplateEditor({
   const actionDrawerDragControls = useDragControls();
   const moreMenuDragControls = useDragControls();
 
-  const [jsonText, setJsonText] = useState(JSON.stringify(parsedInitial, null, 2));
+  const [jsonText, setJsonText] = useState(() => JSON.stringify(parsedInitial, null, 2));
   const [saving, setSaving] = useState(false);
 
   const [activeGuides, setActiveGuides] = useState<{ vertical: number | null; horizontal: number | null }>({ vertical: null, horizontal: null });
@@ -1301,7 +1301,13 @@ export default function TemplateEditor({
 
   const applyDesignUpdate = (updated: CertificateDesignConfig, pushToHistory: boolean = true) => {
     setDesign(updated);
-    setJsonText(JSON.stringify(updated, null, 2));
+    try {
+      if (typeof setJsonText === 'function') {
+        setJsonText(JSON.stringify(updated, null, 2));
+      }
+    } catch {
+      // Ignored if jsonText state closure is temporarily unavailable
+    }
     if (pushToHistory) {
       const newHistory = history.slice(0, historyIndex + 1);
       newHistory.push(updated);
@@ -1342,7 +1348,11 @@ export default function TemplateEditor({
     if (historyIndex > 0) {
       const prev = history[historyIndex - 1];
       setDesign(prev);
-      setJsonText(JSON.stringify(prev, null, 2));
+      try {
+        if (typeof setJsonText === 'function') {
+          setJsonText(JSON.stringify(prev, null, 2));
+        }
+      } catch {}
       setHistoryIndex(historyIndex - 1);
     }
   };
@@ -1351,7 +1361,11 @@ export default function TemplateEditor({
     if (historyIndex < history.length - 1) {
       const next = history[historyIndex + 1];
       setDesign(next);
-      setJsonText(JSON.stringify(next, null, 2));
+      try {
+        if (typeof setJsonText === 'function') {
+          setJsonText(JSON.stringify(next, null, 2));
+        }
+      } catch {}
       setHistoryIndex(historyIndex + 1);
     }
   };
@@ -1662,12 +1676,12 @@ const duplicateElement = (id?: string) => {
   }, [design.orientation]);
 
   return (
-    <div className="template-editor flex-1 flex flex-col w-full h-full min-h-0 overflow-hidden bg-[#111217] lg:bg-transparent lg:px-8 lg:py-6" data-template-editor="true">
+    <div className="template-editor flex-1 flex flex-col w-full h-full min-h-0 overflow-hidden bg-[#141416] lg:bg-transparent lg:px-8 lg:py-6" data-template-editor="true">
 
       {googleFontsUrl && <link href={googleFontsUrl} rel="stylesheet" />}
 
       {/* Canva Mobile Top Bar */}
-      <div className="lg:hidden h-13 min-h-[52px] bg-[#121316] text-white border-b border-zinc-800/80 px-3 flex items-center justify-between shrink-0 z-30">
+      <div className="lg:hidden h-13 min-h-[52px] bg-[#18181b] text-white border-b border-zinc-800 px-3 flex items-center justify-between shrink-0 z-30">
         <div className="flex items-center gap-1.5 min-w-0">
           <Link
             href="/dashboard/templates"
@@ -1688,7 +1702,7 @@ const duplicateElement = (id?: string) => {
                 }
               }}
               placeholder="Template name..."
-              className="bg-transparent text-sm font-semibold text-white focus:outline-none focus:border-b border-indigo-400 px-1 py-0.5 truncate max-w-[130px] xs:max-w-[170px]"
+              className="bg-transparent text-sm font-semibold text-white focus:outline-none focus:border-b border-zinc-400 px-1 py-0.5 truncate max-w-[130px] xs:max-w-[170px]"
             />
           </div>
         </div>
@@ -1720,12 +1734,12 @@ const duplicateElement = (id?: string) => {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-medium text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm transition-all ml-1"
+            className="bg-white hover:bg-zinc-200 active:scale-95 text-zinc-950 font-semibold text-xs px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xs transition-all ml-1"
           >
             {saving ? (
-              <Loader2 size={13} className="animate-spin" />
+              <Loader2 size={13} className="animate-spin text-zinc-950" />
             ) : savedSuccess ? (
-              <CheckCircle2 size={13} className="text-emerald-400" />
+              <CheckCircle2 size={13} className="text-emerald-600" />
             ) : (
               <Save size={13} />
             )}
@@ -2798,7 +2812,8 @@ const duplicateElement = (id?: string) => {
           {/* Canvas Viewport */}
           <div
             ref={containerRef}
-            className={`flex-1 min-h-0 relative flex items-center justify-center bg-[#0d0e11] lg:bg-zinc-200/50 overflow-hidden ${isPanMode && hasOverflow ? 'cursor-grab active:cursor-grabbing' : ''}`}
+            className={`flex-1 min-h-0 relative flex items-center justify-center bg-[#141416] lg:bg-zinc-200/50 overflow-hidden touch-none select-none ${isPanMode && hasOverflow ? 'cursor-grab active:cursor-grabbing' : ''}`}
+            style={{ touchAction: 'none', overscrollBehavior: 'none' }}
             onClick={(e) => { 
               if (e.target === e.currentTarget && !isPanMode) { 
                 setSelectedElementId(null); 
@@ -2876,13 +2891,13 @@ const duplicateElement = (id?: string) => {
               {/* Dynamic Center Snapping Guidelines */}
               {activeGuides.vertical !== null && (
                 <div
-                  className="absolute top-0 bottom-0 pointer-events-none z-[60] border-l-2 border-indigo-500 border-dashed"
+                  className="absolute top-0 bottom-0 pointer-events-none z-[60] border-l-2 border-zinc-400 border-dashed"
                   style={{ left: `${activeGuides.vertical}px` }}
                 />
               )}
               {activeGuides.horizontal !== null && (
                 <div
-                  className="absolute left-0 right-0 pointer-events-none z-[60] border-t-2 border-indigo-500 border-dashed"
+                  className="absolute left-0 right-0 pointer-events-none z-[60] border-t-2 border-zinc-400 border-dashed"
                   style={{ top: `${activeGuides.horizontal}px` }}
                 />
               )}
@@ -2894,7 +2909,7 @@ const duplicateElement = (id?: string) => {
               <button onClick={() => setUserZoom(1)} className="text-[11px] font-semibold px-1.5 text-zinc-200 hover:text-white active:scale-95 transition-transform" title="Reset to 100% Fit">{Math.round(userZoom * 100)}%</button>
               <button onClick={() => setUserZoom(p => Math.min(4, Number((p + 0.25).toFixed(2))))} className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white active:scale-90 transition-all" title="Zoom In"><Plus size={13} /></button>
               <div className="w-px h-3 bg-zinc-700 mx-0.5" />
-              <button onClick={() => setIsPanMode(!isPanMode)} className={`p-1 rounded-lg transition-colors ${isPanMode ? 'text-indigo-400 bg-indigo-500/20' : 'text-zinc-400 hover:text-white'}`} title="Toggle Pan"><Hand size={13} /></button>
+              <button onClick={() => setIsPanMode(!isPanMode)} className={`p-1 rounded-lg transition-colors ${isPanMode ? 'text-white bg-white/20' : 'text-zinc-400 hover:text-white'}`} title="Toggle Pan"><Hand size={13} /></button>
             </div>
 
             {/* Desktop Zoom Controls */}
@@ -3020,10 +3035,10 @@ const duplicateElement = (id?: string) => {
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: 20, opacity: 0 }}
                   transition={{ duration: 0.15 }}
-                  className="bg-[#16171d] border-t border-indigo-500/40 shadow-xl px-2.5 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]"
+                  className="bg-[#18181b] border-t border-zinc-800 shadow-xl px-2.5 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]"
                 >
-                  {/* Type Badge - cohesive squircle */}
-                  <span className="h-9 px-3 rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-[11px] font-bold uppercase tracking-wider shrink-0 flex items-center justify-center select-none">
+                  {/* Type Badge - cohesive squircle monochrome */}
+                  <span className="h-9 px-3 rounded-xl bg-zinc-800/80 border border-zinc-700 text-zinc-300 text-[11px] font-bold uppercase tracking-wider shrink-0 flex items-center justify-center select-none">
                     {ELEMENT_FRIENDLY_NAMES[selectedElement.type] || selectedElement.type}
                   </span>
 
@@ -3032,7 +3047,7 @@ const duplicateElement = (id?: string) => {
                     <button
                       onClick={() => setMobileElementAction(mobileElementAction === "edit" ? null : "edit")}
                       className={`h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-all ${
-                        mobileElementAction === "edit" ? "bg-indigo-600 text-white shadow-xs" : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                        mobileElementAction === "edit" ? "bg-white text-zinc-950 font-bold shadow-xs" : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
                       }`}
                     >
                       <Type size={14} />
@@ -3045,7 +3060,7 @@ const duplicateElement = (id?: string) => {
                     <button
                       onClick={() => setMobileElementAction(mobileElementAction === "font" ? null : "font")}
                       className={`h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-all ${
-                        mobileElementAction === "font" ? "bg-indigo-600 text-white shadow-xs" : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                        mobileElementAction === "font" ? "bg-white text-zinc-950 font-bold shadow-xs" : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
                       }`}
                     >
                       <Sparkles size={14} />
@@ -3081,7 +3096,7 @@ const duplicateElement = (id?: string) => {
                     <button
                       onClick={() => setMobileElementAction(mobileElementAction === "color" ? null : "color")}
                       className={`h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-all ${
-                        mobileElementAction === "color" ? "bg-indigo-600 text-white shadow-xs" : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                        mobileElementAction === "color" ? "bg-white text-zinc-950 font-bold shadow-xs" : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
                       }`}
                     >
                       <div
@@ -3097,7 +3112,7 @@ const duplicateElement = (id?: string) => {
                     <button
                       onClick={() => setMobileElementAction(mobileElementAction === "format" ? null : "format")}
                       className={`h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-all ${
-                        mobileElementAction === "format" ? "bg-indigo-600 text-white shadow-xs" : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                        mobileElementAction === "format" ? "bg-white text-zinc-950 font-bold shadow-xs" : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
                       }`}
                     >
                       <AlignCenter size={14} />
@@ -3119,7 +3134,7 @@ const duplicateElement = (id?: string) => {
                   <button
                     onClick={() => setMobileElementAction(mobileElementAction === "order" ? null : "order")}
                     className={`h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-all ${
-                      mobileElementAction === "order" ? "bg-indigo-600 text-white shadow-xs" : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                      mobileElementAction === "order" ? "bg-white text-zinc-950 font-bold shadow-xs" : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
                     }`}
                   >
                     <Layers size={14} />
@@ -3155,7 +3170,7 @@ const duplicateElement = (id?: string) => {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.15 }}
-                  className="bg-[#121316] border-t border-zinc-800/80 px-1 pt-1.5 pb-[calc(0.4rem+env(safe-area-inset-bottom,0px))] flex items-center justify-around"
+                  className="bg-[#18181b] border-t border-zinc-800 px-1 pt-1.5 pb-[calc(0.4rem+env(safe-area-inset-bottom,0px))] flex items-center justify-around"
                 >
                   <button
                     onClick={() => {
@@ -3164,7 +3179,7 @@ const duplicateElement = (id?: string) => {
                       setMobileOpenTab(mobileOpenTab === "templates" ? null : "templates");
                     }}
                     className={`flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition-all ${
-                      mobileOpenTab === "templates" ? "text-indigo-400 font-bold" : "text-zinc-400 hover:text-zinc-200"
+                      mobileOpenTab === "templates" ? "text-white font-bold" : "text-zinc-400 hover:text-zinc-200"
                     }`}
                   >
                     <LayoutTemplate size={20} />
@@ -3178,7 +3193,7 @@ const duplicateElement = (id?: string) => {
                       setMobileOpenTab(mobileOpenTab === "elements" ? null : "elements");
                     }}
                     className={`flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition-all ${
-                      mobileOpenTab === "elements" ? "text-indigo-400 font-bold" : "text-zinc-400 hover:text-zinc-200"
+                      mobileOpenTab === "elements" ? "text-white font-bold" : "text-zinc-400 hover:text-zinc-200"
                     }`}
                   >
                     <Shapes size={20} />
@@ -3192,7 +3207,7 @@ const duplicateElement = (id?: string) => {
                       setMobileOpenTab(mobileOpenTab === "background" ? null : "background");
                     }}
                     className={`flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition-all ${
-                      mobileOpenTab === "background" ? "text-indigo-400 font-bold" : "text-zinc-400 hover:text-zinc-200"
+                      mobileOpenTab === "background" ? "text-white font-bold" : "text-zinc-400 hover:text-zinc-200"
                     }`}
                   >
                     <ImageIcon size={20} />
@@ -3206,7 +3221,7 @@ const duplicateElement = (id?: string) => {
                       setMobileOpenTab(mobileOpenTab === "layers" ? null : "layers");
                     }}
                     className={`flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition-all ${
-                      mobileOpenTab === "layers" ? "text-indigo-400 font-bold" : "text-zinc-400 hover:text-zinc-200"
+                      mobileOpenTab === "layers" ? "text-white font-bold" : "text-zinc-400 hover:text-zinc-200"
                     }`}
                   >
                     <Layers size={20} />
@@ -3220,7 +3235,7 @@ const duplicateElement = (id?: string) => {
                       setMobileOpenTab(mobileOpenTab === "settings" ? null : "settings");
                     }}
                     className={`flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition-all ${
-                      mobileOpenTab === "settings" ? "text-indigo-400 font-bold" : "text-zinc-400 hover:text-zinc-200"
+                      mobileOpenTab === "settings" ? "text-white font-bold" : "text-zinc-400 hover:text-zinc-200"
                     }`}
                   >
                     <Sliders size={20} />
@@ -3258,7 +3273,7 @@ const duplicateElement = (id?: string) => {
                       setMobileOpenTab(null);
                     }
                   }}
-                  className="fixed inset-x-0 bottom-0 z-40 max-h-[75vh] flex flex-col bg-[#181920] text-white rounded-t-3xl shadow-2xl border-t border-zinc-700/70 pb-[calc(56px+env(safe-area-inset-bottom,0px))] lg:hidden overflow-hidden"
+                  className="fixed inset-x-0 bottom-0 z-40 max-h-[75vh] flex flex-col bg-[#18181b] text-white rounded-t-3xl shadow-2xl border-t border-zinc-800 pb-[calc(56px+env(safe-area-inset-bottom,0px))] lg:hidden overflow-hidden"
                 >
                   {/* Drag Handle (Tappable & Draggable to close) */}
                   <div
@@ -3377,24 +3392,24 @@ const duplicateElement = (id?: string) => {
 
                     {/* TAB: TEXT */}
                     {mobileOpenTab === "text" && (
-                      <div className="space-y-5">
-                        <div className="space-y-2">
+                      <div className="space-y-5 pb-6">
+                        <div className="space-y-2.5">
                           <h4 className="text-xs font-bold text-zinc-300">Default Text Styles</h4>
                           <button
                             onClick={() => { addElement("staticText", "CERTIFICATE TITLE"); setMobileOpenTab(null); }}
-                            className="w-full p-4 rounded-xl bg-zinc-800/80 border border-zinc-700/60 hover:bg-zinc-700 text-left active:scale-98 transition-all"
+                            className="w-full p-4 rounded-2xl bg-zinc-800/80 border border-zinc-700/70 hover:border-zinc-500 hover:bg-zinc-700/80 text-left active:scale-98 transition-all shadow-xs"
                           >
-                            <h3 className="text-xl font-bold text-white">Add a heading</h3>
+                            <h3 className="text-xl font-bold text-white tracking-tight">Add a heading</h3>
                           </button>
                           <button
                             onClick={() => { addElement("staticText", "FOR OUTSTANDING ACHIEVEMENT"); setMobileOpenTab(null); }}
-                            className="w-full p-3.5 rounded-xl bg-zinc-800/80 border border-zinc-700/60 hover:bg-zinc-700 text-left active:scale-98 transition-all"
+                            className="w-full p-3.5 rounded-2xl bg-zinc-800/80 border border-zinc-700/70 hover:border-zinc-500 hover:bg-zinc-700/80 text-left active:scale-98 transition-all shadow-xs"
                           >
                             <h4 className="text-sm font-semibold text-zinc-200">Add a subheading</h4>
                           </button>
                           <button
                             onClick={() => { addElement("staticText", "In grateful recognition of your dedication..."); setMobileOpenTab(null); }}
-                            className="w-full p-3 rounded-xl bg-zinc-800/80 border border-zinc-700/60 hover:bg-zinc-700 text-left active:scale-98 transition-all"
+                            className="w-full p-3.5 rounded-2xl bg-zinc-800/80 border border-zinc-700/70 hover:border-zinc-500 hover:bg-zinc-700/80 text-left active:scale-98 transition-all shadow-xs"
                           >
                             <p className="text-xs text-zinc-400">Add a little bit of body text</p>
                           </button>
@@ -3429,7 +3444,7 @@ const duplicateElement = (id?: string) => {
 
                     {/* TAB: TEMPLATES (Presets) */}
                     {mobileOpenTab === "templates" && (
-                      <div className="space-y-4">
+                      <div className="space-y-4 pb-8">
                         <div className="grid grid-cols-2 gap-3">
                           {PRESETS
                             .filter(p => !mobileSearch || p.name.toLowerCase().includes(mobileSearch.toLowerCase()))
@@ -3437,7 +3452,7 @@ const duplicateElement = (id?: string) => {
                               <button
                                 key={preset.id}
                                 onClick={() => { loadPreset(preset.id); setMobileOpenTab(null); }}
-                                className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-zinc-700/80 bg-zinc-900 shadow-md text-left group active:scale-95 transition-all hover:border-indigo-500"
+                                className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-zinc-700/80 bg-zinc-900 shadow-md text-left group active:scale-95 transition-all hover:border-zinc-400"
                               >
                                 {/* Certificate Artwork Thumbnail */}
                                 {preset.design.backgroundImageUrl ? (
@@ -3467,7 +3482,7 @@ const duplicateElement = (id?: string) => {
                                   <span className="text-xs font-bold text-white line-clamp-1 drop-shadow-sm">
                                     {preset.name}
                                   </span>
-                                  <span className="text-[10px] text-indigo-300 font-semibold mt-0.5">
+                                  <span className="text-[10px] text-zinc-300 font-semibold mt-0.5">
                                     Use Template →
                                   </span>
                                 </div>
@@ -3513,7 +3528,7 @@ const duplicateElement = (id?: string) => {
                                 onClick={() => setActiveBgCategory(idx)}
                                 className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
                                   activeBgCategory === idx
-                                    ? "bg-indigo-600 border-indigo-500 text-white shadow-xs"
+                                    ? "bg-white text-zinc-950 border-white shadow-xs font-semibold"
                                     : "bg-zinc-800/90 border-zinc-700/60 text-zinc-300 hover:text-white hover:border-zinc-500"
                                 }`}
                               >
@@ -3542,7 +3557,7 @@ const duplicateElement = (id?: string) => {
                                   setMobileOpenTab(null);
                                 }}
                                 className={`relative aspect-[4/3] rounded-lg overflow-hidden border-2 transition-all ${
-                                  design.backgroundImageUrl === bg.url ? "border-indigo-500 scale-95" : "border-zinc-800"
+                                  design.backgroundImageUrl === bg.url ? "border-white ring-2 ring-white/50 scale-95" : "border-zinc-800 hover:border-zinc-600"
                                 }`}
                               >
                                 <img src={bg.url} alt={bg.name} className="absolute inset-0 w-full h-full object-cover" />
@@ -3582,7 +3597,7 @@ const duplicateElement = (id?: string) => {
                                   setMobileOpenTab(null);
                                 }}
                                 className={`py-2 px-3 rounded-xl border flex items-center justify-between gap-2 transition-all ${
-                                  isSelected ? "bg-indigo-600/20 border-indigo-500 text-white" : "bg-zinc-800/80 border-zinc-700/60 text-zinc-200"
+                                  isSelected ? "bg-white/10 border-white text-white font-semibold" : "bg-zinc-800/80 border-zinc-700/60 text-zinc-200"
                                 }`}
                               >
                                 <div className="flex items-center gap-2 min-w-0">
@@ -3659,22 +3674,22 @@ const duplicateElement = (id?: string) => {
                               onClick={() => handleOrientationChange("landscape")}
                               className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${
                                 design.orientation !== "portrait"
-                                  ? "bg-indigo-600/30 border-indigo-500 text-white font-bold"
-                                  : "bg-zinc-800 border-zinc-700 text-zinc-300"
+                                  ? "bg-white/10 border-white text-white font-semibold shadow-xs"
+                                  : "bg-zinc-800/80 border-zinc-700/80 text-zinc-400 hover:text-zinc-200"
                               }`}
                             >
-                              <div className="w-8 h-6 border-2 border-current rounded-xs opacity-80" />
+                              <div className="w-8 h-6 border-2 border-current rounded-xs opacity-90" />
                               <span className="text-xs">Landscape (3508x2480)</span>
                             </button>
                             <button
                               onClick={() => handleOrientationChange("portrait")}
                               className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${
                                 design.orientation === "portrait"
-                                  ? "bg-indigo-600/30 border-indigo-500 text-white font-bold"
-                                  : "bg-zinc-800 border-zinc-700 text-zinc-300"
+                                  ? "bg-white/10 border-white text-white font-semibold shadow-xs"
+                                  : "bg-zinc-800/80 border-zinc-700/80 text-zinc-400 hover:text-zinc-200"
                               }`}
                             >
-                              <div className="w-6 h-8 border-2 border-current rounded-xs opacity-80" />
+                              <div className="w-6 h-8 border-2 border-current rounded-xs opacity-90" />
                               <span className="text-xs">Portrait (2480x3508)</span>
                             </button>
                           </div>
@@ -3754,7 +3769,7 @@ const duplicateElement = (id?: string) => {
                       setMobileElementAction(null);
                     }
                   }}
-                  className="fixed inset-x-0 bottom-0 z-50 max-h-[50vh] flex flex-col bg-[#1b1c24] text-white rounded-t-2xl shadow-2xl border-t border-zinc-700/80 pb-safe lg:hidden overflow-hidden"
+                  className="fixed inset-x-0 bottom-0 z-50 max-h-[50vh] flex flex-col bg-[#18181b] text-white rounded-t-2xl shadow-2xl border-t border-zinc-800 pb-safe lg:hidden overflow-hidden"
                 >
                   <div
                     onPointerDown={(e) => actionDrawerDragControls.start(e)}
@@ -3791,7 +3806,7 @@ const duplicateElement = (id?: string) => {
                               rows={3}
                               value={selectedElement.text || ""}
                               onChange={(e) => updateSelectedElement({ text: e.target.value })}
-                              className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-indigo-500"
+                              className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-zinc-400"
                             />
                           </div>
                         )}
@@ -3811,12 +3826,12 @@ const duplicateElement = (id?: string) => {
                                   onClick={() => updateSelectedElement({ text: f.key })}
                                   className={`p-2.5 rounded-xl text-xs font-medium text-left flex items-center justify-between border transition-all ${
                                     selectedElement.text === f.key
-                                      ? "bg-indigo-600/30 border-indigo-500 text-white font-semibold"
+                                      ? "bg-white/10 border-white text-white font-semibold"
                                       : "bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-700"
                                   }`}
                                 >
                                   <span>{f.label}</span>
-                                  {selectedElement.text === f.key && <Check size={14} className="text-indigo-400" />}
+                                  {selectedElement.text === f.key && <Check size={14} className="text-white" />}
                                 </button>
                               ))}
                             </div>
@@ -3830,7 +3845,7 @@ const duplicateElement = (id?: string) => {
                                 type="text"
                                 value={selectedElement.signatoryName ?? (selectedElement.text?.split('|')[0] || "")}
                                 onChange={(e) => updateSelectedElement({ signatoryName: e.target.value })}
-                                className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-zinc-400"
                                 placeholder="Dr. John Smith"
                               />
                             </div>
@@ -3840,7 +3855,7 @@ const duplicateElement = (id?: string) => {
                                 type="text"
                                 value={selectedElement.signatoryTitle ?? (selectedElement.text?.split('|')[1] || "")}
                                 onChange={(e) => updateSelectedElement({ signatoryTitle: e.target.value })}
-                                className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-zinc-400"
                                 placeholder="Executive Director"
                               />
                             </div>
@@ -3850,7 +3865,7 @@ const duplicateElement = (id?: string) => {
                                 type="checkbox"
                                 checked={!selectedElement.hideLine}
                                 onChange={(e) => updateSelectedElement({ hideLine: !e.target.checked })}
-                                className="w-4 h-4 accent-indigo-600 rounded"
+                                className="w-4 h-4 accent-white rounded"
                               />
                             </div>
                           </div>
@@ -3896,7 +3911,7 @@ const duplicateElement = (id?: string) => {
                               onClick={() => setMobileFontCategory(cat)}
                               className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
                                 mobileFontCategory === cat
-                                  ? "bg-indigo-600 border-indigo-500 text-white shadow-xs"
+                                  ? "bg-white text-zinc-950 border-white shadow-xs font-semibold"
                                   : "bg-zinc-800/90 border-zinc-700/60 text-zinc-300 hover:text-white hover:border-zinc-500"
                               }`}
                             >
@@ -3912,13 +3927,13 @@ const duplicateElement = (id?: string) => {
                                 key={f}
                                 onClick={() => updateSelectedElement({ fontFamily: f })}
                                 className={`w-full p-2.5 rounded-xl text-left flex items-center justify-between border transition-all ${
-                                  selectedElement.fontFamily === f ? "bg-indigo-600/30 border-indigo-500 text-white" : "bg-zinc-900/60 border-zinc-800 text-zinc-200"
+                                  selectedElement.fontFamily === f ? "bg-white/10 border-white text-white font-semibold" : "bg-zinc-900/60 border-zinc-800 text-zinc-200"
                                 }`}
                               >
                                 <span style={{ fontFamily: f }} className="text-lg">
                                   {f.includes("cursive") ? "Default Cursive" : f}
                                 </span>
-                                {selectedElement.fontFamily === f && <Check size={14} className="text-indigo-400" />}
+                                {selectedElement.fontFamily === f && <Check size={14} className="text-white" />}
                               </button>
                             ))
                           ) : (
@@ -3927,13 +3942,13 @@ const duplicateElement = (id?: string) => {
                                 key={font}
                                 onClick={() => updateSelectedElement({ fontFamily: font })}
                                 className={`w-full p-2.5 rounded-xl text-left flex items-center justify-between border transition-all ${
-                                  selectedElement.fontFamily === font ? "bg-indigo-600/30 border-indigo-500 text-white" : "bg-zinc-900/60 border-zinc-800 text-zinc-200"
+                                  selectedElement.fontFamily === font ? "bg-white/10 border-white text-white font-semibold" : "bg-zinc-900/60 border-zinc-800 text-zinc-200"
                                 }`}
                               >
                                 <span style={{ fontFamily: font }} className="text-base truncate">
                                   {font}
                                 </span>
-                                {selectedElement.fontFamily === font && <Check size={14} className="text-indigo-400 shrink-0" />}
+                                {selectedElement.fontFamily === font && <Check size={14} className="text-white shrink-0" />}
                               </button>
                             ))
                           )}
@@ -3957,7 +3972,7 @@ const duplicateElement = (id?: string) => {
                               onClick={() => updateSelectedElement({ color: c })}
                               className={`h-9 rounded-xl border transition-all active:scale-95 flex items-center justify-center relative ${
                                 selectedElement.color?.toLowerCase() === c.toLowerCase()
-                                  ? "ring-2 ring-indigo-500 ring-offset-2 ring-offset-zinc-900 border-white"
+                                  ? "ring-2 ring-white ring-offset-2 ring-offset-zinc-900 border-white"
                                   : "border-zinc-700/80 hover:border-zinc-500"
                               }`}
                               style={{ backgroundColor: c }}
@@ -3996,7 +4011,7 @@ const duplicateElement = (id?: string) => {
                                   const val = e.target.value.replace(/[^0-9a-fA-F]/g, '');
                                   updateSelectedElement({ color: `#${val}` });
                                 }}
-                                className="w-full bg-zinc-900 border border-zinc-700/80 rounded-xl py-2.5 pl-7 pr-3 text-xs font-mono uppercase text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                                className="w-full bg-zinc-900 border border-zinc-700/80 rounded-xl py-2.5 pl-7 pr-3 text-xs font-mono uppercase text-white focus:outline-none focus:border-zinc-400 transition-colors"
                                 placeholder="000000"
                               />
                             </div>
@@ -4019,7 +4034,7 @@ const duplicateElement = (id?: string) => {
                               onClick={() => updateSelectedElement({ align: align as any })}
                               className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
                                 (selectedElement.align || "left") === align
-                                  ? "bg-indigo-600 text-white border-indigo-500"
+                                  ? "bg-white text-zinc-950 font-semibold border-white"
                                   : "bg-zinc-900 text-zinc-300 border-zinc-800"
                               }`}
                             >
@@ -4035,7 +4050,7 @@ const duplicateElement = (id?: string) => {
                             onClick={() => updateSelectedElement({ fontWeight: selectedElement.fontWeight === "bold" ? "normal" : "bold" })}
                             className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
                               selectedElement.fontWeight === "bold"
-                                ? "bg-indigo-600 text-white border-indigo-500"
+                                ? "bg-white text-zinc-950 font-semibold border-white"
                                 : "bg-zinc-900 text-zinc-300 border-zinc-800"
                             }`}
                           >
@@ -4046,7 +4061,7 @@ const duplicateElement = (id?: string) => {
                             onClick={() => updateSelectedElement({ fontStyle: selectedElement.fontStyle === "italic" ? "normal" : "italic" })}
                             className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
                               selectedElement.fontStyle === "italic"
-                                ? "bg-indigo-600 text-white border-indigo-500"
+                                ? "bg-white text-zinc-950 font-semibold border-white"
                                 : "bg-zinc-900 text-zinc-300 border-zinc-800"
                             }`}
                           >
@@ -4120,7 +4135,7 @@ const duplicateElement = (id?: string) => {
                       setShowMobileMoreMenu(false);
                     }
                   }}
-                  className="fixed inset-x-0 bottom-0 z-50 flex flex-col bg-[#181920] text-white rounded-t-3xl shadow-2xl border-t border-zinc-700/80 p-5 space-y-4 lg:hidden pb-safe"
+                  className="fixed inset-x-0 bottom-0 z-50 flex flex-col bg-[#18181b] text-white rounded-t-3xl shadow-2xl border-t border-zinc-800 p-5 space-y-4 lg:hidden pb-safe"
                 >
                   <div
                     onPointerDown={(e) => moreMenuDragControls.start(e)}
@@ -4167,7 +4182,7 @@ const duplicateElement = (id?: string) => {
                       <span className="text-xs text-zinc-300 font-medium">Orientation</span>
                       <button
                         onClick={() => handleOrientationChange(design.orientation === 'portrait' ? 'landscape' : 'portrait')}
-                        className="px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-xs font-semibold text-indigo-400"
+                        className="px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-xs font-semibold text-white"
                       >
                         {design.orientation === 'portrait' ? 'Portrait' : 'Landscape'}
                       </button>
@@ -4367,8 +4382,8 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         touchAction: "none",
         pointerEvents: el.locked ? "none" : "auto",
         cursor: el.locked ? "default" : isEditing ? "text" : "move",
-        border: isSelected ? "2px solid #8b5cf6" : "1px dashed transparent",
-        boxShadow: isSelected ? "0 0 0 1px rgba(139, 92, 246, 0.4), 0 4px 14px rgba(139, 92, 246, 0.2)" : "none",
+        border: isSelected ? "2px solid #18181b" : "1px dashed transparent",
+        boxShadow: isSelected ? "0 0 0 1px rgba(255, 255, 255, 0.9), 0 4px 14px rgba(0, 0, 0, 0.25)" : "none",
         padding: "2px",
         fontSize: `${el.fontSize || 16}px`,
         fontFamily: el.fontFamily || "var(--font-sans, sans-serif)",
@@ -4388,7 +4403,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         display: "flex",
         alignItems: (el.type === 'staticText' || el.type === 'dynamicText') ? "flex-start" : "center"
       }}
-      className={`touch-none ${isSelected ? "bg-blue-50/10 shadow-[0_0_0_1px_rgba(59,130,246,0.3)]" : "hover:border-zinc-300"}`}
+      className={`touch-none ${isSelected ? "shadow-[0_0_0_1px_rgba(255,255,255,0.4)]" : "hover:border-zinc-400"}`}
       enableResizing={
         el.locked 
           ? false 
@@ -4400,14 +4415,14 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
       }
       lockAspectRatio={isProportional}
       resizeHandleStyles={{
-        bottomRight: { width: "16px", height: "16px", background: "white", border: "2px solid #8b5cf6", borderRadius: "50%", right: "-8px", bottom: "-8px" },
-        right: { width: "16px", height: "16px", background: "white", border: "2px solid #8b5cf6", borderRadius: "50%", right: "-8px", top: "50%", transform: "translateY(-50%)" },
-        bottom: { width: "16px", height: "16px", background: "white", border: "2px solid #8b5cf6", borderRadius: "50%", bottom: "-8px", left: "50%", transform: "translateX(-50%)" },
-        bottomLeft: { width: "16px", height: "16px", background: "white", border: "2px solid #8b5cf6", borderRadius: "50%", left: "-8px", bottom: "-8px" },
-        left: { width: "16px", height: "16px", background: "white", border: "2px solid #8b5cf6", borderRadius: "50%", left: "-8px", top: "50%", transform: "translateY(-50%)" },
-        topLeft: { width: "16px", height: "16px", background: "white", border: "2px solid #8b5cf6", borderRadius: "50%", left: "-8px", top: "-8px" },
-        top: { width: "16px", height: "16px", background: "white", border: "2px solid #8b5cf6", borderRadius: "50%", top: "-8px", left: "50%", transform: "translateX(-50%)" },
-        topRight: { width: "16px", height: "16px", background: "white", border: "2px solid #8b5cf6", borderRadius: "50%", right: "-8px", top: "-8px" }
+        bottomRight: { width: "16px", height: "16px", background: "white", border: "2px solid #18181b", borderRadius: "50%", right: "-8px", bottom: "-8px" },
+        right: { width: "16px", height: "16px", background: "white", border: "2px solid #18181b", borderRadius: "50%", right: "-8px", top: "50%", transform: "translateY(-50%)" },
+        bottom: { width: "16px", height: "16px", background: "white", border: "2px solid #18181b", borderRadius: "50%", bottom: "-8px", left: "50%", transform: "translateX(-50%)" },
+        bottomLeft: { width: "16px", height: "16px", background: "white", border: "2px solid #18181b", borderRadius: "50%", left: "-8px", bottom: "-8px" },
+        left: { width: "16px", height: "16px", background: "white", border: "2px solid #18181b", borderRadius: "50%", left: "-8px", top: "50%", transform: "translateY(-50%)" },
+        topLeft: { width: "16px", height: "16px", background: "white", border: "2px solid #18181b", borderRadius: "50%", left: "-8px", top: "-8px" },
+        top: { width: "16px", height: "16px", background: "white", border: "2px solid #18181b", borderRadius: "50%", top: "-8px", left: "50%", transform: "translateX(-50%)" },
+        topRight: { width: "16px", height: "16px", background: "white", border: "2px solid #18181b", borderRadius: "50%", right: "-8px", top: "-8px" }
       }}
     >
       <div onDoubleClick={handleDoubleClick} className={`w-full h-full flex flex-col pointer-events-auto ${(el.type === 'staticText' || el.type === 'dynamicText') ? 'justify-start' : (el.type === 'signature' ? 'justify-end' : 'justify-center')}`}>

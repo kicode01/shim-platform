@@ -1182,7 +1182,10 @@ input[type="number"] {
 }
 
 /* Prevent Next.js dev overlay indicator from obstructing mobile studio toolbars */
-nextjs-portal {
+nextjs-portal,
+div[data-nextjs-dev-tools-indicator],
+[data-nextjs-toast-wrapper],
+#nextjs-dev-tools {
   display: none !important;
 }
 

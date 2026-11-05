@@ -17,7 +17,7 @@ export default async function NewTemplatePage() {
   }
 
   return (
-    <div className="dashboard-bg w-full h-full flex flex-col overflow-hidden bg-[#111217] lg:bg-transparent">
+    <div className="dashboard-bg w-full h-full flex flex-col overflow-hidden bg-[#141416] lg:bg-transparent">
       <main className="page-container-wide animate-fade-in flex flex-col flex-1 min-h-0 p-0">
         <TemplateEditor isEdit={false} />
       </main>

@@ -882,6 +882,13 @@ input[type="number"] {
     padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   }
 
+  /* When studio mode is active, the tab bar is off so remove the bottom spacer for edge-to-edge canvas */
+  .mob-tabbar.mob-tabbar-off + .mob-tabbar-space,
+  .mob-tabbar.mob-tabbar-off ~ .mob-tabbar-space,
+  body:has(.mob-tabbar-off) .mob-tabbar-space {
+    padding-bottom: 0 !important;
+  }
+
   /* Native app-like active feedback for buttons and pills on mobile */
   button:active, .btn-primary:active, .btn-secondary:active, .mob-card-action:active {
     transform: scale(0.97);
@@ -1173,3 +1180,23 @@ input[type="number"] {
   .mob-avatar { width: 36px !important; height: 36px !important; }
   .mob-icon-btn { min-width: 36px !important; min-height: 36px !important; }
 }
+
+/* Prevent Next.js dev overlay indicator from obstructing mobile studio toolbars */
+nextjs-portal {
+  display: none !important;
+}
+
+/* Template editor: prevent touchstart passive cancel intervention warning on draggable elements */
+.react-draggable,
+.react-draggable-dragged {
+  touch-action: none !important;
+}
+
+/* Template editor: prevent app-wide tap-target min-width/min-height from distorting editor toolbars/steppers */
+.template-editor button,
+[data-template-editor] button {
+  min-height: unset !important;
+  min-width: unset !important;
+}
+
+

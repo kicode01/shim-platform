@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Layers, Save, ArrowLeft, Stamp, Sliders, Code2, ShieldCheck, CheckCircle2, RotateCcw, Image as ImageIcon, Move, LayoutTemplate, Loader2, Sparkles, Type, FileImage, MousePointer2, Minus, Plus, Trash2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, Database, QrCode, Undo, Redo, Hand, X, ArrowUp, ArrowDown, ChevronDown, Lock, Unlock, Eye } from "lucide-react";
+import { Layers, Save, ArrowLeft, Stamp, Sliders, Code2, ShieldCheck, CheckCircle2, RotateCcw, Image as ImageIcon, Move, LayoutTemplate, Loader2, Sparkles, Shapes, Type, FileImage, MousePointer2, Minus, Plus, Trash2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, Database, QrCode, Undo, Redo, Hand, X, ArrowUp, ArrowDown, ChevronDown, ChevronUp, Lock, Unlock, Eye, Search, Copy, MoreHorizontal, Palette, Check, RefreshCw } from "lucide-react";
 import { Rnd } from 'react-rnd';
 import CertificateView, { CertificateDesignConfig, CanvasElement, CanvasElementType } from "@/components/CertificateView";
 import { v4 as uuidv4 } from "uuid";
@@ -11,7 +11,7 @@ import QRCode from "qrcode";
 import { QRCodeSVG } from "qrcode.react";
 import { Select } from "@/components/ui/Select";
 import { PRESETS } from "@/lib/presets";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useDragControls } from "framer-motion";
 
 interface TemplateEditorProps {
   initialId?: string;
@@ -1085,6 +1085,20 @@ export default function TemplateEditor({
   const [previousTab, setPreviousTab] = useState<"components" | "builder" | "json" | "background" | "presets">("components");
   const [mobileEditorMode, setMobileEditorMode] = useState<"canvas" | "tools">("canvas");
 
+  // Canva Mobile State
+  const [mobileOpenTab, setMobileOpenTab] = useState<"templates" | "elements" | "text" | "background" | "layers" | "settings" | null>(null);
+  const [mobileElementAction, setMobileElementAction] = useState<"edit" | "font" | "size" | "color" | "format" | "order" | null>(null);
+  const [mobileSearch, setMobileSearch] = useState<string>("");
+  const [mobileCategoryFilter, setMobileCategoryFilter] = useState<string | null>(null);
+  const [showMobileMoreMenu, setShowMobileMoreMenu] = useState<boolean>(false);
+  const [mobileFontCategory, setMobileFontCategory] = useState<string>("All");
+
+  // Canvas State & Drag Controls
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const prevSelectedIdRef = useRef<string | null>(null);
+  const mainDrawerDragControls = useDragControls();
+  const actionDrawerDragControls = useDragControls();
+  const moreMenuDragControls = useDragControls();
 
   const [jsonText, setJsonText] = useState(JSON.stringify(parsedInitial, null, 2));
   const [saving, setSaving] = useState(false);
@@ -1241,9 +1255,10 @@ export default function TemplateEditor({
     setDraggedLayerId(null);
   };
 
-  const moveLayerUp = () => {
-    if (!selectedElementId) return;
-    const idx = (design.canvasElements || []).findIndex(e => e.id === selectedElementId);
+  const moveLayerUp = (targetId?: string) => {
+    const idToMove = targetId || selectedElementId;
+    if (!idToMove) return;
+    const idx = (design.canvasElements || []).findIndex(e => e.id === idToMove);
     if (idx < 0 || idx === (design.canvasElements || []).length - 1) return;
     const newElements = [...(design.canvasElements || [])];
     const temp = newElements[idx];
@@ -1252,9 +1267,10 @@ export default function TemplateEditor({
     applyDesignUpdate({ ...design, canvasElements: newElements });
   };
 
-  const moveLayerDown = () => {
-    if (!selectedElementId) return;
-    const idx = (design.canvasElements || []).findIndex(e => e.id === selectedElementId);
+  const moveLayerDown = (targetId?: string) => {
+    const idToMove = targetId || selectedElementId;
+    if (!idToMove) return;
+    const idx = (design.canvasElements || []).findIndex(e => e.id === idToMove);
     if (idx <= 0) return;
     const newElements = [...(design.canvasElements || [])];
     const temp = newElements[idx];
@@ -1340,11 +1356,6 @@ export default function TemplateEditor({
     }
   };
 
-  // Canvas State
-  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
-
-    const prevSelectedIdRef = useRef<string | null>(null);
-  
   // Auto-switch to builder (Settings) tab when a NEW element is selected
   useEffect(() => {
     if (selectedElementId && selectedElementId !== prevSelectedIdRef.current) {
@@ -1494,6 +1505,31 @@ export default function TemplateEditor({
     }
   }, [selectedElement?.type, activePropTab]);
 
+const duplicateElement = (id?: string) => {
+    const targetId = id || selectedElementId;
+    if (!targetId || !design.canvasElements) return;
+    const target = design.canvasElements.find(el => el.id === targetId);
+    if (!target) return;
+    const isPortrait = design.orientation === 'portrait';
+    const maxW = isPortrait ? 2480 : 3508;
+    const maxH = isPortrait ? 3508 : 2480;
+    const duplicated: CanvasElement = {
+      ...target,
+      id: uuidv4(),
+      x: Math.min(maxW - (target.width || 200), (target.x || 0) + 40),
+      y: Math.min(maxH - (target.height || 100), (target.y || 0) + 40),
+    };
+    const updated = { ...design, canvasElements: [...design.canvasElements, duplicated] };
+    applyDesignUpdate(updated);
+    setSelectedElementId(duplicated.id);
+  };
+
+  useEffect(() => {
+    if (selectedElementId) {
+      setMobileOpenTab(null);
+    }
+  }, [selectedElementId]);
+
   // Load a preset
   const loadPreset = (presetId: string) => {
     const preset = PRESETS.find(p => p.id === presetId);
@@ -1578,6 +1614,33 @@ export default function TemplateEditor({
     isDraggingCanvas.current = false;
   };
 
+  const handleCanvasTouchStart = (e: React.TouchEvent) => {
+    if (isPanMode && hasOverflow && e.touches.length === 1) {
+      isDraggingCanvas.current = true;
+      dragStart.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+        panX: panOffset.x,
+        panY: panOffset.y
+      };
+    }
+  };
+
+  const handleCanvasTouchMove = (e: React.TouchEvent) => {
+    if (isDraggingCanvas.current && isPanMode && hasOverflow && e.touches.length === 1) {
+      const dx = e.touches[0].clientX - dragStart.current.x;
+      const dy = e.touches[0].clientY - dragStart.current.y;
+      setPanOffset({
+        x: dragStart.current.panX + dx,
+        y: dragStart.current.panY + dy
+      });
+    }
+  };
+
+  const handleCanvasTouchEnd = () => {
+    isDraggingCanvas.current = false;
+  };
+
   useEffect(() => {
     const observer = new ResizeObserver((entries) => {
       if (entries[0]) {
@@ -1599,11 +1662,80 @@ export default function TemplateEditor({
   }, [design.orientation]);
 
   return (
-    <div className="flex-1 flex flex-col w-full px-4 sm:px-8 py-4 sm:py-6 min-h-0 overflow-hidden">
+    <div className="template-editor flex-1 flex flex-col w-full h-full min-h-0 overflow-hidden bg-[#111217] lg:bg-transparent lg:px-8 lg:py-6" data-template-editor="true">
 
       {googleFontsUrl && <link href={googleFontsUrl} rel="stylesheet" />}
-      {/* Header */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 sm:gap-6 mb-4 sm:mb-6 shrink-0">
+
+      {/* Canva Mobile Top Bar */}
+      <div className="lg:hidden h-13 min-h-[52px] bg-[#121316] text-white border-b border-zinc-800/80 px-3 flex items-center justify-between shrink-0 z-30">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Link
+            href="/dashboard/templates"
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 active:scale-95 transition-all shrink-0"
+            title="Templates"
+          >
+            <ArrowLeft size={18} />
+          </Link>
+          <div className="min-w-0 flex items-center gap-1">
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (error) setError('');
+                if (!design.certificateTitle || design.certificateTitle === "Certificate of Completion") {
+                  updateDesignField("certificateTitle", e.target.value);
+                }
+              }}
+              placeholder="Template name..."
+              className="bg-transparent text-sm font-semibold text-white focus:outline-none focus:border-b border-indigo-400 px-1 py-0.5 truncate max-w-[130px] xs:max-w-[170px]"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={handleUndo}
+            disabled={historyIndex <= 0}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 active:scale-95 transition-all"
+            title="Undo"
+          >
+            <Undo size={16} />
+          </button>
+          <button
+            onClick={handleRedo}
+            disabled={historyIndex >= history.length - 1}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 active:scale-95 transition-all"
+            title="Redo"
+          >
+            <Redo size={16} />
+          </button>
+          <button
+            onClick={() => setShowMobileMoreMenu(true)}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 active:scale-95 transition-all"
+            title="More Options"
+          >
+            <MoreHorizontal size={18} />
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-medium text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm transition-all ml-1"
+          >
+            {saving ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : savedSuccess ? (
+              <CheckCircle2 size={13} className="text-emerald-400" />
+            ) : (
+              <Save size={13} />
+            )}
+            <span>{savedSuccess ? "Saved" : isEdit ? "Save" : "Create"}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Desktop Header */}
+      <div className="hidden lg:flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 sm:gap-6 mb-4 sm:mb-6 shrink-0">
         <div>
           <Link href="/dashboard/templates" className="inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-zinc-700 transition-colors mb-4">
             <ArrowLeft size={16} /> Templates
@@ -1699,42 +1831,14 @@ export default function TemplateEditor({
         </div>
       </div>
 
-      {/* Mobile-only Segmented Mode Switcher (Canvas Preview vs Design Tools) */}
-      <div className="lg:hidden flex p-1 bg-zinc-100 rounded-xl mb-4 border border-zinc-200/80 shrink-0">
-        <button
-          type="button"
-          onClick={() => setMobileEditorMode("canvas")}
-          className={`flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-            mobileEditorMode === "canvas"
-              ? "bg-white text-zinc-900 shadow-sm"
-              : "text-zinc-500 hover:text-zinc-800"
-          }`}
-        >
-          <LayoutTemplate size={14} />
-          <span>Canvas Preview</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setMobileEditorMode("tools")}
-          className={`flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-            mobileEditorMode === "tools"
-              ? "bg-white text-zinc-900 shadow-sm"
-              : "text-zinc-500 hover:text-zinc-800"
-          }`}
-        >
-          <Sliders size={14} />
-          <span>Design Tools</span>
-        </button>
-      </div>
-
       {/* Main Layout */}
-      <div className="flex-1 flex gap-6 min-h-0 overflow-hidden w-full max-w-none px-0 lg:px-0">
+      <div className="flex-1 flex gap-0 lg:gap-6 min-h-0 overflow-hidden w-full max-w-none px-0">
 
         {/* Canva-Style Far Left Toolbar (Tab Switcher) */}
         <div className="hidden lg:flex flex-col gap-2 w-20 shrink-0 bg-zinc-900 rounded-xl overflow-hidden shadow-sm py-4 items-center">
 
           <button onClick={() => setActiveTab("components")} className={`flex flex-col items-center justify-center gap-1.5 w-16 h-16 rounded-xl transition-colors ${activeTab === 'components' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'}`}>
-            <LayoutTemplate size={20} />
+            <Shapes size={20} />
             <span className="text-[10px] font-medium">Elements</span>
           </button>
 
@@ -1744,7 +1848,7 @@ export default function TemplateEditor({
           </button>
 
           <button onClick={() => setActiveTab("builder")} className={`flex flex-col items-center justify-center gap-1.5 w-16 h-16 rounded-xl transition-colors ${activeTab === 'builder' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'}`}>
-            <Layers size={20} />
+            <Sliders size={20} />
             <span className="text-[10px] font-medium">Settings</span>
           </button>
 
@@ -1760,10 +1864,8 @@ export default function TemplateEditor({
 
         </div>
 
-        {/* Left: Administrative Controls */}
-        <div className={`w-full lg:w-[340px] lg:shrink-0 flex-col bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm ${
-          mobileEditorMode === "tools" ? "flex flex-1 min-h-0" : "hidden lg:flex"
-        }`}>
+        {/* Left: Administrative Controls (Desktop only) */}
+        <div className="hidden lg:flex w-[340px] shrink-0 flex-col bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
 
           {/* Mobile Horizontal Tool Strip (Phone only: provides access to all tabs) */}
           <div className="lg:hidden flex items-center gap-1 p-2 bg-zinc-900 text-white overflow-x-auto no-scrollbar shrink-0 border-b border-zinc-800">
@@ -1913,7 +2015,7 @@ export default function TemplateEditor({
                           <button
                             key={idx}
                             onClick={() => setActiveBgCategory(idx)}
-                            className={`px-3 py-1.5 text-xs font-semibold whitespace-nowrap rounded-lg transition-colors border ${
+                            className={`shrink-0 px-3 py-1.5 text-xs font-semibold whitespace-nowrap rounded-lg transition-colors border ${
                               activeBgCategory === idx 
                                 ? 'bg-zinc-900 text-white border-zinc-900 shadow-sm' 
                                 : 'bg-white text-zinc-500 border-zinc-200 hover:bg-zinc-50 hover:text-zinc-800'
@@ -1988,11 +2090,25 @@ export default function TemplateEditor({
                         <button
                           key={preset.id}
                           onClick={() => loadPreset(preset.id)}
-                          className="w-full p-3 rounded-lg border bg-white hover:bg-zinc-50 transition-colors text-xs font-semibold text-left relative overflow-hidden flex items-center shadow-sm hover:shadow"
-                          style={{ borderColor: preset.color, color: preset.color }}
+                          className="relative aspect-[4/3] rounded-xl overflow-hidden border border-zinc-200 hover:border-zinc-900 bg-zinc-100 shadow-xs hover:shadow-md text-left group transition-all"
                         >
-                          <div className="absolute top-0 right-0 w-8 h-8 opacity-10" style={{ backgroundColor: preset.color, borderBottomLeftRadius: '100%' }}></div>
-                          {preset.name}
+                          {preset.design.backgroundImageUrl ? (
+                            <img
+                              src={preset.design.backgroundImageUrl}
+                              alt={preset.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-zinc-100" />
+                          )}
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-2.5 pt-6 flex flex-col justify-end">
+                            <span className="text-xs font-bold text-white line-clamp-1 drop-shadow-xs">
+                              {preset.name}
+                            </span>
+                            <span className="text-[10px] text-zinc-300 font-medium">
+                              Apply Template →
+                            </span>
+                          </div>
                         </button>
                       ))}
                     </div>
@@ -2653,10 +2769,8 @@ export default function TemplateEditor({
           </div>
         </div>
 
-        {/* Right: Live Canvas Builder */}
-        <div className={`flex-1 flex-col min-h-0 bg-zinc-50 border border-zinc-200 rounded-xl overflow-hidden shadow-sm relative ${
-          mobileEditorMode === "canvas" ? "flex" : "hidden lg:flex"
-        }`}>
+                {/* Right: Live Canvas Builder (Full bleed on mobile, right column on desktop) */}
+        <div className="flex-1 flex flex-col min-h-0 bg-[#0e0f12] lg:bg-zinc-50 border-0 lg:border lg:border-zinc-200 rounded-none lg:rounded-xl overflow-hidden shadow-sm relative">
 
           {/* Pan Mode Notification */}
           <AnimatePresence>
@@ -2681,13 +2795,17 @@ export default function TemplateEditor({
             )}
           </AnimatePresence>
 
-
-
+          {/* Canvas Viewport */}
           <div
             ref={containerRef}
-            className={`flex-1 min-h-0 relative flex items-center justify-center bg-zinc-200/50 overflow-hidden ${isPanMode && hasOverflow ? 'cursor-grab active:cursor-grabbing' : ''}`}
-            onClick={(e) => { if (e.target === e.currentTarget && !isPanMode) setSelectedElementId(null); }}
-            onDoubleClick={(e) => {
+            className={`flex-1 min-h-0 relative flex items-center justify-center bg-[#0d0e11] lg:bg-zinc-200/50 overflow-hidden ${isPanMode && hasOverflow ? 'cursor-grab active:cursor-grabbing' : ''}`}
+            onClick={(e) => { 
+              if (e.target === e.currentTarget && !isPanMode) { 
+                setSelectedElementId(null); 
+                setMobileElementAction(null);
+              } 
+            }}
+            onDoubleClick={() => {
               if (hasOverflow) {
                 setIsPanMode(!isPanMode);
               }
@@ -2696,13 +2814,16 @@ export default function TemplateEditor({
             onMouseMove={handleCanvasMouseMove}
             onMouseUp={handleCanvasMouseUp}
             onMouseLeave={handleCanvasMouseUp}
+            onTouchStart={handleCanvasTouchStart}
+            onTouchMove={handleCanvasTouchMove}
+            onTouchEnd={handleCanvasTouchEnd}
           >
             {isPanMode && hasOverflow && (
               <div className="absolute inset-0 z-[100] pointer-events-auto" />
             )}
 
             <div
-              className="shrink-0 relative bg-white shadow-md border border-zinc-200"
+              className="shrink-0 relative bg-white shadow-2xl border border-zinc-700/50 lg:border-zinc-200"
               style={{
                 width: design.orientation === 'portrait' ? '2480px' : '3508px',
                 height: design.orientation === 'portrait' ? '3508px' : '2480px',
@@ -2712,19 +2833,23 @@ export default function TemplateEditor({
                 backgroundSize: 'cover',
                 backgroundPosition: 'center'
               }}
-              onClick={(e) => { if (e.target === e.currentTarget) setSelectedElementId(null); }}
+              onClick={(e) => { 
+                if (e.target === e.currentTarget) {
+                  setSelectedElementId(null);
+                  setMobileElementAction(null);
+                } 
+              }}
             >
               {design.canvasElements && design.canvasElements.map(el => {
                 const isSelected = selectedElementId === el.id;
                 let displayText = el.text;
 
-                // Match the exact fallbacks used in CertificateView.tsx so the builder is truly WYSIWYG
                 if (el.type === "dynamicText") {
                   if (el.text === "recipientName") displayText = "Jane Doe";
-                  else if (el.text === "role") displayText = name || "Role / Title";
-                  else if (el.text === "eventName") displayText = "Event Description";
+                  else if (el.text === "role") displayText = "Bachelor of Science in Computer Science";
+                  else if (el.text === "eventName") displayText = "Annual Excellence & Leadership Summit";
                   else if (el.text === "issueDate") displayText = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
-                  else if (el.text === "certificateId") displayText = "PREVIEW-ID";
+                  else if (el.text === "certificateId") displayText = "SHIM-2026-99824";
                 }
 
                 return (
@@ -2733,7 +2858,10 @@ export default function TemplateEditor({
                     el={el}
                     isSelected={isSelected}
                     displayText={displayText}
-                    setSelectedElementId={setSelectedElementId}
+                    setSelectedElementId={(id: string) => {
+                      setSelectedElementId(id);
+                      setMobileOpenTab(null);
+                    }}
                     updateSelectedElement={updateSelectedElement}
                     updateElement={updateElement}
                     setActiveGuides={setActiveGuides}
@@ -2760,10 +2888,17 @@ export default function TemplateEditor({
               )}
             </div>
 
-            {/* Interactive Zoom Controls */}
-            <div className="absolute bottom-4 right-4 z-[110] flex flex-col items-end">
+            {/* Mobile Floating Zoom Pill (Canva style) */}
+            <div className="lg:hidden absolute bottom-3 right-3 z-30 flex items-center gap-1 bg-zinc-900/90 backdrop-blur-md rounded-xl px-2.5 py-1.5 border border-zinc-700/60 shadow-lg text-white">
+              <button onClick={() => setUserZoom(p => Math.max(0.5, Number((p - 0.25).toFixed(2))))} className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white active:scale-90 transition-all" title="Zoom Out"><Minus size={13} /></button>
+              <button onClick={() => setUserZoom(1)} className="text-[11px] font-semibold px-1.5 text-zinc-200 hover:text-white active:scale-95 transition-transform" title="Reset to 100% Fit">{Math.round(userZoom * 100)}%</button>
+              <button onClick={() => setUserZoom(p => Math.min(4, Number((p + 0.25).toFixed(2))))} className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white active:scale-90 transition-all" title="Zoom In"><Plus size={13} /></button>
+              <div className="w-px h-3 bg-zinc-700 mx-0.5" />
+              <button onClick={() => setIsPanMode(!isPanMode)} className={`p-1 rounded-lg transition-colors ${isPanMode ? 'text-indigo-400 bg-indigo-500/20' : 'text-zinc-400 hover:text-white'}`} title="Toggle Pan"><Hand size={13} /></button>
+            </div>
 
-              {/* Layers Popup */}
+            {/* Desktop Zoom Controls */}
+            <div className="hidden lg:flex absolute bottom-4 right-4 z-[110] flex flex-col items-end">
               <AnimatePresence>
                 {showLayersPanel && (
                   <motion.div
@@ -2771,7 +2906,7 @@ export default function TemplateEditor({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                     transition={{ duration: 0.15 }}
-                    className="mb-2 bg-white/95 backdrop-blur-xl border border-zinc-200 rounded-xl w-[260px] overflow-hidden pointer-events-auto"
+                    className="mb-2 bg-white/95 backdrop-blur-xl border border-zinc-200 rounded-xl w-[260px] overflow-hidden pointer-events-auto shadow-xl"
                   >
                     <div className="p-3 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/50">
                       <h4 className="text-xs font-semibold text-zinc-700 flex items-center gap-1.5">
@@ -2872,29 +3007,1215 @@ export default function TemplateEditor({
                   <Plus size={14} />
                 </button>
               </div>
-
-              {/* Mobile Quick Floating Switcher to Tools */}
-              <div className="lg:hidden ml-2">
-                <button
-                  type="button"
-                  onClick={() => setMobileEditorMode("tools")}
-                  className="px-3 py-1.5 bg-zinc-900 text-white rounded-lg text-xs font-semibold shadow-sm flex items-center gap-1.5 hover:bg-zinc-800 transition-colors"
-                >
-                  <Sliders size={13} />
-                  <span>Tools</span>
-                </button>
-              </div>
             </div>
           </div>
+
+          {/* Canva Mobile Bottom Bar: Contextual Actions when element selected, or Main Studio Dock when idle */}
+          <div className="lg:hidden shrink-0 z-30">
+            <AnimatePresence mode="wait">
+              {selectedElement && !mobileOpenTab ? (
+                <motion.div
+                  key="contextual-toolbar"
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 20, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="bg-[#16171d] border-t border-indigo-500/40 shadow-xl px-2.5 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]"
+                >
+                  {/* Type Badge - cohesive squircle */}
+                  <span className="h-9 px-3 rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-[11px] font-bold uppercase tracking-wider shrink-0 flex items-center justify-center select-none">
+                    {ELEMENT_FRIENDLY_NAMES[selectedElement.type] || selectedElement.type}
+                  </span>
+
+                  {/* Edit Content */}
+                  {(selectedElement.type === "staticText" || selectedElement.type === "dynamicText" || selectedElement.type === "signature" || selectedElement.type === "image" || selectedElement.type === "badge") && (
+                    <button
+                      onClick={() => setMobileElementAction(mobileElementAction === "edit" ? null : "edit")}
+                      className={`h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-all ${
+                        mobileElementAction === "edit" ? "bg-indigo-600 text-white shadow-xs" : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                      }`}
+                    >
+                      <Type size={14} />
+                      <span>Edit</span>
+                    </button>
+                  )}
+
+                  {/* Font Picker */}
+                  {(selectedElement.type === "staticText" || selectedElement.type === "dynamicText" || selectedElement.type === "signature") && (
+                    <button
+                      onClick={() => setMobileElementAction(mobileElementAction === "font" ? null : "font")}
+                      className={`h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-all ${
+                        mobileElementAction === "font" ? "bg-indigo-600 text-white shadow-xs" : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                      }`}
+                    >
+                      <Sparkles size={14} />
+                      <span>Font</span>
+                    </button>
+                  )}
+
+                  {/* Font Size Stepper */}
+                  {selectedElement.fontSize !== undefined && (
+                    <div className="h-9 rounded-xl bg-zinc-800 border border-zinc-700/80 flex items-center shrink-0 overflow-hidden">
+                      <button
+                        onClick={() => updateSelectedElement({ fontSize: Math.max(8, (selectedElement.fontSize || 16) - 4) })}
+                        className="w-7 h-9 flex items-center justify-center text-zinc-300 hover:text-white hover:bg-zinc-700/60 transition-colors"
+                        title="Decrease font size"
+                      >
+                        <Minus size={12} />
+                      </button>
+                      <span className="px-1.5 text-xs font-mono font-bold text-zinc-200 min-w-[36px] text-center select-none">
+                        {Math.round((selectedElement.fontSize || 16) / 4.166667)}pt
+                      </span>
+                      <button
+                        onClick={() => updateSelectedElement({ fontSize: Math.min(600, (selectedElement.fontSize || 16) + 4) })}
+                        className="w-7 h-9 flex items-center justify-center text-zinc-300 hover:text-white hover:bg-zinc-700/60 transition-colors"
+                        title="Increase font size"
+                      >
+                        <Plus size={12} />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Color Swatch */}
+                  {selectedElement.type !== "image" && (
+                    <button
+                      onClick={() => setMobileElementAction(mobileElementAction === "color" ? null : "color")}
+                      className={`h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-all ${
+                        mobileElementAction === "color" ? "bg-indigo-600 text-white shadow-xs" : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                      }`}
+                    >
+                      <div
+                        className="w-4 h-4 rounded-md border border-white/60 shrink-0 shadow-xs"
+                        style={{ backgroundColor: selectedElement.color || '#000000' }}
+                      />
+                      <span>Color</span>
+                    </button>
+                  )}
+
+                  {/* Format (Align & Style) */}
+                  {(selectedElement.type === "staticText" || selectedElement.type === "dynamicText") && (
+                    <button
+                      onClick={() => setMobileElementAction(mobileElementAction === "format" ? null : "format")}
+                      className={`h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-all ${
+                        mobileElementAction === "format" ? "bg-indigo-600 text-white shadow-xs" : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                      }`}
+                    >
+                      <AlignCenter size={14} />
+                      <span>Format</span>
+                    </button>
+                  )}
+
+                  {/* Duplicate */}
+                  <button
+                    onClick={() => duplicateElement()}
+                    className="h-9 px-3 rounded-xl text-xs font-semibold bg-zinc-800 text-zinc-200 hover:bg-zinc-700 flex items-center gap-1.5 shrink-0 transition-all"
+                    title="Duplicate element"
+                  >
+                    <Copy size={14} />
+                    <span>Copy</span>
+                  </button>
+
+                  {/* Layer Ordering */}
+                  <button
+                    onClick={() => setMobileElementAction(mobileElementAction === "order" ? null : "order")}
+                    className={`h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-all ${
+                      mobileElementAction === "order" ? "bg-indigo-600 text-white shadow-xs" : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                    }`}
+                  >
+                    <Layers size={14} />
+                    <span>Layer</span>
+                  </button>
+
+                  {/* Delete */}
+                  <button
+                    onClick={deleteSelectedElement}
+                    className="h-9 px-3 rounded-xl text-xs font-semibold bg-red-950/40 text-red-400 hover:bg-red-900/60 border border-red-800/40 flex items-center gap-1.5 shrink-0 transition-all"
+                    title="Delete element"
+                  >
+                    <Trash2 size={14} />
+                    <span>Delete</span>
+                  </button>
+
+                  {/* Done / Deselect */}
+                  <button
+                    onClick={() => {
+                      setSelectedElementId(null);
+                      setMobileElementAction(null);
+                    }}
+                    className="w-9 h-9 rounded-xl bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center shrink-0 ml-auto transition-colors"
+                    title="Deselect"
+                  >
+                    <X size={16} />
+                  </button>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="main-dock"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="bg-[#121316] border-t border-zinc-800/80 px-1 pt-1.5 pb-[calc(0.4rem+env(safe-area-inset-bottom,0px))] flex items-center justify-around"
+                >
+                  <button
+                    onClick={() => {
+                      setSelectedElementId(null);
+                      setMobileElementAction(null);
+                      setMobileOpenTab(mobileOpenTab === "templates" ? null : "templates");
+                    }}
+                    className={`flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition-all ${
+                      mobileOpenTab === "templates" ? "text-indigo-400 font-bold" : "text-zinc-400 hover:text-zinc-200"
+                    }`}
+                  >
+                    <LayoutTemplate size={20} />
+                    <span className="text-[10px]">Templates</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setSelectedElementId(null);
+                      setMobileElementAction(null);
+                      setMobileOpenTab(mobileOpenTab === "elements" ? null : "elements");
+                    }}
+                    className={`flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition-all ${
+                      mobileOpenTab === "elements" ? "text-indigo-400 font-bold" : "text-zinc-400 hover:text-zinc-200"
+                    }`}
+                  >
+                    <Shapes size={20} />
+                    <span className="text-[10px]">Elements</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setSelectedElementId(null);
+                      setMobileElementAction(null);
+                      setMobileOpenTab(mobileOpenTab === "background" ? null : "background");
+                    }}
+                    className={`flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition-all ${
+                      mobileOpenTab === "background" ? "text-indigo-400 font-bold" : "text-zinc-400 hover:text-zinc-200"
+                    }`}
+                  >
+                    <ImageIcon size={20} />
+                    <span className="text-[10px]">Background</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setSelectedElementId(null);
+                      setMobileElementAction(null);
+                      setMobileOpenTab(mobileOpenTab === "layers" ? null : "layers");
+                    }}
+                    className={`flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition-all ${
+                      mobileOpenTab === "layers" ? "text-indigo-400 font-bold" : "text-zinc-400 hover:text-zinc-200"
+                    }`}
+                  >
+                    <Layers size={20} />
+                    <span className="text-[10px]">Layers</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setSelectedElementId(null);
+                      setMobileElementAction(null);
+                      setMobileOpenTab(mobileOpenTab === "settings" ? null : "settings");
+                    }}
+                    className={`flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition-all ${
+                      mobileOpenTab === "settings" ? "text-indigo-400 font-bold" : "text-zinc-400 hover:text-zinc-200"
+                    }`}
+                  >
+                    <Sliders size={20} />
+                    <span className="text-[10px]">Settings</span>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Canva Mobile Bottom Sheet Modal (Image 3) */}
+          <AnimatePresence>
+            {mobileOpenTab && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setMobileOpenTab(null)}
+                  className="fixed inset-0 bg-black/60 backdrop-blur-xs z-35 lg:hidden"
+                />
+
+                <motion.div
+                  initial={{ y: "100%" }}
+                  animate={{ y: 0 }}
+                  exit={{ y: "100%" }}
+                  transition={{ type: "spring", damping: 28, stiffness: 320 }}
+                  drag="y"
+                  dragListener={false}
+                  dragControls={mainDrawerDragControls}
+                  dragConstraints={{ top: 0, bottom: 0 }}
+                  dragElastic={{ top: 0, bottom: 0.6 }}
+                  onDragEnd={(_e, info) => {
+                    if (info.offset.y > 60 || info.velocity.y > 250) {
+                      setMobileOpenTab(null);
+                    }
+                  }}
+                  className="fixed inset-x-0 bottom-0 z-40 max-h-[75vh] flex flex-col bg-[#181920] text-white rounded-t-3xl shadow-2xl border-t border-zinc-700/70 pb-[calc(56px+env(safe-area-inset-bottom,0px))] lg:hidden overflow-hidden"
+                >
+                  {/* Drag Handle (Tappable & Draggable to close) */}
+                  <div
+                    onPointerDown={(e) => mainDrawerDragControls.start(e)}
+                    onClick={() => setMobileOpenTab(null)}
+                    className="w-full flex justify-center items-center pt-3 pb-2 cursor-grab active:cursor-grabbing shrink-0 touch-none group select-none"
+                    title="Drag down or tap to close"
+                  >
+                    <div className="w-12 h-1.5 bg-zinc-600 group-hover:bg-zinc-400 group-active:bg-zinc-300 rounded-full transition-colors" />
+                  </div>
+
+                  {/* Header */}
+                  <div
+                    onPointerDown={(e) => {
+                      if ((e.target as HTMLElement).tagName !== 'BUTTON' && !(e.target as HTMLElement).closest('button')) {
+                        mainDrawerDragControls.start(e);
+                      }
+                    }}
+                    className="flex items-center justify-between px-5 pb-2 border-b border-zinc-800/80 shrink-0 select-none cursor-grab active:cursor-grabbing touch-none"
+                  >
+                    <h3 className="text-base font-bold capitalize text-white flex items-center gap-2 pointer-events-none">
+                      {mobileOpenTab === "elements" && <Shapes size={17} className="text-zinc-300" />}
+                      {mobileOpenTab === "templates" && <LayoutTemplate size={17} className="text-zinc-300" />}
+                      {mobileOpenTab === "text" && <Type size={17} className="text-zinc-300" />}
+                      {mobileOpenTab === "background" && <ImageIcon size={17} className="text-zinc-300" />}
+                      {mobileOpenTab === "layers" && <Layers size={17} className="text-zinc-300" />}
+                      {mobileOpenTab === "settings" && <Sliders size={17} className="text-zinc-300" />}
+                      <span>{mobileOpenTab === "templates" ? "Template Presets" : mobileOpenTab}</span>
+                    </h3>
+                    <button
+                      onClick={() => setMobileOpenTab(null)}
+                      className="w-8 h-8 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-zinc-400 hover:text-white flex items-center justify-center transition-colors"
+                      title="Close"
+                    >
+                      <X size={17} />
+                    </button>
+                  </div>
+
+                  {/* Search Bar (Image 3) */}
+                  {(mobileOpenTab === "elements" || mobileOpenTab === "templates" || mobileOpenTab === "text") && (
+                    <div className="px-5 py-2.5 shrink-0">
+                      <div className="relative flex items-center bg-zinc-800/90 rounded-xl px-3 py-2 border border-zinc-700/60">
+                        <Search size={15} className="text-zinc-400 mr-2 shrink-0" />
+                        <input
+                          type="text"
+                          value={mobileSearch}
+                          onChange={(e) => setMobileSearch(e.target.value)}
+                          placeholder={`Search ${mobileOpenTab}...`}
+                          className="bg-transparent w-full text-white placeholder-zinc-500 focus:outline-none text-xs"
+                        />
+                        {mobileSearch && (
+                          <button onClick={() => setMobileSearch("")}>
+                            <X size={14} className="text-zinc-400 hover:text-white" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Body Content */}
+                  <div className="flex-1 overflow-y-auto px-5 py-3 space-y-6 custom-scrollbar min-h-0">
+
+                    {/* TAB: ELEMENTS (Unified Monochrome, Deduplicated) */}
+                    {mobileOpenTab === "elements" && (() => {
+                      const allElements = [
+                        { id: 'text', type: 'staticText' as const, def: 'CERTIFICATE OF RECOGNITION', title: 'Text', desc: 'Headings & Labels', icon: <Type size={19} />, colSpan: 1 },
+                        { id: 'data', type: 'dynamicText' as const, def: 'recipientName', title: 'Data Field', desc: 'Name, Date, Role', icon: <Database size={18} />, colSpan: 1 },
+                        { id: 'sig', type: 'signature' as const, def: 'Authorized Signatory|Executive Director', title: 'Signature', desc: 'Signatory & Line', icon: <Stamp size={18} />, colSpan: 1 },
+                        { id: 'badge', type: 'badge' as const, def: undefined, title: 'Badge', desc: 'Rosette or Seal', icon: <ShieldCheck size={19} />, colSpan: 1 },
+                        { id: 'divider', type: 'shape' as const, def: undefined, title: 'Divider', desc: 'Horizontal Line', icon: <Minus size={20} strokeWidth={2.5} />, colSpan: 1 },
+                        { id: 'qr', type: 'qrCode' as const, def: undefined, title: 'QR Code', desc: 'Verification Scan', icon: <QrCode size={19} />, colSpan: 1 },
+                        { id: 'image', type: 'image' as const, def: undefined, title: 'Image', desc: 'Logo, Crest, or Organization Emblem', icon: <ImageIcon size={19} />, colSpan: 2 },
+                      ];
+                      const filteredElements = allElements.filter(el =>
+                        !mobileSearch ||
+                        el.title.toLowerCase().includes(mobileSearch.toLowerCase()) ||
+                        el.desc.toLowerCase().includes(mobileSearch.toLowerCase())
+                      );
+
+                      return (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-xs font-bold text-zinc-300">Design Elements</h4>
+                            <span className="text-[10px] text-zinc-500 font-mono">{filteredElements.length} available</span>
+                          </div>
+
+                          {filteredElements.length === 0 ? (
+                            <div className="py-8 text-center text-xs text-zinc-400">
+                              No elements matching &quot;{mobileSearch}&quot;
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-2 gap-2.5">
+                              {filteredElements.map(el => (
+                                <button
+                                  key={el.id}
+                                  onClick={() => {
+                                    addElement(el.type, el.def);
+                                    setMobileOpenTab(null);
+                                  }}
+                                  className={`p-3.5 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700/80 border border-zinc-700/70 hover:border-zinc-500 flex items-center gap-3 text-left active:scale-95 transition-all shadow-xs ${el.colSpan === 2 ? 'col-span-2' : ''}`}
+                                >
+                                  <div className="w-10 h-10 rounded-xl bg-zinc-700/60 text-zinc-100 border border-zinc-600/40 flex items-center justify-center shrink-0">
+                                    {el.icon}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <h5 className="text-xs font-bold text-white">{el.title}</h5>
+                                    <p className="text-[10px] text-zinc-400 truncate">{el.desc}</p>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* TAB: TEXT */}
+                    {mobileOpenTab === "text" && (
+                      <div className="space-y-5">
+                        <div className="space-y-2">
+                          <h4 className="text-xs font-bold text-zinc-300">Default Text Styles</h4>
+                          <button
+                            onClick={() => { addElement("staticText", "CERTIFICATE TITLE"); setMobileOpenTab(null); }}
+                            className="w-full p-4 rounded-xl bg-zinc-800/80 border border-zinc-700/60 hover:bg-zinc-700 text-left active:scale-98 transition-all"
+                          >
+                            <h3 className="text-xl font-bold text-white">Add a heading</h3>
+                          </button>
+                          <button
+                            onClick={() => { addElement("staticText", "FOR OUTSTANDING ACHIEVEMENT"); setMobileOpenTab(null); }}
+                            className="w-full p-3.5 rounded-xl bg-zinc-800/80 border border-zinc-700/60 hover:bg-zinc-700 text-left active:scale-98 transition-all"
+                          >
+                            <h4 className="text-sm font-semibold text-zinc-200">Add a subheading</h4>
+                          </button>
+                          <button
+                            onClick={() => { addElement("staticText", "In grateful recognition of your dedication..."); setMobileOpenTab(null); }}
+                            className="w-full p-3 rounded-xl bg-zinc-800/80 border border-zinc-700/60 hover:bg-zinc-700 text-left active:scale-98 transition-all"
+                          >
+                            <p className="text-xs text-zinc-400">Add a little bit of body text</p>
+                          </button>
+                        </div>
+
+                        <div className="space-y-2 pt-2 border-t border-zinc-800">
+                          <h4 className="text-xs font-bold text-zinc-300">Certificate Data Fields</h4>
+                          <div className="grid grid-cols-1 gap-2">
+                            {[
+                              { key: "recipientName", label: "Recipient Name", sample: "Jane Doe" },
+                              { key: "role", label: "Role / Degree", sample: "Master of Science" },
+                              { key: "eventName", label: "Event Title", sample: "Annual Innovation Summit" },
+                              { key: "issueDate", label: "Issue Date", sample: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) },
+                              { key: "certificateId", label: "Certificate ID", sample: "SHIM-2026-99824" },
+                            ].map(item => (
+                              <button
+                                key={item.key}
+                                onClick={() => { addElement("dynamicText", item.key); setMobileOpenTab(null); }}
+                                className="p-3 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-left flex items-center justify-between active:scale-98 transition-all"
+                              >
+                                <div>
+                                  <span className="text-xs font-semibold text-zinc-200 block">{item.label}</span>
+                                  <span className="text-[11px] text-zinc-400 font-mono">{item.sample}</span>
+                                </div>
+                                <Plus size={14} className="text-zinc-500" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* TAB: TEMPLATES (Presets) */}
+                    {mobileOpenTab === "templates" && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          {PRESETS
+                            .filter(p => !mobileSearch || p.name.toLowerCase().includes(mobileSearch.toLowerCase()))
+                            .map((preset) => (
+                              <button
+                                key={preset.id}
+                                onClick={() => { loadPreset(preset.id); setMobileOpenTab(null); }}
+                                className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-zinc-700/80 bg-zinc-900 shadow-md text-left group active:scale-95 transition-all hover:border-indigo-500"
+                              >
+                                {/* Certificate Artwork Thumbnail */}
+                                {preset.design.backgroundImageUrl ? (
+                                  <img
+                                    src={preset.design.backgroundImageUrl}
+                                    alt={preset.name}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-zinc-800" />
+                                )}
+
+                                {/* Subtle decorative elements mock */}
+                                <div className="absolute inset-2 pointer-events-none flex flex-col justify-between p-1.5 opacity-40">
+                                  <div className="flex justify-between items-start">
+                                    <div className="w-6 h-1 rounded-full bg-current" style={{ color: preset.color }} />
+                                    <div className="w-2 h-2 rounded-full bg-current" style={{ color: preset.color }} />
+                                  </div>
+                                  <div className="flex justify-between items-end">
+                                    <div className="w-5 h-0.5 rounded-xs bg-current" style={{ color: preset.color }} />
+                                    <div className="w-2.5 h-2.5 rounded-xs bg-current" style={{ color: preset.color }} />
+                                  </div>
+                                </div>
+
+                                {/* Bottom Title Overlay */}
+                                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/75 to-transparent p-2.5 pt-7 flex flex-col justify-end">
+                                  <span className="text-xs font-bold text-white line-clamp-1 drop-shadow-sm">
+                                    {preset.name}
+                                  </span>
+                                  <span className="text-[10px] text-indigo-300 font-semibold mt-0.5">
+                                    Use Template →
+                                  </span>
+                                </div>
+                              </button>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* TAB: BACKGROUND */}
+                    {mobileOpenTab === "background" && (
+                      <div className="space-y-5">
+                        {/* Upload Image */}
+                        <div>
+                          <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-zinc-700 rounded-xl cursor-pointer bg-zinc-800/50 hover:bg-zinc-800 transition-colors">
+                            <ImageIcon size={20} className="text-zinc-400 mb-1" />
+                            <span className="text-xs font-medium text-zinc-300">Tap to upload background</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => {
+                                    applyDesignUpdate({ ...design, backgroundImageUrl: reader.result as string });
+                                    setMobileOpenTab(null);
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+
+                        {/* Preset Categories */}
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 overflow-x-auto pb-1.5 no-scrollbar">
+                            {PRESET_CATEGORIES.map((cat, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => setActiveBgCategory(idx)}
+                                className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
+                                  activeBgCategory === idx
+                                    ? "bg-indigo-600 border-indigo-500 text-white shadow-xs"
+                                    : "bg-zinc-800/90 border-zinc-700/60 text-zinc-300 hover:text-white hover:border-zinc-500"
+                                }`}
+                              >
+                                {cat.name}
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2">
+                            {PRESET_CATEGORIES[activeBgCategory]?.items.map((bg) => (
+                              <button
+                                key={bg.id}
+                                onClick={() => {
+                                  const cat = PRESET_CATEGORIES[activeBgCategory];
+                                  if (design.orientation !== cat.orientation) {
+                                    handleOrientationChange(cat.orientation);
+                                  }
+                                  const scheme: "light" | "dark" = (bg as { textScheme?: "light" }).textScheme === "light" ? "light" : "dark";
+                                  const recolored = applyBackgroundTextScheme(design.canvasElements, scheme);
+                                  applyDesignUpdate({
+                                    ...design,
+                                    orientation: cat.orientation,
+                                    backgroundImageUrl: bg.url,
+                                    canvasElements: recolored,
+                                  });
+                                  setMobileOpenTab(null);
+                                }}
+                                className={`relative aspect-[4/3] rounded-lg overflow-hidden border-2 transition-all ${
+                                  design.backgroundImageUrl === bg.url ? "border-indigo-500 scale-95" : "border-zinc-800"
+                                }`}
+                              >
+                                <img src={bg.url} alt={bg.name} className="absolute inset-0 w-full h-full object-cover" />
+                                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1">
+                                  <p className="text-[9px] font-medium text-white truncate text-center">{bg.name}</p>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* TAB: LAYERS (Compact & Tight Button Spacing) */}
+                    {mobileOpenTab === "layers" && (
+                      <div className="space-y-1.5">
+                        {!design.canvasElements || design.canvasElements.length === 0 ? (
+                          <p className="text-xs text-zinc-500 text-center py-6">No elements on canvas</p>
+                        ) : (
+                          [...(design.canvasElements || [])].reverse().map((el, reversedIdx) => {
+                            const idx = design.canvasElements!.length - 1 - reversedIdx;
+                            const isSelected = selectedElementId === el.id;
+                            let label: string = el.type;
+                            if (label === 'staticText') label = el.text ? `"${el.text.substring(0, 18)}..."` : 'Text';
+                            else if (label === 'dynamicText') label = `Data: ${el.text}`;
+                            else if (label === 'badge') label = 'Rosette Seal';
+                            else if (label === 'image') label = 'Image Asset';
+                            else if (label === 'qrCode') label = 'QR Code';
+                            else if (label === 'signature') label = 'Signature';
+                            else if (label === 'shape') label = 'Divider Line';
+
+                            return (
+                              <div
+                                key={el.id}
+                                onClick={() => {
+                                  setSelectedElementId(el.id);
+                                  setMobileOpenTab(null);
+                                }}
+                                className={`py-2 px-3 rounded-xl border flex items-center justify-between gap-2 transition-all ${
+                                  isSelected ? "bg-indigo-600/20 border-indigo-500 text-white" : "bg-zinc-800/80 border-zinc-700/60 text-zinc-200"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="w-5 h-5 rounded-md bg-zinc-700 text-zinc-300 text-[10px] font-mono flex items-center justify-center shrink-0">
+                                    {idx + 1}
+                                  </span>
+                                  <span className="text-xs font-semibold truncate">{label}</span>
+                                </div>
+
+                                <div
+                                  className="flex items-center gap-0.5 bg-zinc-900/90 py-0.5 px-1 rounded-lg border border-zinc-700/60 shrink-0"
+                                  onClick={e => e.stopPropagation()}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => updateElement(el.id, { locked: !el.locked })}
+                                    className={`p-1 rounded-md transition-colors ${
+                                      el.locked ? "text-amber-400 bg-amber-400/15" : "text-zinc-400 hover:text-white"
+                                    }`}
+                                    title={el.locked ? "Unlock layer" : "Lock layer"}
+                                  >
+                                    {el.locked ? <Lock size={12} /> : <Unlock size={12} />}
+                                  </button>
+
+                                  <div className="w-[1px] h-3 bg-zinc-700/60 mx-0.5" />
+
+                                  <button
+                                    type="button"
+                                    onClick={() => moveLayerUp(el.id)}
+                                    disabled={idx === design.canvasElements!.length - 1}
+                                    className="p-1 rounded-md text-zinc-400 hover:text-white disabled:opacity-20 hover:bg-zinc-800 transition-colors"
+                                    title="Move layer up"
+                                  >
+                                    <ArrowUp size={12} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => moveLayerDown(el.id)}
+                                    disabled={idx === 0}
+                                    className="p-1 rounded-md text-zinc-400 hover:text-white disabled:opacity-20 hover:bg-zinc-800 transition-colors"
+                                    title="Move layer down"
+                                  >
+                                    <ArrowDown size={12} />
+                                  </button>
+
+                                  <div className="w-[1px] h-3 bg-zinc-700/60 mx-0.5" />
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updated = (design.canvasElements || []).filter(item => item.id !== el.id);
+                                      applyDesignUpdate({ ...design, canvasElements: updated });
+                                    }}
+                                    className="p-1 rounded-md text-red-400 hover:text-red-300 hover:bg-red-500/15 transition-colors"
+                                    title="Delete layer"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+
+                    {/* TAB: SETTINGS */}
+                    {mobileOpenTab === "settings" && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-xs font-bold text-zinc-300 block mb-2">Canvas Orientation</label>
+                          <div className="grid grid-cols-2 gap-3">
+                            <button
+                              onClick={() => handleOrientationChange("landscape")}
+                              className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${
+                                design.orientation !== "portrait"
+                                  ? "bg-indigo-600/30 border-indigo-500 text-white font-bold"
+                                  : "bg-zinc-800 border-zinc-700 text-zinc-300"
+                              }`}
+                            >
+                              <div className="w-8 h-6 border-2 border-current rounded-xs opacity-80" />
+                              <span className="text-xs">Landscape (3508x2480)</span>
+                            </button>
+                            <button
+                              onClick={() => handleOrientationChange("portrait")}
+                              className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${
+                                design.orientation === "portrait"
+                                  ? "bg-indigo-600/30 border-indigo-500 text-white font-bold"
+                                  : "bg-zinc-800 border-zinc-700 text-zinc-300"
+                              }`}
+                            >
+                              <div className="w-6 h-8 border-2 border-current rounded-xs opacity-80" />
+                              <span className="text-xs">Portrait (2480x3508)</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-zinc-800 space-y-3">
+                          <div>
+                            <label className="text-xs font-bold text-zinc-300 block mb-1">Template Name</label>
+                            <input
+                              type="text"
+                              value={name}
+                              onChange={e => setName(e.target.value)}
+                              className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2.5 text-xs text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-bold text-zinc-300 block mb-1">Description</label>
+                            <textarea
+                              rows={2}
+                              value={description}
+                              onChange={e => setDescription(e.target.value)}
+                              className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2.5 text-xs text-white"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-zinc-800 flex gap-2">
+                          <button
+                            onClick={() => {
+                              if (!showResetConfirm) {
+                                setShowResetConfirm(true);
+                              } else {
+                                applyDesignUpdate(defaultDesign);
+                                setShowResetConfirm(false);
+                                setMobileOpenTab(null);
+                              }
+                            }}
+                            className={`flex-1 py-3 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 ${
+                              showResetConfirm ? "bg-red-600 text-white" : "bg-zinc-800 text-red-400 border border-red-900/40"
+                            }`}
+                          >
+                            <RotateCcw size={14} />
+                            <span>{showResetConfirm ? "Confirm Reset" : "Reset Default"}</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+
+          {/* Canva Mobile Contextual Element Action Sub-sheet */}
+          <AnimatePresence>
+            {mobileElementAction && selectedElement && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setMobileElementAction(null)}
+                  className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+                />
+                <motion.div
+                  initial={{ y: "100%" }}
+                  animate={{ y: 0 }}
+                  exit={{ y: "100%" }}
+                  transition={{ type: "spring", damping: 28, stiffness: 320 }}
+                  drag="y"
+                  dragListener={false}
+                  dragControls={actionDrawerDragControls}
+                  dragConstraints={{ top: 0, bottom: 0 }}
+                  dragElastic={{ top: 0, bottom: 0.6 }}
+                  onDragEnd={(_e, info) => {
+                    if (info.offset.y > 50 || info.velocity.y > 250) {
+                      setMobileElementAction(null);
+                    }
+                  }}
+                  className="fixed inset-x-0 bottom-0 z-50 max-h-[50vh] flex flex-col bg-[#1b1c24] text-white rounded-t-2xl shadow-2xl border-t border-zinc-700/80 pb-safe lg:hidden overflow-hidden"
+                >
+                  <div
+                    onPointerDown={(e) => actionDrawerDragControls.start(e)}
+                    onClick={() => setMobileElementAction(null)}
+                    className="w-full flex justify-center items-center pt-2.5 pb-1.5 cursor-grab active:cursor-grabbing shrink-0 touch-none group select-none"
+                    title="Drag down or tap to close"
+                  >
+                    <div className="w-10 h-1.5 bg-zinc-600 group-hover:bg-zinc-400 group-active:bg-zinc-300 rounded-full transition-colors" />
+                  </div>
+                  <div className="flex items-center justify-between px-4 pb-2 border-b border-zinc-800 shrink-0">
+                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+                      {mobileElementAction === "edit" && "Edit Content"}
+                      {mobileElementAction === "font" && "Choose Font"}
+                      {mobileElementAction === "color" && "Color Palette"}
+                      {mobileElementAction === "format" && "Text Format & Alignment"}
+                      {mobileElementAction === "order" && "Layer Ordering"}
+                    </span>
+                    <button
+                      onClick={() => setMobileElementAction(null)}
+                      className="w-7 h-7 rounded-lg bg-zinc-800/80 hover:bg-zinc-700 text-zinc-400 hover:text-white flex items-center justify-center transition-colors"
+                      title="Close"
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                    {mobileElementAction === "edit" && (
+                      <div>
+                        {selectedElement.type === "staticText" && (
+                          <div className="space-y-2">
+                            <label className="text-xs text-zinc-400 font-medium">Text Content</label>
+                            <textarea
+                              rows={3}
+                              value={selectedElement.text || ""}
+                              onChange={(e) => updateSelectedElement({ text: e.target.value })}
+                              className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-indigo-500"
+                            />
+                          </div>
+                        )}
+                        {selectedElement.type === "dynamicText" && (
+                          <div className="space-y-2">
+                            <label className="text-xs text-zinc-400 font-medium">Map to Data Field</label>
+                            <div className="grid grid-cols-1 gap-2">
+                              {[
+                                { key: "recipientName", label: "Recipient Name" },
+                                { key: "role", label: "Role / Title / Degree" },
+                                { key: "eventName", label: "Event Description" },
+                                { key: "issueDate", label: "Issue Date" },
+                                { key: "certificateId", label: "Certificate ID / Serial No." },
+                              ].map(f => (
+                                <button
+                                  key={f.key}
+                                  onClick={() => updateSelectedElement({ text: f.key })}
+                                  className={`p-2.5 rounded-xl text-xs font-medium text-left flex items-center justify-between border transition-all ${
+                                    selectedElement.text === f.key
+                                      ? "bg-indigo-600/30 border-indigo-500 text-white font-semibold"
+                                      : "bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-700"
+                                  }`}
+                                >
+                                  <span>{f.label}</span>
+                                  {selectedElement.text === f.key && <Check size={14} className="text-indigo-400" />}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {selectedElement.type === "signature" && (
+                          <div className="space-y-3">
+                            <div>
+                              <label className="text-xs text-zinc-400 font-medium block mb-1">Signatory Name</label>
+                              <input
+                                type="text"
+                                value={selectedElement.signatoryName ?? (selectedElement.text?.split('|')[0] || "")}
+                                onChange={(e) => updateSelectedElement({ signatoryName: e.target.value })}
+                                className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                placeholder="Dr. John Smith"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-zinc-400 font-medium block mb-1">Signatory Title</label>
+                              <input
+                                type="text"
+                                value={selectedElement.signatoryTitle ?? (selectedElement.text?.split('|')[1] || "")}
+                                onChange={(e) => updateSelectedElement({ signatoryTitle: e.target.value })}
+                                className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                                placeholder="Executive Director"
+                              />
+                            </div>
+                            <div className="flex items-center justify-between pt-1">
+                              <span className="text-xs text-zinc-300">Underline divider</span>
+                              <input
+                                type="checkbox"
+                                checked={!selectedElement.hideLine}
+                                onChange={(e) => updateSelectedElement({ hideLine: !e.target.checked })}
+                                className="w-4 h-4 accent-indigo-600 rounded"
+                              />
+                            </div>
+                          </div>
+                        )}
+                        {(selectedElement.type === "image" || selectedElement.type === "badge") && (
+                          <div className="space-y-3">
+                            <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-zinc-700 rounded-xl cursor-pointer bg-zinc-900 hover:border-zinc-500">
+                              <ImageIcon size={20} className="text-zinc-500 mb-1" />
+                              <span className="text-xs text-zinc-400">Tap to upload file</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  const f = e.target.files?.[0];
+                                  if (f) {
+                                    const r = new FileReader();
+                                    r.onload = ev => updateSelectedElement({ src: ev.target?.result as string });
+                                    r.readAsDataURL(f);
+                                  }
+                                }}
+                                className="hidden"
+                              />
+                            </label>
+                            {selectedElement.src && (
+                              <button
+                                onClick={() => updateSelectedElement({ src: undefined })}
+                                className="w-full py-2 text-xs font-semibold text-red-400 bg-red-950/30 rounded-lg border border-red-900/50"
+                              >
+                                Remove Custom Graphic
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {mobileElementAction === "font" && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 overflow-x-auto pb-1.5 no-scrollbar">
+                          {["All", "Serif & Luxury", "Sans-Serif & Modern", "Display & Impact", "Handwriting & Signatures", "Monospace & Tech"].map(cat => (
+                            <button
+                              key={cat}
+                              onClick={() => setMobileFontCategory(cat)}
+                              className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
+                                mobileFontCategory === cat
+                                  ? "bg-indigo-600 border-indigo-500 text-white shadow-xs"
+                                  : "bg-zinc-800/90 border-zinc-700/60 text-zinc-300 hover:text-white hover:border-zinc-500"
+                              }`}
+                            >
+                              {cat}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="space-y-1.5 max-h-56 overflow-y-auto custom-scrollbar">
+                          {selectedElement.type === "signature" ? (
+                            ["var(--font-script, cursive)", "Great Vibes", "Dancing Script", "Pacifico", "Caveat", "Satisfy", "Sacramento", "Alex Brush", "Parisienne", "Allura"].map(f => (
+                              <button
+                                key={f}
+                                onClick={() => updateSelectedElement({ fontFamily: f })}
+                                className={`w-full p-2.5 rounded-xl text-left flex items-center justify-between border transition-all ${
+                                  selectedElement.fontFamily === f ? "bg-indigo-600/30 border-indigo-500 text-white" : "bg-zinc-900/60 border-zinc-800 text-zinc-200"
+                                }`}
+                              >
+                                <span style={{ fontFamily: f }} className="text-lg">
+                                  {f.includes("cursive") ? "Default Cursive" : f}
+                                </span>
+                                {selectedElement.fontFamily === f && <Check size={14} className="text-indigo-400" />}
+                              </button>
+                            ))
+                          ) : (
+                            GOOGLE_FONTS.filter(g => mobileFontCategory === "All" || g.group === mobileFontCategory).flatMap(g => g.fonts).map(font => (
+                              <button
+                                key={font}
+                                onClick={() => updateSelectedElement({ fontFamily: font })}
+                                className={`w-full p-2.5 rounded-xl text-left flex items-center justify-between border transition-all ${
+                                  selectedElement.fontFamily === font ? "bg-indigo-600/30 border-indigo-500 text-white" : "bg-zinc-900/60 border-zinc-800 text-zinc-200"
+                                }`}
+                              >
+                                <span style={{ fontFamily: font }} className="text-base truncate">
+                                  {font}
+                                </span>
+                                {selectedElement.fontFamily === font && <Check size={14} className="text-indigo-400 shrink-0" />}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {mobileElementAction === "color" && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs text-zinc-400 font-semibold tracking-wide uppercase">Palette Swatches</label>
+                          <span className="text-[11px] text-zinc-500 font-mono">16 curated tones</span>
+                        </div>
+                        <div className="grid grid-cols-8 gap-2">
+                          {[
+                            "#000000", "#0f172a", "#1e3a8a", "#1e40af", "#059669", "#166534", "#b45309", "#d97706",
+                            "#ffffff", "#94a3b8", "#64748b", "#334155", "#991b1b", "#831843", "#7c3aed", "#581c87"
+                          ].map(c => (
+                            <button
+                              key={c}
+                              onClick={() => updateSelectedElement({ color: c })}
+                              className={`h-9 rounded-xl border transition-all active:scale-95 flex items-center justify-center relative ${
+                                selectedElement.color?.toLowerCase() === c.toLowerCase()
+                                  ? "ring-2 ring-indigo-500 ring-offset-2 ring-offset-zinc-900 border-white"
+                                  : "border-zinc-700/80 hover:border-zinc-500"
+                              }`}
+                              style={{ backgroundColor: c }}
+                              title={c}
+                            >
+                              {selectedElement.color?.toLowerCase() === c.toLowerCase() && (
+                                <Check size={14} className={c === '#ffffff' || c === '#94a3b8' ? "text-zinc-900 stroke-[3]" : "text-white stroke-[3]"} />
+                              )}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="pt-3 border-t border-zinc-800/80 space-y-2">
+                          <label className="text-xs text-zinc-400 font-semibold tracking-wide uppercase">Custom Color</label>
+                          <div className="flex items-center gap-3">
+                            <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-zinc-700/80 shadow-inner flex items-center justify-center shrink-0 cursor-pointer group">
+                              <div
+                                className="w-full h-full"
+                                style={{ backgroundColor: selectedElement.color || '#000000' }}
+                              />
+                              <input
+                                type="color"
+                                value={selectedElement.color && selectedElement.color.startsWith('#') ? selectedElement.color : "#000000"}
+                                onChange={(e) => updateSelectedElement({ color: e.target.value })}
+                                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                                title="Choose custom color"
+                              />
+                            </div>
+                            <div className="relative flex-1 flex items-center">
+                              <span className="absolute left-3 text-zinc-500 font-mono text-xs select-none">#</span>
+                              <input
+                                type="text"
+                                maxLength={7}
+                                value={(selectedElement.color || "#000000").replace("#", "")}
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/[^0-9a-fA-F]/g, '');
+                                  updateSelectedElement({ color: `#${val}` });
+                                }}
+                                className="w-full bg-zinc-900 border border-zinc-700/80 rounded-xl py-2.5 pl-7 pr-3 text-xs font-mono uppercase text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                                placeholder="000000"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {mobileElementAction === "format" && (
+                      <div className="space-y-3">
+                        <label className="text-xs text-zinc-400 font-medium block">Alignment</label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { align: "left", icon: AlignLeft, label: "Left" },
+                            { align: "center", icon: AlignCenter, label: "Center" },
+                            { align: "right", icon: AlignRight, label: "Right" },
+                          ].map(({ align, icon: Icon, label }) => (
+                            <button
+                              key={align}
+                              onClick={() => updateSelectedElement({ align: align as any })}
+                              className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                                (selectedElement.align || "left") === align
+                                  ? "bg-indigo-600 text-white border-indigo-500"
+                                  : "bg-zinc-900 text-zinc-300 border-zinc-800"
+                              }`}
+                            >
+                              <Icon size={14} />
+                              <span>{label}</span>
+                            </button>
+                          ))}
+                        </div>
+
+                        <label className="text-xs text-zinc-400 font-medium block pt-2">Styling</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            onClick={() => updateSelectedElement({ fontWeight: selectedElement.fontWeight === "bold" ? "normal" : "bold" })}
+                            className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                              selectedElement.fontWeight === "bold"
+                                ? "bg-indigo-600 text-white border-indigo-500"
+                                : "bg-zinc-900 text-zinc-300 border-zinc-800"
+                            }`}
+                          >
+                            <Bold size={14} />
+                            <span>Bold</span>
+                          </button>
+                          <button
+                            onClick={() => updateSelectedElement({ fontStyle: selectedElement.fontStyle === "italic" ? "normal" : "italic" })}
+                            className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                              selectedElement.fontStyle === "italic"
+                                ? "bg-indigo-600 text-white border-indigo-500"
+                                : "bg-zinc-900 text-zinc-300 border-zinc-800"
+                            }`}
+                          >
+                            <Italic size={14} />
+                            <span>Italic</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {mobileElementAction === "order" && (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            onClick={() => moveLayerUp()}
+                            className="p-3 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 hover:text-white flex items-center justify-center gap-2 text-xs font-semibold"
+                          >
+                            <ArrowUp size={16} />
+                            <span>Bring Forward</span>
+                          </button>
+                          <button
+                            onClick={() => moveLayerDown()}
+                            className="p-3 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 hover:text-white flex items-center justify-center gap-2 text-xs font-semibold"
+                          >
+                            <ArrowDown size={16} />
+                            <span>Send Backward</span>
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => updateElement(selectedElement.id, { locked: !selectedElement.locked })}
+                          className={`w-full p-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-semibold transition-all ${
+                            selectedElement.locked
+                              ? "bg-amber-600/30 text-amber-300 border-amber-500/50"
+                              : "bg-zinc-900 text-zinc-300 border-zinc-800"
+                          }`}
+                        >
+                          {selectedElement.locked ? <Lock size={15} /> : <Unlock size={15} />}
+                          <span>{selectedElement.locked ? "Layer is Locked (Tap to Unlock)" : "Lock Layer Position"}</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+
+          {/* Canva Mobile More Menu Modal */}
+          <AnimatePresence>
+            {showMobileMoreMenu && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setShowMobileMoreMenu(false)}
+                  className="fixed inset-0 bg-black/60 z-50 lg:hidden"
+                />
+                <motion.div
+                  initial={{ y: "100%" }}
+                  animate={{ y: 0 }}
+                  exit={{ y: "100%" }}
+                  transition={{ type: "spring", damping: 28, stiffness: 320 }}
+                  drag="y"
+                  dragListener={false}
+                  dragControls={moreMenuDragControls}
+                  dragConstraints={{ top: 0, bottom: 0 }}
+                  dragElastic={{ top: 0, bottom: 0.6 }}
+                  onDragEnd={(_e, info) => {
+                    if (info.offset.y > 50 || info.velocity.y > 250) {
+                      setShowMobileMoreMenu(false);
+                    }
+                  }}
+                  className="fixed inset-x-0 bottom-0 z-50 flex flex-col bg-[#181920] text-white rounded-t-3xl shadow-2xl border-t border-zinc-700/80 p-5 space-y-4 lg:hidden pb-safe"
+                >
+                  <div
+                    onPointerDown={(e) => moreMenuDragControls.start(e)}
+                    onClick={() => setShowMobileMoreMenu(false)}
+                    className="w-full flex justify-center items-center -mt-2 mb-2 pt-1 pb-1 cursor-grab active:cursor-grabbing shrink-0 touch-none group select-none"
+                    title="Drag down or tap to close"
+                  >
+                    <div className="w-10 h-1.5 bg-zinc-600 group-hover:bg-zinc-400 group-active:bg-zinc-300 rounded-full transition-colors" />
+                  </div>
+                  <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+                    <h3 className="font-bold text-sm text-white">Template Options</h3>
+                    <button
+                      onClick={() => setShowMobileMoreMenu(false)}
+                      className="w-7 h-7 rounded-lg bg-zinc-800/80 hover:bg-zinc-700 text-zinc-400 hover:text-white flex items-center justify-center transition-colors"
+                      title="Close"
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs text-zinc-400 font-medium block mb-1">Template Name</label>
+                      <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2.5 text-xs text-white"
+                        placeholder="Template Name..."
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-zinc-400 font-medium block mb-1">Description</label>
+                      <textarea
+                        rows={2}
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2.5 text-xs text-white"
+                        placeholder="Description..."
+                      />
+                    </div>
+
+                    <div className="pt-2 flex items-center justify-between">
+                      <span className="text-xs text-zinc-300 font-medium">Orientation</span>
+                      <button
+                        onClick={() => handleOrientationChange(design.orientation === 'portrait' ? 'landscape' : 'portrait')}
+                        className="px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-xs font-semibold text-indigo-400"
+                      >
+                        {design.orientation === 'portrait' ? 'Portrait' : 'Landscape'}
+                      </button>
+                    </div>
+
+                    <div className="pt-3 border-t border-zinc-800 flex gap-2">
+                      <button
+                        onClick={() => {
+                          if (!showResetConfirm) {
+                            setShowResetConfirm(true);
+                          } else {
+                            applyDesignUpdate(defaultDesign);
+                            setShowResetConfirm(false);
+                            setShowMobileMoreMenu(false);
+                          }
+                        }}
+                        className={`flex-1 py-2.5 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 ${
+                          showResetConfirm ? "bg-red-600 text-white" : "bg-zinc-800 text-red-400 border border-red-900/40"
+                        }`}
+                      >
+                        <RotateCcw size={14} />
+                        <span>{showResetConfirm ? "Confirm Reset" : "Reset Default"}</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowMobileMoreMenu(false);
+                          setMobileOpenTab("settings");
+                        }}
+                        className="flex-1 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-xs font-semibold text-zinc-200"
+                      >
+                        View JSON
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>
         );
 }
-
 function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElementId, updateSelectedElement, updateElement, setActiveGuides, currentOrientation, scale, dummyQrCode, isPanMode }: any) {
   const [isEditing, setIsEditing] = useState(false);
   const dragStartData = useRef({ width: 0, fontSize: 0 });
+  const isDraggingRef = useRef(false);
+  const dragStartPos = useRef({ x: 0, y: 0 });
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -2916,8 +4237,11 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
       onDragStart={() => {
         if (el.locked) return;
         if (!isSelected) setSelectedElementId(el.id);
+        isDraggingRef.current = false;
+        dragStartPos.current = { x: Number.isFinite(el.x) ? el.x : 0, y: Number.isFinite(el.y) ? el.y : 0 };
       }}
       onDrag={(e, data) => {
+        isDraggingRef.current = true;
         const canvasWidth = currentOrientation === 'landscape' ? 3508 : 2480;
         const canvasHeight = currentOrientation === 'landscape' ? 2480 : 3508;
         const elW = data.node.offsetWidth;
@@ -2933,24 +4257,45 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         });
       }}
       onDragStop={(e, data) => {
-        // react-rnd is passed `scale={scale}`, so `data.x` and `data.y`
-        // are ALREADY in the unscaled canvas coordinate space (3508x2480 or 2480x3508).
+        setActiveGuides({ vertical: null, horizontal: null });
+
+        // If the interaction was a click or tap (no actual drag movement), preserve existing position
+        if (!isDraggingRef.current) {
+          return;
+        }
+        isDraggingRef.current = false;
+
+        let finalX = data.x;
+        let finalY = data.y;
+
+        // Extract precise canvas coordinates directly from react-draggable's transform if available
+        if (data.node && data.node.style && data.node.style.transform) {
+          const match = data.node.style.transform.match(/translate(?:3d)?\((-?\d+(?:\.\d+)?)px,\s*(-?\d+(?:\.\d+)?)px/);
+          if (match) {
+            finalX = parseFloat(match[1]);
+            finalY = parseFloat(match[2]);
+          }
+        }
+
+        if (isNaN(finalX) || isNaN(finalY)) {
+          return;
+        }
+
+        // Ignore micro-jitter movements under 4px (accidental twitch during click)
+        if (Math.abs(finalX - dragStartPos.current.x) < 4 && Math.abs(finalY - dragStartPos.current.y) < 4) {
+          return;
+        }
+
         const canvasWidth = currentOrientation === 'landscape' ? 3508 : 2480;
         const canvasHeight = currentOrientation === 'landscape' ? 2480 : 3508;
         const elW = data.node.offsetWidth;
         const elH = data.node.offsetHeight;
-        let finalX = data.x;
-        let finalY = data.y;
-        if (isNaN(finalX) || isNaN(finalY)) {
-          setActiveGuides({ vertical: null, horizontal: null });
-          return;
-        }
         const centerX = finalX + elW / 2;
         const centerY = finalY + elH / 2;
         const snap = 25;
         if (Math.abs(centerX - canvasWidth / 2) < snap) finalX = canvasWidth / 2 - elW / 2;
         if (Math.abs(centerY - canvasHeight / 2) < snap) finalY = canvasHeight / 2 - elH / 2;
-        setActiveGuides({ vertical: null, horizontal: null });
+
         updateElement(el.id, { x: Math.round(finalX), y: Math.round(finalY) });
       }}
       onResizeStart={(e, dir, ref) => {
@@ -3019,9 +4364,11 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         setSelectedElementId(el.id);
       }}
       style={{
+        touchAction: "none",
         pointerEvents: el.locked ? "none" : "auto",
         cursor: el.locked ? "default" : isEditing ? "text" : "move",
-        border: isSelected ? "2px solid #3b82f6" : "1px dashed transparent",
+        border: isSelected ? "2px solid #8b5cf6" : "1px dashed transparent",
+        boxShadow: isSelected ? "0 0 0 1px rgba(139, 92, 246, 0.4), 0 4px 14px rgba(139, 92, 246, 0.2)" : "none",
         padding: "2px",
         fontSize: `${el.fontSize || 16}px`,
         fontFamily: el.fontFamily || "var(--font-sans, sans-serif)",
@@ -3041,7 +4388,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         display: "flex",
         alignItems: (el.type === 'staticText' || el.type === 'dynamicText') ? "flex-start" : "center"
       }}
-      className={`${isSelected ? "bg-blue-50/10 shadow-[0_0_0_1px_rgba(59,130,246,0.3)]" : "hover:border-zinc-300"}`}
+      className={`touch-none ${isSelected ? "bg-blue-50/10 shadow-[0_0_0_1px_rgba(59,130,246,0.3)]" : "hover:border-zinc-300"}`}
       enableResizing={
         el.locked 
           ? false 
@@ -3053,14 +4400,14 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
       }
       lockAspectRatio={isProportional}
       resizeHandleStyles={{
-        bottomRight: { width: "16px", height: "16px", background: "white", border: "2px solid #3b82f6", borderRadius: "50%", right: "-8px", bottom: "-8px" },
-        right: { width: "16px", height: "16px", background: "white", border: "2px solid #3b82f6", borderRadius: "50%", right: "-8px", top: "50%", transform: "translateY(-50%)" },
-        bottom: { width: "16px", height: "16px", background: "white", border: "2px solid #3b82f6", borderRadius: "50%", bottom: "-8px", left: "50%", transform: "translateX(-50%)" },
-        bottomLeft: { width: "16px", height: "16px", background: "white", border: "2px solid #3b82f6", borderRadius: "50%", left: "-8px", bottom: "-8px" },
-        left: { width: "16px", height: "16px", background: "white", border: "2px solid #3b82f6", borderRadius: "50%", left: "-8px", top: "50%", transform: "translateY(-50%)" },
-        topLeft: { width: "16px", height: "16px", background: "white", border: "2px solid #3b82f6", borderRadius: "50%", left: "-8px", top: "-8px" },
-        top: { width: "16px", height: "16px", background: "white", border: "2px solid #3b82f6", borderRadius: "50%", top: "-8px", left: "50%", transform: "translateX(-50%)" },
-        topRight: { width: "16px", height: "16px", background: "white", border: "2px solid #3b82f6", borderRadius: "50%", right: "-8px", top: "-8px" }
+        bottomRight: { width: "16px", height: "16px", background: "white", border: "2px solid #8b5cf6", borderRadius: "50%", right: "-8px", bottom: "-8px" },
+        right: { width: "16px", height: "16px", background: "white", border: "2px solid #8b5cf6", borderRadius: "50%", right: "-8px", top: "50%", transform: "translateY(-50%)" },
+        bottom: { width: "16px", height: "16px", background: "white", border: "2px solid #8b5cf6", borderRadius: "50%", bottom: "-8px", left: "50%", transform: "translateX(-50%)" },
+        bottomLeft: { width: "16px", height: "16px", background: "white", border: "2px solid #8b5cf6", borderRadius: "50%", left: "-8px", bottom: "-8px" },
+        left: { width: "16px", height: "16px", background: "white", border: "2px solid #8b5cf6", borderRadius: "50%", left: "-8px", top: "50%", transform: "translateY(-50%)" },
+        topLeft: { width: "16px", height: "16px", background: "white", border: "2px solid #8b5cf6", borderRadius: "50%", left: "-8px", top: "-8px" },
+        top: { width: "16px", height: "16px", background: "white", border: "2px solid #8b5cf6", borderRadius: "50%", top: "-8px", left: "50%", transform: "translateX(-50%)" },
+        topRight: { width: "16px", height: "16px", background: "white", border: "2px solid #8b5cf6", borderRadius: "50%", right: "-8px", top: "-8px" }
       }}
     >
       <div onDoubleClick={handleDoubleClick} className={`w-full h-full flex flex-col pointer-events-auto ${(el.type === 'staticText' || el.type === 'dynamicText') ? 'justify-start' : (el.type === 'signature' ? 'justify-end' : 'justify-center')}`}>

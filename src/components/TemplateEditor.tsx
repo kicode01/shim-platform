@@ -4533,9 +4533,9 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
     const computeDeg = (clientX: number, clientY: number) => {
       const dx = clientX - centerX;
       const dy = clientY - centerY;
-      // Handle is positioned at bottom center (dy > 0, dx = 0), which corresponds to 90 deg.
-      // Subtracting 90 deg makes dragging straight down 0 deg.
-      let deg = (Math.atan2(dy, dx) * 180) / Math.PI - 90;
+      // Handle is positioned at top center (dy < 0, dx = 0), which corresponds to -90 deg.
+      // Adding 90 deg makes dragging straight up 0 deg.
+      let deg = (Math.atan2(dy, dx) * 180) / Math.PI + 90;
       deg = ((deg % 360) + 360) % 360;
 
       // Magnetic snapping within 4 degrees of standard angles
@@ -5001,32 +5001,32 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
           </>
         )}
 
-        {/* Interactive Rotation Handle */}
+        {/* Interactive Rotation Handle - Positioned on Top */}
         {isSelected && !isEditing && !el.locked && !isPanMode && (
           <div
             className="absolute left-1/2 flex flex-col items-center pointer-events-auto z-[70] cursor-grab active:cursor-grabbing select-none"
             style={{
-              bottom: `-${Math.round(44 / s)}px`,
+              top: `-${Math.round(44 / s)}px`,
               transform: `translateX(-50%) scale(${1 / s})`,
-              transformOrigin: "top center"
+              transformOrigin: "bottom center"
             }}
             onPointerDown={handleRotateStart}
             title="Drag to rotate element (Snaps to 0°, 45°, 90°, 180°)"
           >
-            {/* Connector stem */}
-            <div className="w-[1.5px] h-3 bg-zinc-700" />
-            
+            {/* Floating angle readout while dragging */}
+            {isRotating && (
+              <div className="absolute -top-7 px-2.5 py-1 bg-zinc-950/90 text-white text-xs font-mono font-bold rounded-lg shadow-xl whitespace-nowrap pointer-events-none border border-zinc-700 backdrop-blur-xs">
+                {Math.round(el.rotation || 0)}°
+              </div>
+            )}
+
             {/* Circular Handle Knob */}
             <div className="w-8 h-8 bg-white rounded-full shadow-lg border-2 border-zinc-800 hover:border-black flex items-center justify-center text-zinc-800 hover:text-black hover:scale-110 active:scale-95 transition-all">
               <RotateCw size={15} className="pointer-events-none" />
             </div>
 
-            {/* Floating angle readout while dragging */}
-            {isRotating && (
-              <div className="absolute top-11 px-2.5 py-1 bg-zinc-950/90 text-white text-xs font-mono font-bold rounded-lg shadow-xl whitespace-nowrap pointer-events-none border border-zinc-700 backdrop-blur-xs">
-                {Math.round(el.rotation || 0)}°
-              </div>
-            )}
+            {/* Connector stem */}
+            <div className="w-[1.5px] h-3 bg-zinc-700" />
           </div>
         )}
       </div>

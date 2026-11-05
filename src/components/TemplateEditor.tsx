@@ -4417,6 +4417,7 @@ const duplicateElement = (id?: string) => {
 function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElementId, updateSelectedElement, updateElement, setActiveGuides, currentOrientation, scale, dummyQrCode, isPanMode }: any) {
   const [isEditing, setIsEditing] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
+  const [isScalingRotated, setIsScalingRotated] = useState(false);
   const elementRef = useRef<HTMLDivElement>(null);
   const dragStartData = useRef({ width: 0, fontSize: 0 });
   const isDraggingRef = useRef(false);
@@ -4427,6 +4428,90 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
   const borderPx = Math.max(2, Math.round(2 / s));
   const halfPx = Math.round(handlePx / 2);
   const isText = el.type === 'staticText' || el.type === 'dynamicText';
+  const isRotated = Boolean(el.rotation && el.rotation % 360 !== 0);
+
+  const handleCornerResizeStart = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    try {
+      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+
+    const node = elementRef.current;
+    if (!node) return;
+    const rect = node.getBoundingClientRect();
+    const screenCenterX = rect.left + rect.width / 2;
+    const screenCenterY = rect.top + rect.height / 2;
+    const startDist = Math.hypot(e.clientX - screenCenterX, e.clientY - screenCenterY);
+    if (startDist <= 0) return;
+
+    setIsScalingRotated(true);
+
+    const canvasWidth = currentOrientation === 'landscape' ? 3508 : 2480;
+    const canvasHeight = currentOrientation === 'landscape' ? 2480 : 3508;
+    const startW = el.width || node.offsetWidth || 200;
+    const startH = el.height || node.offsetHeight || 200;
+    const startX = el.x;
+    const startY = el.y;
+    const centerX = startX + startW / 2;
+    const centerY = startY + startH / 2;
+    const startFs = el.fontSize || 16;
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const currentDist = Math.hypot(moveEvent.clientX - screenCenterX, moveEvent.clientY - screenCenterY);
+      const scaleFactor = Math.max(0.05, currentDist / startDist);
+      const newW = Math.max(20, Math.min(canvasWidth, Math.round(startW * scaleFactor)));
+      const newH = Math.max(10, Math.min(canvasHeight, Math.round(startH * scaleFactor)));
+      const newX = Math.round(centerX - newW / 2);
+      const newY = Math.round(centerY - newH / 2);
+
+      const updates: any = {
+        x: Math.max(0, Math.min(canvasWidth - newW, newX)),
+        y: Math.max(0, Math.min(canvasHeight - newH, newY)),
+        width: newW,
+      };
+      if (el.height !== undefined || el.type === 'shape' || isProportional) {
+        updates.height = newH;
+      }
+      if (el.type === 'staticText' || el.type === 'dynamicText' || el.type === 'signature') {
+        updates.fontSize = Math.max(8, Math.round(startFs * scaleFactor));
+      }
+      updateElement(el.id, updates, false);
+    };
+
+    const onPointerUp = (upEvent: PointerEvent) => {
+      setIsScalingRotated(false);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+
+      const currentDist = Math.hypot(upEvent.clientX - screenCenterX, upEvent.clientY - screenCenterY);
+      const scaleFactor = Math.max(0.05, currentDist / startDist);
+      const newW = Math.max(20, Math.min(canvasWidth, Math.round(startW * scaleFactor)));
+      const newH = Math.max(10, Math.min(canvasHeight, Math.round(startH * scaleFactor)));
+      const newX = Math.round(centerX - newW / 2);
+      const newY = Math.round(centerY - newH / 2);
+
+      const updates: any = {
+        x: Math.max(0, Math.min(canvasWidth - newW, newX)),
+        y: Math.max(0, Math.min(canvasHeight - newH, newY)),
+        width: newW,
+      };
+      if (el.height !== undefined || el.type === 'shape' || isProportional) {
+        updates.height = newH;
+      }
+      if (el.type === 'staticText' || el.type === 'dynamicText' || el.type === 'signature') {
+        updates.fontSize = Math.max(8, Math.round(startFs * scaleFactor));
+      }
+      updateElement(el.id, updates, true);
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
+  };
 
   const handleRotateStart = (e: React.PointerEvent) => {
     e.stopPropagation();
@@ -4645,7 +4730,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
       }}
       scale={scale}
       bounds="parent"
-      disableDragging={isEditing || isPanMode || isRotating || el.locked}
+      disableDragging={isEditing || isPanMode || isRotating || isScalingRotated || el.locked}
       onClick={(e: any) => {
         e.stopPropagation();
         if (el.locked) return;
@@ -4682,7 +4767,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
       }}
       className="touch-none select-none"
       enableResizing={
-        el.locked || isRotating
+        el.locked || isRotating || isRotated
           ? false 
           : isSelected && !isEditing 
             ? (el.type === 'signature' && !el.src 
@@ -4850,8 +4935,74 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         )}
         </div>
 
+        {/* Rotated Corner Resize Handles: Pinned directly to the 4 corners of the rotated element */}
+        {isRotated && isSelected && !isEditing && !el.locked && !isPanMode && (
+          <>
+            <div
+              className="absolute pointer-events-auto z-[65] hover:scale-125 transition-transform"
+              style={{
+                width: `${handlePx}px`,
+                height: `${handlePx}px`,
+                background: "white",
+                border: `${borderPx}px solid #18181b`,
+                borderRadius: "50%",
+                left: `-${halfPx}px`,
+                top: `-${halfPx}px`,
+                cursor: "nwse-resize"
+              }}
+              onPointerDown={handleCornerResizeStart}
+              title="Drag corner to scale rotated element"
+            />
+            <div
+              className="absolute pointer-events-auto z-[65] hover:scale-125 transition-transform"
+              style={{
+                width: `${handlePx}px`,
+                height: `${handlePx}px`,
+                background: "white",
+                border: `${borderPx}px solid #18181b`,
+                borderRadius: "50%",
+                right: `-${halfPx}px`,
+                top: `-${halfPx}px`,
+                cursor: "nesw-resize"
+              }}
+              onPointerDown={handleCornerResizeStart}
+              title="Drag corner to scale rotated element"
+            />
+            <div
+              className="absolute pointer-events-auto z-[65] hover:scale-125 transition-transform"
+              style={{
+                width: `${handlePx}px`,
+                height: `${handlePx}px`,
+                background: "white",
+                border: `${borderPx}px solid #18181b`,
+                borderRadius: "50%",
+                left: `-${halfPx}px`,
+                bottom: `-${halfPx}px`,
+                cursor: "nesw-resize"
+              }}
+              onPointerDown={handleCornerResizeStart}
+              title="Drag corner to scale rotated element"
+            />
+            <div
+              className="absolute pointer-events-auto z-[65] hover:scale-125 transition-transform"
+              style={{
+                width: `${handlePx}px`,
+                height: `${handlePx}px`,
+                background: "white",
+                border: `${borderPx}px solid #18181b`,
+                borderRadius: "50%",
+                right: `-${halfPx}px`,
+                bottom: `-${halfPx}px`,
+                cursor: "nwse-resize"
+              }}
+              onPointerDown={handleCornerResizeStart}
+              title="Drag corner to scale rotated element"
+            />
+          </>
+        )}
+
         {/* Interactive Rotation Handle */}
-        {isSelected && !isEditing && !el.locked && (
+        {isSelected && !isEditing && !el.locked && !isPanMode && (
           <div
             className="absolute left-1/2 flex flex-col items-center pointer-events-auto z-[70] cursor-grab active:cursor-grabbing select-none"
             style={{

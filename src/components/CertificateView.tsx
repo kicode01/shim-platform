@@ -546,6 +546,8 @@ export interface CanvasElement {
   maxFontSize?: number;
   /** Max lines the text may occupy when auto-fitting. Default 1 (never wrap). */
   maxLines?: number;
+  /** Rotation angle in degrees (0 - 360) */
+  rotation?: number;
 }
 
 export interface CertificateDesignConfig {
@@ -962,14 +964,14 @@ export default function CertificateView({
 
             if (el.type === "qrCode") {
               return (
-                <div key={el.id} style={{ position: "absolute", zIndex: 1, left: el.x, top: el.y, width: el.width, height: el.height }}>
+                <div key={el.id} style={{ position: "absolute", zIndex: 1, left: el.x, top: el.y, width: el.width, height: el.height, transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined, transformOrigin: "center center" }}>
                   <QrCodeElement url={validateUrl} color={el.color || "#0f172a"} width="100%" height="100%" />
                 </div>
               );
             }
             if (el.type === "image" || el.type === "badge") {
               return (
-                <div key={el.id} style={{ position: "absolute", zIndex: 1, left: el.x, top: el.y, width: el.width, height: el.height }}>
+                <div key={el.id} style={{ position: "absolute", zIndex: 1, left: el.x, top: el.y, width: el.width, height: el.height, transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined, transformOrigin: "center center" }}>
                   {el.src ? (
                     <div style={{ position: "relative", width: "100%", height: "100%" }}>
                       <img crossOrigin="anonymous" src={el.src} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.1)) drop-shadow(0 10px 15px rgba(0,0,0,0.1))" }} />
@@ -1039,13 +1041,13 @@ export default function CertificateView({
 
             if (el.type === "shape") {
               return (
-                <div key={el.id} style={{ position: "absolute", zIndex: 1, left: el.x, top: el.y, width: el.width, height: el.height, backgroundColor: el.color || "#000000" }} />
+                <div key={el.id} style={{ position: "absolute", zIndex: 1, left: el.x, top: el.y, width: el.width, height: el.height, backgroundColor: el.color || "#000000", transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined, transformOrigin: "center center" }} />
               );
             }
 
             if (el.type === "signature") {
                 return (
-                  <div key={el.id} style={{ position: "absolute", zIndex: 1, left: el.x, top: el.y, width: el.width, height: el.height, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}>
+                  <div key={el.id} style={{ position: "absolute", zIndex: 1, left: el.x, top: el.y, width: el.width, height: el.height, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined, transformOrigin: "center center" }}>
                     {el.src ? (
                       <img crossOrigin="anonymous" src={el.src} alt="Signature" style={{ maxWidth: "100%", maxHeight: "70%", objectFit: "contain", marginBottom: `${el.linePadding ?? 10}px` }} />
                     ) : (
@@ -1083,7 +1085,9 @@ export default function CertificateView({
                   textTransform: el.textTransform as any || "none",
                   lineHeight: 1.2,
                   whiteSpace: "pre-wrap",
-                  opacity: 1
+                  opacity: 1,
+                  transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
+                  transformOrigin: "center center"
                 }}
               >
                 {content}

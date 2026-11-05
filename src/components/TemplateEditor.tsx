@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Layers, Save, ArrowLeft, Stamp, Sliders, Code2, ShieldCheck, CheckCircle2, RotateCcw, Image as ImageIcon, Move, LayoutTemplate, Loader2, Sparkles, Shapes, Type, FileImage, MousePointer2, Minus, Plus, Trash2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, Database, QrCode, Undo, Redo, Hand, X, ArrowUp, ArrowDown, ChevronDown, ChevronUp, Lock, Unlock, Eye, Search, Copy, MoreHorizontal, Palette, Check, RefreshCw } from "lucide-react";
+import { Layers, Save, ArrowLeft, Stamp, Sliders, Code2, ShieldCheck, CheckCircle2, RotateCcw, RotateCw, Image as ImageIcon, Move, LayoutTemplate, Loader2, Sparkles, Shapes, Type, FileImage, MousePointer2, Minus, Plus, Trash2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, Database, QrCode, Undo, Redo, Hand, X, ArrowUp, ArrowDown, ChevronDown, ChevronUp, Lock, Unlock, Eye, Search, Copy, MoreHorizontal, Palette, Check, RefreshCw } from "lucide-react";
 import { Rnd } from 'react-rnd';
 import CertificateView, { CertificateDesignConfig, CanvasElement, CanvasElementType } from "@/components/CertificateView";
 import { v4 as uuidv4 } from "uuid";
@@ -1109,7 +1109,7 @@ export default function TemplateEditor({
 
   // Canva Mobile State
   const [mobileOpenTab, setMobileOpenTab] = useState<"templates" | "elements" | "text" | "background" | "layers" | "settings" | null>(null);
-  const [mobileElementAction, setMobileElementAction] = useState<"edit" | "font" | "size" | "color" | "format" | "order" | null>(null);
+  const [mobileElementAction, setMobileElementAction] = useState<"edit" | "font" | "size" | "color" | "format" | "order" | "rotate" | null>(null);
   const [mobileSearch, setMobileSearch] = useState<string>("");
   const [mobileCategoryFilter, setMobileCategoryFilter] = useState<string | null>(null);
   const [showMobileMoreMenu, setShowMobileMoreMenu] = useState<boolean>(false);
@@ -1652,9 +1652,25 @@ const duplicateElement = (id?: string) => {
   }, [scale, userZoom, design.orientation]);
 
   const isDraggingCanvas = useRef(false);
+  const isRightClickPanning = useRef(false);
+  const [isRightPanningActive, setIsRightPanningActive] = useState(false);
   const dragStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
 
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
+    // Right mouse button (button 2) triggers panning anywhere at any zoom level
+    if (e.button === 2) {
+      e.preventDefault();
+      isRightClickPanning.current = true;
+      setIsRightPanningActive(true);
+      dragStart.current = {
+        x: e.clientX,
+        y: e.clientY,
+        panX: panOffset.x,
+        panY: panOffset.y
+      };
+      return;
+    }
+
     if (isPanMode && hasOverflow) {
       isDraggingCanvas.current = true;
       dragStart.current = {
@@ -1667,7 +1683,7 @@ const duplicateElement = (id?: string) => {
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent) => {
-    if (isDraggingCanvas.current && isPanMode && hasOverflow) {
+    if (isRightClickPanning.current || (isDraggingCanvas.current && isPanMode && hasOverflow)) {
       const dx = e.clientX - dragStart.current.x;
       const dy = e.clientY - dragStart.current.y;
       setPanOffset({
@@ -1679,7 +1695,22 @@ const duplicateElement = (id?: string) => {
 
   const handleCanvasMouseUp = () => {
     isDraggingCanvas.current = false;
+    if (isRightClickPanning.current) {
+      isRightClickPanning.current = false;
+      setIsRightPanningActive(false);
+    }
   };
+
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isRightClickPanning.current) {
+        isRightClickPanning.current = false;
+        setIsRightPanningActive(false);
+      }
+    };
+    window.addEventListener("mouseup", handleGlobalMouseUp);
+    return () => window.removeEventListener("mouseup", handleGlobalMouseUp);
+  }, []);
 
   const handleCanvasTouchStart = (e: React.TouchEvent) => {
     if (isPanMode && hasOverflow && e.touches.length === 1) {
@@ -2732,6 +2763,42 @@ const duplicateElement = (id?: string) => {
                                 )}
                               </div>
                             </div>
+
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between border-b border-zinc-200 pb-1">
+                                <h5 className="text-[11px] font-bold uppercase tracking-widest text-zinc-800">Rotation</h5>
+                                <span className="text-xs font-mono font-bold text-zinc-600">{Math.round(selectedElement.rotation || 0)}°</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="relative flex-1">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-xs font-bold">°</span>
+                                  <input 
+                                    type="number" 
+                                    min={0}
+                                    max={360}
+                                    className="input-field h-9 pl-7 pr-2 w-full text-sm font-mono" 
+                                    placeholder="0" 
+                                    value={selectedElement.rotation ?? 0} 
+                                    onChange={(e) => updateSelectedElement({ rotation: (Number(e.target.value) % 360 + 360) % 360 })} 
+                                  />
+                                </div>
+                                <button 
+                                  onClick={() => updateSelectedElement({ rotation: (((selectedElement.rotation || 0) + 90) % 360) })}
+                                  className="h-9 px-3 rounded-lg text-xs font-semibold bg-zinc-100 hover:bg-zinc-200 text-zinc-700 flex items-center gap-1.5 transition-colors border border-zinc-200 shrink-0"
+                                  title="Rotate 90° Clockwise"
+                                >
+                                  <RotateCw size={13} /> +90°
+                                </button>
+                                <button 
+                                  onClick={() => updateSelectedElement({ rotation: 0 })}
+                                  disabled={!selectedElement.rotation}
+                                  className="h-9 px-3 rounded-lg text-xs font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-zinc-50 hover:bg-zinc-100 text-zinc-600 border border-zinc-200 shrink-0"
+                                  title="Reset Rotation to 0°"
+                                >
+                                  Reset
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         )}
 
@@ -2862,10 +2929,11 @@ const duplicateElement = (id?: string) => {
           {/* Canvas Viewport */}
           <div
             ref={containerRef}
-            className={`flex-1 min-h-0 relative flex items-center justify-center bg-[#141416] lg:bg-zinc-200/50 overflow-hidden touch-none select-none ${isPanMode && hasOverflow ? 'cursor-grab active:cursor-grabbing' : ''}`}
+            className={`flex-1 min-h-0 relative flex items-center justify-center bg-[#141416] lg:bg-zinc-200/50 overflow-hidden touch-none select-none ${isRightPanningActive ? 'cursor-grabbing' : isPanMode && hasOverflow ? 'cursor-grab active:cursor-grabbing' : ''}`}
             style={{ touchAction: 'none', overscrollBehavior: 'none' }}
+            onContextMenu={(e) => e.preventDefault()}
             onClick={(e) => { 
-              if (e.target === e.currentTarget && !isPanMode) { 
+              if (e.target === e.currentTarget && !isPanMode && !isRightPanningActive) { 
                 setSelectedElementId(null); 
                 setMobileElementAction(null);
               } 
@@ -2883,8 +2951,8 @@ const duplicateElement = (id?: string) => {
             onTouchMove={handleCanvasTouchMove}
             onTouchEnd={handleCanvasTouchEnd}
           >
-            {isPanMode && hasOverflow && (
-              <div className="absolute inset-0 z-[100] pointer-events-auto" />
+            {(isRightPanningActive || (isPanMode && hasOverflow)) && (
+              <div className="absolute inset-0 z-[100] pointer-events-auto cursor-grabbing" />
             )}
 
             <div
@@ -2898,8 +2966,9 @@ const duplicateElement = (id?: string) => {
                 backgroundSize: 'cover',
                 backgroundPosition: 'center'
               }}
+              onContextMenu={(e) => e.preventDefault()}
               onClick={(e) => { 
-                if (e.target === e.currentTarget) {
+                if (e.target === e.currentTarget && !isRightPanningActive) {
                   setSelectedElementId(null);
                   setMobileElementAction(null);
                 } 
@@ -3189,6 +3258,17 @@ const duplicateElement = (id?: string) => {
                   >
                     <Layers size={14} />
                     <span>Layer</span>
+                  </button>
+
+                  {/* Rotate */}
+                  <button
+                    onClick={() => setMobileElementAction(mobileElementAction === "rotate" ? null : "rotate")}
+                    className={`h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-all ${
+                      mobileElementAction === "rotate" ? "bg-white text-zinc-950 font-bold shadow-xs" : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                    }`}
+                  >
+                    <RotateCw size={14} />
+                    <span>Rotate{selectedElement.rotation ? ` (${selectedElement.rotation}°)` : ""}</span>
                   </button>
 
                   {/* Delete */}
@@ -3836,6 +3916,7 @@ const duplicateElement = (id?: string) => {
                       {mobileElementAction === "color" && "Color Palette"}
                       {mobileElementAction === "format" && "Text Format & Alignment"}
                       {mobileElementAction === "order" && "Layer Ordering"}
+                      {mobileElementAction === "rotate" && "Rotate Element"}
                     </span>
                     <button
                       onClick={() => setMobileElementAction(null)}
@@ -4153,6 +4234,40 @@ const duplicateElement = (id?: string) => {
                         </button>
                       </div>
                     )}
+
+                    {mobileElementAction === "rotate" && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between text-xs text-zinc-400">
+                          <span>Rotation Angle</span>
+                          <span className="font-mono text-white font-bold text-sm">{Math.round(selectedElement.rotation || 0)}°</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range"
+                            min="0"
+                            max="360"
+                            value={selectedElement.rotation || 0}
+                            onChange={(e) => updateSelectedElement({ rotation: Number(e.target.value) })}
+                            className="flex-1 h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-white"
+                          />
+                        </div>
+                        <div className="grid grid-cols-4 gap-2 pt-1">
+                          {[0, 90, 180, 270].map((deg) => (
+                            <button
+                              key={deg}
+                              onClick={() => updateSelectedElement({ rotation: deg })}
+                              className={`py-2 rounded-xl text-xs font-semibold border transition-all ${
+                                (selectedElement.rotation || 0) === deg
+                                  ? "bg-white text-black border-white"
+                                  : "bg-zinc-900 border-zinc-800 text-zinc-300 hover:bg-zinc-800"
+                              }`}
+                            >
+                              {deg}°
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               </>
@@ -4280,9 +4395,65 @@ const duplicateElement = (id?: string) => {
 }
 function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElementId, updateSelectedElement, updateElement, setActiveGuides, currentOrientation, scale, dummyQrCode, isPanMode }: any) {
   const [isEditing, setIsEditing] = useState(false);
+  const [isRotating, setIsRotating] = useState(false);
   const dragStartData = useRef({ width: 0, fontSize: 0 });
   const isDraggingRef = useRef(false);
   const dragStartPos = useRef({ x: 0, y: 0 });
+
+  const handleRotateStart = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    try {
+      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+
+    const node = document.getElementById(`rnd-${el.id}`);
+    if (!node) return;
+    const rect = node.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    setIsRotating(true);
+
+    const computeDeg = (clientX: number, clientY: number) => {
+      const dx = clientX - centerX;
+      const dy = clientY - centerY;
+      // Handle is positioned at bottom center (dy > 0, dx = 0), which corresponds to 90 deg.
+      // Subtracting 90 deg makes dragging straight down 0 deg.
+      let deg = (Math.atan2(dy, dx) * 180) / Math.PI - 90;
+      deg = ((deg % 360) + 360) % 360;
+
+      // Magnetic snapping within 4 degrees of standard angles
+      const snapAngles = [0, 45, 90, 135, 180, 225, 270, 315, 360];
+      for (const snap of snapAngles) {
+        if (Math.abs(deg - snap) <= 4) {
+          deg = snap % 360;
+          break;
+        }
+      }
+      return Math.round(deg);
+    };
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const deg = computeDeg(moveEvent.clientX, moveEvent.clientY);
+      updateElement(el.id, { rotation: deg }, false);
+    };
+
+    const onPointerUp = (upEvent: PointerEvent) => {
+      setIsRotating(false);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+      const finalDeg = computeDeg(upEvent.clientX, upEvent.clientY);
+      updateElement(el.id, { rotation: finalDeg }, true);
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
+  };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -4440,19 +4611,26 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
       }}
       scale={scale}
       bounds="parent"
-      disableDragging={isEditing || isPanMode || el.locked}
+      disableDragging={isEditing || isPanMode || isRotating || el.locked}
       onClick={(e: any) => {
         e.stopPropagation();
         if (el.locked) return;
         setSelectedElementId(el.id);
       }}
+      onContextMenu={(e: any) => e.preventDefault()}
+      onMouseDown={(e: any) => {
+        if (e.button === 2) {
+          // Allow right mouse button to bubble to handleCanvasMouseDown for right-click pan
+          return;
+        }
+      }}
       style={{
         touchAction: "none",
         pointerEvents: el.locked ? "none" : "auto",
         cursor: el.locked ? "default" : isEditing ? "text" : "move",
-        border: isSelected ? "2px solid #18181b" : "1px dashed transparent",
-        boxShadow: isSelected ? "0 0 0 1px rgba(255, 255, 255, 0.9), 0 4px 14px rgba(0, 0, 0, 0.25)" : "none",
-        padding: "2px",
+        border: "none",
+        boxShadow: "none",
+        padding: "0",
         fontSize: `${el.fontSize || 16}px`,
         fontFamily: el.fontFamily || "var(--font-sans, sans-serif)",
         color: el.color || "#000000",
@@ -4464,16 +4642,13 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         lineHeight: el.lineSpacing || 1.2,
         whiteSpace: "pre-wrap",
         zIndex: isSelected ? 50 : 10,
-        backgroundColor: el.type === 'shape' ? (el.color || '#000000') : 'transparent',
-        // Text must grow DOWN from el.y to match CertificateView (the final
-        // output), which positions text with a plain `top: el.y` div. Using
-        // flex centring here made the preview ride up over elements above it.
+        backgroundColor: "transparent",
         display: "flex",
         alignItems: (el.type === 'staticText' || el.type === 'dynamicText') ? "flex-start" : "center"
       }}
-      className={`touch-none ${isSelected ? "shadow-[0_0_0_1px_rgba(255,255,255,0.4)]" : "hover:border-zinc-400"}`}
+      className="touch-none select-none"
       enableResizing={
-        el.locked 
+        el.locked || isRotating
           ? false 
           : isSelected && !isEditing 
             ? (el.type === 'signature' && !el.src 
@@ -4493,7 +4668,20 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         topRight: { width: "16px", height: "16px", background: "white", border: "2px solid #18181b", borderRadius: "50%", right: "-8px", top: "-8px" }
       }}
     >
-      <div onDoubleClick={handleDoubleClick} className={`w-full h-full flex flex-col pointer-events-auto ${(el.type === 'staticText' || el.type === 'dynamicText') ? 'justify-start' : (el.type === 'signature' ? 'justify-end' : 'justify-center')}`}>
+      <div 
+        className={`w-full h-full relative transition-shadow ${
+          isSelected 
+            ? "ring-2 ring-zinc-900 shadow-[0_0_0_1px_rgba(255,255,255,0.9),0_4px_14px_rgba(0,0,0,0.25)]" 
+            : "hover:ring-1 hover:ring-zinc-400/80"
+        }`}
+        style={{
+          transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
+          transformOrigin: "center center",
+          backgroundColor: el.type === 'shape' ? (el.color || '#000000') : 'transparent',
+          padding: "2px"
+        }}
+      >
+        <div onDoubleClick={handleDoubleClick} className={`w-full h-full flex flex-col pointer-events-auto ${(el.type === 'staticText' || el.type === 'dynamicText') ? 'justify-start' : (el.type === 'signature' ? 'justify-end' : 'justify-center')}`}>
         {isEditing ? (
           <textarea
             autoFocus
@@ -4624,6 +4812,31 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
           </div>
         ) : el.type === 'shape' ? null : (
           <span className="pointer-events-none block w-full">{displayText}</span>
+        )}
+        </div>
+
+        {/* Interactive Rotation Handle */}
+        {isSelected && !isEditing && !el.locked && (
+          <div
+            className="absolute -bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-auto z-[70] cursor-grab active:cursor-grabbing select-none"
+            onPointerDown={handleRotateStart}
+            title="Drag to rotate element (Snaps to 0°, 45°, 90°, 180°)"
+          >
+            {/* Connector stem */}
+            <div className="w-[1.5px] h-2 bg-zinc-800" />
+            
+            {/* Circular Handle Knob */}
+            <div className="w-6 h-6 bg-white rounded-full shadow-md border border-zinc-300 hover:border-zinc-900 flex items-center justify-center text-zinc-700 hover:text-black hover:scale-110 active:scale-95 transition-all">
+              <RotateCw size={12} className="pointer-events-none" />
+            </div>
+
+            {/* Floating angle readout while dragging */}
+            {isRotating && (
+              <div className="absolute top-8 px-2 py-0.5 bg-zinc-900 text-white text-[10px] font-mono font-bold rounded-md shadow-lg whitespace-nowrap pointer-events-none border border-zinc-700">
+                {Math.round(el.rotation || 0)}°
+              </div>
+            )}
+          </div>
         )}
       </div>
     </Rnd>

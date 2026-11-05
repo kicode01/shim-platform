@@ -1061,6 +1061,28 @@ export default function TemplateEditor({
     }
   }
 
+  // Sanitize elements that exceed canvas boundaries (e.g. legacy runaway 3000px dividers)
+  const isInitialPortrait = parsedInitial.orientation === 'portrait';
+  const initCanvasWidth = isInitialPortrait ? 2480 : 3508;
+  const initCanvasHeight = isInitialPortrait ? 3508 : 2480;
+  if (parsedInitial.canvasElements) {
+    parsedInitial.canvasElements = parsedInitial.canvasElements.map(el => {
+      let width = el.width;
+      let x = el.x;
+      let y = el.y;
+      if (width !== undefined && width > initCanvasWidth) {
+        width = Math.round(initCanvasWidth * 0.55);
+        x = Math.round((initCanvasWidth - width) / 2);
+      } else if (width !== undefined && x + width > initCanvasWidth) {
+        x = Math.max(0, initCanvasWidth - width);
+      }
+      if (y > initCanvasHeight) {
+        y = Math.round(initCanvasHeight * 0.5);
+      }
+      return { ...el, ...(width !== undefined ? { width } : {}), x, y };
+    });
+  }
+
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription);
   const [error, setError] = useState('');
@@ -1457,13 +1479,44 @@ export default function TemplateEditor({
   };
 
   const addElement = (type: CanvasElementType, defaultText: string = "New Text") => {
+    const isPortrait = design.orientation === 'portrait';
+    const canvasWidth = isPortrait ? 2480 : 3508;
+    const canvasHeight = isPortrait ? 3508 : 2480;
+
+    let elWidth: number | undefined = undefined;
+    let elHeight: number | undefined = undefined;
+    let elX = 500;
+    let elY = 1000;
+
+    if (type === 'qrCode' || type === 'image' || type === 'badge') {
+      elWidth = 368;
+      elHeight = 368;
+      elX = Math.round((canvasWidth - 368) / 2);
+      elY = Math.round(canvasHeight * 0.7);
+    } else if (type === 'shape') {
+      // Elegant horizontal divider line: ~55% of canvas width, centered
+      elWidth = Math.round(canvasWidth * 0.55);
+      elHeight = 6;
+      elX = Math.round((canvasWidth - elWidth) / 2);
+      elY = Math.round(canvasHeight * 0.5);
+    } else if (type === 'signature') {
+      elWidth = 600;
+      elHeight = 220;
+      elX = Math.round((canvasWidth - 600) / 2);
+      elY = Math.round(canvasHeight * 0.75);
+    } else {
+      // Text elements (staticText, dynamicText)
+      elX = Math.round(canvasWidth * 0.2);
+      elY = Math.round(canvasHeight * 0.38);
+    }
+
     const newEl: CanvasElement = {
       id: uuidv4(),
       type,
-      x: type.includes("Text") || type === 'signature' ? 1500 : 830,
-      y: 1000,
-      width: (type === 'qrCode' || type === 'image' || type === 'badge') ? 368 : type === 'shape' ? 3000 : undefined,
-      height: (type === 'qrCode' || type === 'image' || type === 'badge') ? 368 : type === 'shape' ? 6 : undefined,
+      x: elX,
+      y: elY,
+      width: elWidth,
+      height: elHeight,
       text: type.includes("Text") || type === 'signature' ? defaultText : undefined,
       fontSize: 120,
       fontFamily: "var(--font-sans, sans-serif)",
@@ -4311,6 +4364,10 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         if (Math.abs(centerX - canvasWidth / 2) < snap) finalX = canvasWidth / 2 - elW / 2;
         if (Math.abs(centerY - canvasHeight / 2) < snap) finalY = canvasHeight / 2 - elH / 2;
 
+        // Boundary restriction: clamp strictly within canvas
+        finalX = Math.max(0, Math.min(canvasWidth - elW, finalX));
+        finalY = Math.max(0, Math.min(canvasHeight - elH, finalY));
+
         updateElement(el.id, { x: Math.round(finalX), y: Math.round(finalY) });
       }}
       onResizeStart={(e, dir, ref) => {
@@ -4338,9 +4395,15 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
           updates.fontSize = Math.max(8, Math.round(startFs * ratio));
         }
 
-        updates.width = (el.type === 'signature' && !el.src) ? ref.offsetWidth : Math.round(newWidth);
+        const canvasWidth = currentOrientation === 'landscape' ? 3508 : 2480;
+        const canvasHeight = currentOrientation === 'landscape' ? 2480 : 3508;
+
+        const clampedWidth = Math.max(10, Math.min(canvasWidth - safeX, Math.round(newWidth)));
+        const clampedHeight = newHeight !== undefined ? Math.max(4, Math.min(canvasHeight - safeY, Math.round(newHeight))) : undefined;
+
+        updates.width = (el.type === 'signature' && !el.src) ? ref.offsetWidth : clampedWidth;
         if (newHeight !== undefined && !isNaN(newHeight)) {
-          updates.height = (el.type === 'signature' && !el.src) ? ref.offsetHeight : Math.round(newHeight);
+          updates.height = (el.type === 'signature' && !el.src) ? ref.offsetHeight : clampedHeight;
         }
 
         updateElement(el.id, updates, false);
@@ -4363,9 +4426,15 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
           updates.fontSize = Math.max(8, Math.round(startFs * ratio));
         }
 
-        updates.width = (el.type === 'signature' && !el.src) ? ref.offsetWidth : Math.round(newWidth);
+        const canvasWidth = currentOrientation === 'landscape' ? 3508 : 2480;
+        const canvasHeight = currentOrientation === 'landscape' ? 2480 : 3508;
+
+        const clampedWidth = Math.max(10, Math.min(canvasWidth - safeX, Math.round(newWidth)));
+        const clampedHeight = newHeight !== undefined ? Math.max(4, Math.min(canvasHeight - safeY, Math.round(newHeight))) : undefined;
+
+        updates.width = (el.type === 'signature' && !el.src) ? ref.offsetWidth : clampedWidth;
         if (newHeight !== undefined && !isNaN(newHeight)) {
-          updates.height = (el.type === 'signature' && !el.src) ? ref.offsetHeight : Math.round(newHeight);
+          updates.height = (el.type === 'signature' && !el.src) ? ref.offsetHeight : clampedHeight;
         }
 
         updateElement(el.id, updates, true);

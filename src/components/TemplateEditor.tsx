@@ -1747,6 +1747,7 @@ const duplicateElement = (id?: string) => {
             <input
               type="text"
               value={name}
+              maxLength={100}
               onChange={(e) => {
                 setName(e.target.value);
                 if (error) setError('');
@@ -1807,35 +1808,31 @@ const duplicateElement = (id?: string) => {
           <Link href="/dashboard/templates" className="inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-zinc-700 transition-colors mb-4">
             <ArrowLeft size={16} /> Templates
           </Link>
-          <div className="flex items-start gap-3 w-full max-w-2xl">
-            <div className="p-2 bg-zinc-100 rounded-lg text-zinc-600 shrink-0 mt-1.5">
-              <LayoutTemplate size={24} />
+          <div className="flex items-start gap-3 w-full max-w-xl">
+            <div className="p-2 bg-zinc-100 rounded-lg text-zinc-600 shrink-0 mt-1">
+              <LayoutTemplate size={22} />
             </div>
-            <div className="flex flex-col w-full flex-1 gap-1">
-              <textarea
-                className={`text-2xl font-bold text-zinc-800 bg-transparent border-b-2 border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:outline-none transition-colors px-1 py-0.5 w-full resize-none overflow-hidden leading-tight ${error ? 'border-red-500 placeholder-red-300 text-red-600' : ''}`}
+            <div className="flex flex-col w-full min-w-0 gap-0.5">
+              <input
+                type="text"
+                className={`text-xl font-bold text-zinc-900 bg-transparent border-b border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:outline-none transition-colors px-1 py-0.5 w-full truncate ${error ? 'border-red-500 placeholder-red-300 text-red-600' : ''}`}
                 value={name}
+                maxLength={100}
                 onChange={e => {
                   setName(e.target.value);
                   if (error) setError('');
                   if (!design.certificateTitle || design.certificateTitle === "Certificate of Completion")
                     updateDesignField("certificateTitle", e.target.value);
-                  e.target.style.height = 'auto';
-                  e.target.style.height = `${e.target.scrollHeight}px`;
                 }}
-                rows={1}
                 placeholder="Template name..."
                 required
               />
-              <textarea
-                className="text-zinc-500 text-sm font-medium bg-transparent border-b-2 border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:outline-none transition-colors px-1 py-0.5 w-full resize-none overflow-hidden leading-relaxed"
+              <input
+                type="text"
+                className="text-zinc-500 text-xs font-medium bg-transparent border-b border-transparent hover:border-zinc-200 focus:border-zinc-900 focus:outline-none transition-colors px-1 py-0.5 w-full truncate"
                 value={description}
-                onChange={e => {
-                  setDescription(e.target.value);
-                  e.target.style.height = 'auto';
-                  e.target.style.height = `${e.target.scrollHeight}px`;
-                }}
-                rows={1}
+                maxLength={200}
+                onChange={e => setDescription(e.target.value)}
                 placeholder="Description (optional)..."
               />
             </div>
@@ -4215,6 +4212,7 @@ const duplicateElement = (id?: string) => {
                       <input
                         type="text"
                         value={name}
+                        maxLength={100}
                         onChange={(e) => setName(e.target.value)}
                         className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2.5 text-xs text-white"
                         placeholder="Template Name..."
@@ -4225,8 +4223,9 @@ const duplicateElement = (id?: string) => {
                       <textarea
                         rows={2}
                         value={description}
+                        maxLength={250}
                         onChange={(e) => setDescription(e.target.value)}
-                        className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2.5 text-xs text-white"
+                        className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2.5 text-xs text-white resize-none"
                         placeholder="Description..."
                       />
                     </div>

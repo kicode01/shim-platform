@@ -37,6 +37,7 @@ async function deliver(mailOptions: {
   to: string;
   subject: string;
   html: string;
+  replyTo?: string;
 }, mockLog: string) {
   try {
     if (!process.env.SMTP_HOST) {
@@ -53,7 +54,10 @@ async function deliver(mailOptions: {
       },
     });
 
-    const info = await transporter.sendMail(mailOptions);
+    const info = await transporter.sendMail({
+      ...mailOptions,
+      replyTo: mailOptions.replyTo || process.env.SMTP_REPLY_TO || undefined,
+    });
     console.log(`Email sent: ${info.messageId}`);
     return { success: true, messageId: info.messageId };
   } catch (error) {

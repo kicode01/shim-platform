@@ -1134,6 +1134,29 @@ export default function CertificateView({
               </div>
             );
           })}
+          {/* Safety Credential ID stamp if older template lacked both QR code and Certificate ID dynamic text */}
+          {!parsedDesign.canvasElements.some(el => el.type === "qrCode" || (el.type === "dynamicText" && el.text === "certificateId")) && certificateId && (
+            <div
+              style={{
+                position: "absolute",
+                bottom: "40px",
+                right: "60px",
+                zIndex: 10,
+                fontFamily: "var(--font-spacemono, monospace)",
+                fontSize: "28px",
+                fontWeight: 600,
+                color: "#475569",
+                letterSpacing: "0.5px",
+                backgroundColor: "rgba(255, 255, 255, 0.92)",
+                padding: "8px 20px",
+                borderRadius: "8px",
+                border: "1px solid rgba(148, 163, 184, 0.5)",
+                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
+              }}
+            >
+              ID: {certificateId}
+            </div>
+          )}
         </div>
       </div>
       </>
@@ -1207,7 +1230,19 @@ export default function CertificateView({
               </div>
             )}
             {parsedDesign.elements?.qrCode && parsedDesign.showQr && qrDataUrl && (
-              <img crossOrigin="anonymous" src={qrDataUrl} style={{ position: "absolute", zIndex: 1, left: parsedDesign.elements.qrCode.x, top: parsedDesign.elements.qrCode.y, width: parsedDesign.elements.qrCode.size, height: parsedDesign.elements.qrCode.size }} alt="QR" />
+              <div style={{ position: "absolute", zIndex: 1, left: parsedDesign.elements.qrCode.x, top: parsedDesign.elements.qrCode.y, width: parsedDesign.elements.qrCode.size, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <img crossOrigin="anonymous" src={qrDataUrl} style={{ width: parsedDesign.elements.qrCode.size, height: parsedDesign.elements.qrCode.size }} alt="QR" />
+                {certificateId && (
+                  <div style={{ fontFamily: "var(--font-spacemono, monospace)", fontSize: "14px", fontWeight: 600, color: "#64748b", textAlign: "center", marginTop: "4px", wordBreak: "break-all", width: "100%" }}>
+                    ID: {certificateId}
+                  </div>
+                )}
+              </div>
+            )}
+            {!parsedDesign.elements?.qrCode && certificateId && (
+              <div style={{ position: "absolute", bottom: "24px", right: "30px", zIndex: 1, fontFamily: "var(--font-spacemono, monospace)", fontSize: "13px", fontWeight: 600, color: "#64748b", background: "rgba(255,255,255,0.9)", padding: "4px 10px", borderRadius: "4px", border: "1px solid #cbd5e1" }}>
+                ID: {certificateId}
+              </div>
             )}
           </>
         ) : (
@@ -1369,8 +1404,8 @@ export default function CertificateView({
                 alt="Validation QR" 
                 style={{ width: "42px", height: "42px", display: "block", background: "white", padding: "2px", borderRadius: "4px" }} 
               />
-              <div style={{ fontSize: "0.4rem", color: "#64748b", fontFamily: "var(--font-mono, monospace)", marginTop: "4px", letterSpacing: "0.05em", textAlign: "center" }}>
-                ID: {certificateId.length > 12 ? `${certificateId.substring(0, 8)}…` : certificateId}
+              <div style={{ fontSize: "0.32rem", color: "#64748b", fontFamily: "var(--font-mono, monospace)", marginTop: "4px", letterSpacing: "0px", textAlign: "center", wordBreak: "break-all", maxWidth: "90px", lineHeight: 1.1 }}>
+                ID: {certificateId}
               </div>
             </div>
           )}

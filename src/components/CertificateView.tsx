@@ -25,7 +25,7 @@ const QrCodeElement = ({
 }) => {
   const displayId = certificateId || "SERIAL-NO-PLACEHOLDER";
   const numWidth = typeof elWidth === "number" ? elWidth : (typeof width === "number" ? width : 400);
-  const fontSize = Math.max(11, Math.round(numWidth * 0.082));
+  const fontSize = Math.min(24, Math.max(12, Math.floor(numWidth / 18)));
 
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between" }}>
@@ -48,12 +48,12 @@ const QrCodeElement = ({
           color: color || "#0f172a",
           textAlign: "center",
           width: "100%",
-          paddingTop: "4px",
-          letterSpacing: "0.5px",
-          lineHeight: 1.15,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap"
+          paddingTop: "6px",
+          letterSpacing: "0px",
+          lineHeight: 1.2,
+          wordBreak: "break-all",
+          overflowWrap: "anywhere",
+          userSelect: "all"
         }}
       >
         ID: {displayId}

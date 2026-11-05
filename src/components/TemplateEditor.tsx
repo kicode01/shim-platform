@@ -4978,17 +4978,16 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
             <div 
               style={{
                 fontFamily: "var(--font-spacemono, monospace)",
-                fontSize: `${Math.max(11, Math.round((el.width || 400) * 0.082))}px`,
+                fontSize: `${Math.min(24, Math.max(12, Math.floor((el.width || 400) / 18)))}px`,
                 fontWeight: 600,
                 color: el.color || "#0f172a",
                 textAlign: "center",
                 width: "100%",
-                paddingTop: "4px",
-                letterSpacing: "0.5px",
-                lineHeight: 1.15,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap"
+                paddingTop: "6px",
+                letterSpacing: "0px",
+                lineHeight: 1.2,
+                wordBreak: "break-all",
+                overflowWrap: "anywhere"
               }}
             >
               ID: SHIM-2026-99824

@@ -4472,7 +4472,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         y: Math.max(0, Math.min(canvasHeight - newH, newY)),
         width: newW,
       };
-      if (el.height !== undefined || el.type === 'shape' || isProportional) {
+      if (!isText && (el.height !== undefined || el.type === 'shape' || isProportional)) {
         updates.height = newH;
       }
       if (el.type === 'staticText' || el.type === 'dynamicText' || el.type === 'signature') {
@@ -4499,7 +4499,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         y: Math.max(0, Math.min(canvasHeight - newH, newY)),
         width: newW,
       };
-      if (el.height !== undefined || el.type === 'shape' || isProportional) {
+      if (!isText && (el.height !== undefined || el.type === 'shape' || isProportional)) {
         updates.height = newH;
       }
       if (el.type === 'staticText' || el.type === 'dynamicText' || el.type === 'signature') {
@@ -4576,14 +4576,18 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
   };
 
   const isProportional = el.type === 'qrCode' || el.type === 'image' || el.type === 'badge';
+  const textLines = (displayText || el.text || ' ').split('\n').length;
+  const textMinH = Math.max(24, Math.round((el.fontSize || 16) * (el.lineSpacing || 1.2) * textLines));
 
   return (
     <Rnd
       id={`rnd-${el.id}`}
       size={{ 
         width: (el.type === 'signature' && !el.src) ? 'auto' : (el.width || 'auto'), 
-        height: (el.type === 'signature' && !el.src) ? 'auto' : (el.height || 'auto') 
+        height: (el.type === 'signature' && !el.src || isText) ? 'auto' : (el.height || 'auto') 
       }}
+      minWidth={isText ? 40 : 10}
+      minHeight={isText ? textMinH : (el.type === 'shape' ? 2 : 10)}
       position={{ x: Number.isFinite(el.x) ? el.x : 0, y: Number.isFinite(el.y) ? el.y : 0 }}
       onDragStart={() => {
         if (el.locked) return;
@@ -4659,10 +4663,13 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         dragStartData.current = { width: ref.offsetWidth, fontSize: el.fontSize || defaultFontSize };
       }}
       onResize={(e, direction, ref, delta, position) => {
+        if (isText && ref) {
+          ref.style.height = 'auto';
+        }
         // `ref.style.width` and `position` are already in canvas-space units
         // because react-rnd passes scale to re-resizable.
         const newWidth = parseFloat(ref.style.width) || ref.offsetWidth;
-        const newHeight = el.height ? (parseFloat(ref.style.height) || ref.offsetHeight) : undefined;
+        const newHeight = (!isText && el.height) ? (parseFloat(ref.style.height) || ref.offsetHeight) : undefined;
         if (isNaN(newWidth) || newWidth <= 0) return;
 
         const safeX = isNaN(position.x) ? el.x : Math.round(position.x);
@@ -4681,22 +4688,22 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         const canvasWidth = currentOrientation === 'landscape' ? 3508 : 2480;
         const canvasHeight = currentOrientation === 'landscape' ? 2480 : 3508;
 
-        const isText = el.type === 'staticText' || el.type === 'dynamicText';
-        const minH = isText ? Math.max(30, Math.round((el.fontSize || 16) * 1.1)) : 4;
-
         const clampedWidth = Math.max(10, Math.min(canvasWidth - safeX, Math.round(newWidth)));
-        const clampedHeight = newHeight !== undefined ? Math.max(minH, Math.min(canvasHeight - safeY, Math.round(newHeight))) : undefined;
+        const clampedHeight = newHeight !== undefined ? Math.max(10, Math.min(canvasHeight - safeY, Math.round(newHeight))) : undefined;
 
         updates.width = (el.type === 'signature' && !el.src) ? ref.offsetWidth : clampedWidth;
-        if (newHeight !== undefined && !isNaN(newHeight)) {
+        if (!isText && newHeight !== undefined && !isNaN(newHeight)) {
           updates.height = (el.type === 'signature' && !el.src) ? ref.offsetHeight : clampedHeight;
         }
 
         updateElement(el.id, updates, false);
       }}
       onResizeStop={(e, direction, ref, delta, position) => {
+        if (isText && ref) {
+          ref.style.height = 'auto';
+        }
         const newWidth = parseFloat(ref.style.width) || ref.offsetWidth;
-        const newHeight = el.height ? (parseFloat(ref.style.height) || ref.offsetHeight) : undefined;
+        const newHeight = (!isText && el.height) ? (parseFloat(ref.style.height) || ref.offsetHeight) : undefined;
         if (isNaN(newWidth) || newWidth <= 0) return;
 
         const safeX = isNaN(position.x) ? el.x : Math.round(position.x);
@@ -4715,14 +4722,11 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         const canvasWidth = currentOrientation === 'landscape' ? 3508 : 2480;
         const canvasHeight = currentOrientation === 'landscape' ? 2480 : 3508;
 
-        const isText = el.type === 'staticText' || el.type === 'dynamicText';
-        const minH = isText ? Math.max(30, Math.round((el.fontSize || 16) * 1.1)) : 4;
-
         const clampedWidth = Math.max(10, Math.min(canvasWidth - safeX, Math.round(newWidth)));
-        const clampedHeight = newHeight !== undefined ? Math.max(minH, Math.min(canvasHeight - safeY, Math.round(newHeight))) : undefined;
+        const clampedHeight = newHeight !== undefined ? Math.max(10, Math.min(canvasHeight - safeY, Math.round(newHeight))) : undefined;
 
         updates.width = (el.type === 'signature' && !el.src) ? ref.offsetWidth : clampedWidth;
-        if (newHeight !== undefined && !isNaN(newHeight)) {
+        if (!isText && newHeight !== undefined && !isNaN(newHeight)) {
           updates.height = (el.type === 'signature' && !el.src) ? ref.offsetHeight : clampedHeight;
         }
 

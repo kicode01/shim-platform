@@ -1074,7 +1074,7 @@ export default function CertificateView({
                   left: el.x, 
                   top: el.y, 
                   width: el.width,
-                  height: el.height,
+                  height: (el.type === 'staticText' || el.type === 'dynamicText') ? 'auto' : el.height,
                   fontSize: `${fitSizes[el.id] ?? el.fontSize ?? 16}px`,
                   fontFamily: resolveFontFamily(el.fontFamily),
                   color: el.color || "#000000",

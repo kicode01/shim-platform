@@ -5006,8 +5006,8 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
           <div
             className="absolute left-1/2 flex flex-col items-center pointer-events-auto z-[70] cursor-grab active:cursor-grabbing select-none"
             style={{
-              top: `-${Math.round(44 / s)}px`,
-              transform: `translateX(-50%) scale(${1 / s})`,
+              top: 0,
+              transform: `translate(-50%, -100%) scale(${1 / s})`,
               transformOrigin: "bottom center"
             }}
             onPointerDown={handleRotateStart}
@@ -5026,7 +5026,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
             </div>
 
             {/* Connector stem */}
-            <div className="w-[1.5px] h-3 bg-zinc-700" />
+            <div className="w-[1.5px] h-4 bg-zinc-900" />
           </div>
         )}
       </div>

@@ -65,7 +65,8 @@ export const PRESETS: PresetInfo[] = [
         { id: uuidv4(), type: "shape", text: "", x: 2190, y: 2060, width: 800, height: 4, color: "#1e293b" },
         { id: uuidv4(), type: "dynamicText", text: "issueDate", x: 2190, y: 1915, width: 800, align: "center", fontSize: 88, color: "#1e293b", fontFamily: "var(--font-playfair, serif)" },
         { id: uuidv4(), type: "staticText", text: "DATE OF ISSUE", x: 2190, y: 2105, width: 800, align: "center", fontSize: 44, color: "#64748b", fontWeight: "700", letterSpacing: 9, fontFamily: "var(--font-inter, sans-serif)" },
-        { id: uuidv4(), type: "dynamicText", text: "certificateId", x: 0, y: 2260, width: 3508, align: "center", fontSize: 36, color: "#94a3b8", letterSpacing: 4, fontFamily: "var(--font-spacemono, monospace)" }
+        { id: uuidv4(), type: "dynamicText", text: "certificateId", x: 0, y: 2260, width: 3508, align: "center", fontSize: 36, color: "#94a3b8", letterSpacing: 4, fontFamily: "var(--font-spacemono, monospace)" },
+        { id: uuidv4(), type: "qrCode", text: "", x: 2950, y: 1820, width: 360, height: 420, color: "#7f1d1d" }
       ]
     }
   },
@@ -103,7 +104,8 @@ export const PRESETS: PresetInfo[] = [
         { id: uuidv4(), type: "staticText", text: "has completed the professional training program:", x: 175, y: 1450, width: 2900, fontSize: 76, color: "#475569", fontWeight: "400", fontFamily: "var(--font-outfit, sans-serif)" },
         { id: uuidv4(), type: "dynamicText", text: "eventName", x: 175, y: 1575, width: 2600, fontSize: 115, maxFontSize: 115, autoFit: true, color: "#312e81", fontWeight: "800", fontFamily: "var(--font-outfit, sans-serif)" },
         { id: uuidv4(), type: "signature", text: "Sarah Jenkins|LEAD INSTRUCTOR", x: 175, y: 1990, width: 900, height: 250, color: "#1e1b4b", align: "left", fontFamily: "var(--font-script, cursive)" },
-        { id: uuidv4(), type: "badge", text: "", x: 2960, y: 1880, width: 350, height: 350 }
+        { id: uuidv4(), type: "badge", text: "", x: 2960, y: 1880, width: 350, height: 350 },
+        { id: uuidv4(), type: "qrCode", text: "", x: 2480, y: 1850, width: 360, height: 420, color: "#312e81" }
       ]
     }
   },
@@ -119,7 +121,8 @@ export const PRESETS: PresetInfo[] = [
         { id: uuidv4(), type: "dynamicText", text: "recipientName", x: 263, y: 840, width: 3000, fontSize: 260, maxFontSize: 260, autoFit: true, color: "#881337", fontWeight: "900", letterSpacing: -8, fontFamily: "var(--font-spacegrotesk, sans-serif)" },
         { id: uuidv4(), type: "shape", text: "", x: 263, y: 1330, width: 351, height: 32, color: "#f43f5e" },
         { id: uuidv4(), type: "dynamicText", text: "eventName", x: 263, y: 1490, width: 3000, fontSize: 100, maxFontSize: 100, autoFit: true, color: "#e11d48", fontWeight: "700", fontFamily: "var(--font-spacegrotesk, sans-serif)" },
-        { id: uuidv4(), type: "signature", text: "Alex Morgan|CREATIVE DIRECTOR", x: 263, y: 1960, width: 900, height: 250, color: "#881337", align: "left", fontFamily: "var(--font-script, cursive)" }
+        { id: uuidv4(), type: "signature", text: "Alex Morgan|CREATIVE DIRECTOR", x: 263, y: 1960, width: 900, height: 250, color: "#881337", align: "left", fontFamily: "var(--font-script, cursive)" },
+        { id: uuidv4(), type: "qrCode", text: "", x: 2800, y: 1820, width: 380, height: 440, color: "#e11d48" }
       ]
     }
   },
@@ -136,7 +139,8 @@ export const PRESETS: PresetInfo[] = [
         { id: uuidv4(), type: "staticText", text: "FOR EXCEPTIONAL PERFORMANCE IN", x: 0, y: 1390, width: 3508, align: "center", fontSize: 50, color: "#71717a", fontWeight: "400", letterSpacing: 10, fontFamily: "var(--font-cormorant, serif)" },
         { id: uuidv4(), type: "dynamicText", text: "eventName", x: 0, y: 1530, width: 3100, align: "center", fontSize: 130, maxFontSize: 130, autoFit: true, color: "#000000", fontWeight: "600", fontFamily: "var(--font-cinzel, serif)" },
         { id: uuidv4(), type: "signature", text: "Eleanor Vance|MANAGING DIRECTOR", x: 1300, y: 1940, width: 900, height: 250, color: "#000000", align: "center", fontFamily: "var(--font-script, cursive)" },
-        { id: uuidv4(), type: "dynamicText", text: "certificateId", x: 0, y: 2250, width: 3508, align: "center", fontSize: 36, color: "#71717a", letterSpacing: 6, fontFamily: "var(--font-cinzel, serif)" }
+        { id: uuidv4(), type: "dynamicText", text: "certificateId", x: 0, y: 2250, width: 3508, align: "center", fontSize: 36, color: "#71717a", letterSpacing: 6, fontFamily: "var(--font-cinzel, serif)" },
+        { id: uuidv4(), type: "qrCode", text: "", x: 2800, y: 1820, width: 360, height: 420, color: "#000000" }
       ]
     }
   },
@@ -172,7 +176,8 @@ export const PRESETS: PresetInfo[] = [
         { id: uuidv4(), type: "dynamicText", text: "eventName", x: 0, y: 1550, width: 3100, align: "center", fontSize: 112, maxFontSize: 112, autoFit: true, color: "#166534", fontWeight: "700", fontFamily: "var(--font-outfit, sans-serif)" },
         { id: uuidv4(), type: "signature", text: "Maya Lin|GREEN INITIATIVE LEAD", x: 1250, y: 1980, width: 900, height: 250, color: "#14532d", align: "center", fontFamily: "var(--font-script, cursive)" },
         { id: uuidv4(), type: "badge", text: "", x: 2620, y: 1900, width: 340, height: 340 },
-        { id: uuidv4(), type: "dynamicText", text: "certificateId", x: 0, y: 2260, width: 3508, align: "center", fontSize: 36, color: "#15803d", letterSpacing: 4, fontFamily: "var(--font-spacemono, monospace)" }
+        { id: uuidv4(), type: "dynamicText", text: "certificateId", x: 0, y: 2260, width: 3508, align: "center", fontSize: 36, color: "#15803d", letterSpacing: 4, fontFamily: "var(--font-spacemono, monospace)" },
+        { id: uuidv4(), type: "qrCode", text: "", x: 350, y: 1850, width: 360, height: 420, color: "#166534" }
       ]
     }
   }

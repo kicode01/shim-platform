@@ -1049,7 +1049,18 @@ export default function TemplateEditor({
   const [activePropTab, setActivePropTab] = useState<string>('content');
 
   const defaultDesign: CertificateDesignConfig = {
-    canvasElements: []
+    canvasElements: [
+      {
+        id: uuidv4(),
+        type: "qrCode",
+        text: "",
+        x: 2830,
+        y: 1830,
+        width: 380,
+        height: 440,
+        color: "#0f172a"
+      }
+    ]
   };
 
   let parsedInitial: CertificateDesignConfig = defaultDesign;
@@ -1440,11 +1451,32 @@ export default function TemplateEditor({
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          description: description.trim(),
-          designData: JSON.stringify(design),
-        }),
+        body: (() => {
+          let finalDesign = design;
+          if (!finalDesign.canvasElements?.some(el => el.type === 'qrCode')) {
+            const isPortrait = finalDesign.orientation === 'portrait';
+            const canvasW = isPortrait ? 2480 : 3508;
+            const canvasH = isPortrait ? 3508 : 2480;
+            const autoQr: CanvasElement = {
+              id: uuidv4(),
+              type: "qrCode",
+              x: Math.round(canvasW * 0.78),
+              y: Math.round(canvasH * 0.72),
+              width: 380,
+              height: 440,
+              color: "#0f172a"
+            };
+            finalDesign = {
+              ...finalDesign,
+              canvasElements: [...(finalDesign.canvasElements || []), autoQr]
+            };
+          }
+          return JSON.stringify({
+            name: name.trim(),
+            description: description.trim(),
+            designData: JSON.stringify(finalDesign),
+          });
+        })(),
       });
       if (res.ok) {
         setSavedSuccess(true);
@@ -1489,7 +1521,18 @@ export default function TemplateEditor({
     let elX = 500;
     let elY = 1000;
 
-    if (type === 'qrCode' || type === 'image' || type === 'badge') {
+    if (type === 'qrCode') {
+      const existingQr = design.canvasElements?.find(el => el.type === 'qrCode');
+      if (existingQr) {
+        setSelectedElementId(existingQr.id);
+        alert("Each template requires exactly one verification QR Code with Certificate ID.");
+        return;
+      }
+      elWidth = 380;
+      elHeight = 440;
+      elX = Math.round((canvasWidth - 380) / 2);
+      elY = Math.round(canvasHeight * 0.7);
+    } else if (type === 'image' || type === 'badge') {
       elWidth = 368;
       elHeight = 368;
       elX = Math.round((canvasWidth - 368) / 2);
@@ -1551,6 +1594,11 @@ export default function TemplateEditor({
 
   const deleteSelectedElement = () => {
     if (!selectedElementId || !design.canvasElements) return;
+    const target = design.canvasElements.find(el => el.id === selectedElementId);
+    if (target?.type === 'qrCode') {
+      alert("The QR Code with Certificate ID is required for verification and cannot be removed.");
+      return;
+    }
     const updatedElements = design.canvasElements.filter(el => el.id !== selectedElementId);
     const updated = { ...design, canvasElements: updatedElements };
     applyDesignUpdate(updated);
@@ -2257,9 +2305,16 @@ const duplicateElement = (id?: string) => {
                               <p className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider mt-0.5">Element Settings</p>
                             </div>
                           </div>
-                          <button onClick={deleteSelectedElement} className="text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors p-2 rounded-lg border border-transparent hover:border-red-100" title="Delete Element">
-                            <Trash2 size={18} />
-                          </button>
+                          {selectedElement.type === 'qrCode' ? (
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200/80 rounded-lg text-xs font-semibold select-none" title="Required for cryptographic verification">
+                              <Lock size={13} />
+                              <span>Required</span>
+                            </div>
+                          ) : (
+                            <button onClick={deleteSelectedElement} className="text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors p-2 rounded-lg border border-transparent hover:border-red-100" title="Delete Element">
+                              <Trash2 size={18} />
+                            </button>
+                          )}
                         </div>
 
                         {/* Global Tabs Navigation */}
@@ -3360,15 +3415,22 @@ const duplicateElement = (id?: string) => {
                     <span>Rotate{selectedElement.rotation ? ` (${selectedElement.rotation}°)` : ""}</span>
                   </button>
 
-                  {/* Delete */}
-                  <button
-                    onClick={deleteSelectedElement}
-                    className="h-9 px-3 rounded-xl text-xs font-semibold bg-red-950/40 text-red-400 hover:bg-red-900/60 border border-red-800/40 flex items-center gap-1.5 shrink-0 transition-all"
-                    title="Delete element"
-                  >
-                    <Trash2 size={14} />
-                    <span>Delete</span>
-                  </button>
+                  {/* Delete / Required */}
+                  {selectedElement.type === 'qrCode' ? (
+                    <div className="h-9 px-3 rounded-xl text-xs font-semibold bg-amber-950/40 text-amber-400 border border-amber-800/40 flex items-center gap-1.5 shrink-0 select-none">
+                      <Lock size={14} />
+                      <span>Required</span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={deleteSelectedElement}
+                      className="h-9 px-3 rounded-xl text-xs font-semibold bg-red-950/40 text-red-400 hover:bg-red-900/60 border border-red-800/40 flex items-center gap-1.5 shrink-0 transition-all"
+                      title="Delete element"
+                    >
+                      <Trash2 size={14} />
+                      <span>Delete</span>
+                    </button>
+                  )}
 
                   {/* Done / Deselect */}
                   <button
@@ -4901,16 +4963,36 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
             onPointerDown={(e) => e.stopPropagation()}
           />
         ) : el.type === 'qrCode' ? (
-          <div className="w-full h-full pointer-events-none">
-            <QRCodeSVG 
-              value="https://shim-platform.com/verify/PREVIEW" 
-              fgColor={el.color || "#000000"} 
-              bgColor="#fcfbf7" 
-              width="100%" 
-              height="100%" 
-              level="M"
-              marginSize={1}
-            />
+          <div className="w-full h-full pointer-events-none flex flex-col items-center justify-between select-none">
+            <div className="w-full flex-1 min-h-0 flex items-center justify-center">
+              <QRCodeSVG 
+                value="https://shim-platform.com/verify/PREVIEW" 
+                fgColor={el.color || "#000000"} 
+                bgColor="#fcfbf7" 
+                width="100%" 
+                height="100%" 
+                level="M"
+                marginSize={1}
+              />
+            </div>
+            <div 
+              style={{
+                fontFamily: "var(--font-spacemono, monospace)",
+                fontSize: `${Math.max(11, Math.round((el.width || 400) * 0.082))}px`,
+                fontWeight: 600,
+                color: el.color || "#0f172a",
+                textAlign: "center",
+                width: "100%",
+                paddingTop: "4px",
+                letterSpacing: "0.5px",
+                lineHeight: 1.15,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap"
+              }}
+            >
+              ID: SHIM-2026-99824
+            </div>
           </div>
         ) : el.type === 'image' || el.type === 'badge' ? (
           <div className="w-full h-full pointer-events-none flex items-center justify-center">

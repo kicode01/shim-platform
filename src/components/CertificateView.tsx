@@ -8,17 +8,57 @@ import { fitFontSize } from "@/lib/fit-text";
 
 export type CanvasElementType = "dynamicText" | "staticText" | "image" | "qrCode" | "signature" | "badge" | "shape";
 
-const QrCodeElement = ({ url, color, width, height }: { url: string, color: string, width: number | string, height: number | string }) => {
+const QrCodeElement = ({ 
+  url, 
+  certificateId, 
+  color, 
+  width, 
+  height, 
+  elWidth 
+}: { 
+  url: string; 
+  certificateId?: string; 
+  color: string; 
+  width: number | string; 
+  height: number | string; 
+  elWidth?: number;
+}) => {
+  const displayId = certificateId || "SERIAL-NO-PLACEHOLDER";
+  const numWidth = typeof elWidth === "number" ? elWidth : (typeof width === "number" ? width : 400);
+  const fontSize = Math.max(11, Math.round(numWidth * 0.082));
+
   return (
-    <QRCodeSVG 
-      value={url} 
-      fgColor={color || "#000000"} 
-      bgColor="#fcfbf7" 
-      width={width} 
-      height={height} 
-      level="M"
-      marginSize={1}
-    />
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ width: "100%", flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <QRCodeSVG 
+          value={url} 
+          fgColor={color || "#000000"} 
+          bgColor="#fcfbf7" 
+          width="100%" 
+          height="100%" 
+          level="M"
+          marginSize={1}
+        />
+      </div>
+      <div 
+        style={{
+          fontFamily: "var(--font-spacemono, monospace)",
+          fontSize: `${fontSize}px`,
+          fontWeight: 600,
+          color: color || "#0f172a",
+          textAlign: "center",
+          width: "100%",
+          paddingTop: "4px",
+          letterSpacing: "0.5px",
+          lineHeight: 1.15,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap"
+        }}
+      >
+        ID: {displayId}
+      </div>
+    </div>
   );
 };
 
@@ -965,7 +1005,7 @@ export default function CertificateView({
             if (el.type === "qrCode") {
               return (
                 <div key={el.id} style={{ position: "absolute", zIndex: 1, left: el.x, top: el.y, width: el.width, height: el.height, transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined, transformOrigin: "center center" }}>
-                  <QrCodeElement url={validateUrl} color={el.color || "#0f172a"} width="100%" height="100%" />
+                  <QrCodeElement url={validateUrl} certificateId={certificateId} color={el.color || "#0f172a"} width="100%" height="100%" elWidth={el.width} />
                 </div>
               );
             }

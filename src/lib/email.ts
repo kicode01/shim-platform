@@ -40,8 +40,8 @@ async function deliver(mailOptions: {
 }, mockLog: string) {
   try {
     if (!process.env.SMTP_HOST) {
-      console.log(mockLog);
-      return { success: true, message: "Mock email sent successfully" };
+      console.log(`\n======================================================\n[EMAIL SIMULATION (SMTP_HOST is unset in .env)]\nTo: ${mailOptions.to}\nSubject: ${mailOptions.subject}\nLog: ${mockLog}\n💡 NOTE: To send REAL emails to real inboxes, add SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS to your .env file.\n======================================================\n`);
+      return { success: true, message: "Mock email sent successfully (SMTP_HOST unset)" };
     }
 
     const transporter = nodemailer.createTransport({

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Select } from "@/components/ui/Select";
-import { ArrowLeft, Download, CheckCircle2, CircleDashed, Users, Calendar, Search, X, Settings2, Save, Loader2, LayoutTemplate, Trash2, ShieldAlert, QrCode } from "lucide-react";
+import { ArrowLeft, Download, CheckCircle2, CircleDashed, Users, Calendar, Search, X, Settings2, Save, Loader2, LayoutTemplate, Trash2, ShieldAlert, QrCode, Mail } from "lucide-react";
 
 interface AttendeeItem {
   id: string;
@@ -52,6 +52,63 @@ export default function EventDetailsClient({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [issuingId, setIssuingId] = useState<string | null>(null);
+
+  const handleResendEmail = async (att: AttendeeItem) => {
+    if (!att.certificateId) return;
+    setResendingId(att.certificateId);
+    try {
+      const res = await fetch(`/api/certificates/${att.certificateId}/resend`, {
+        method: "POST"
+      });
+      if (res.ok) {
+        alert(`Certificate email resent to ${att.email}!`);
+      } else {
+        const data = await res.json().catch(() => null);
+        alert(data?.error || "Failed to resend email.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error resending email.");
+    } finally {
+      setResendingId(null);
+    }
+  };
+
+  const handleIssueCertificate = async (att: AttendeeItem) => {
+    const templateIdToUse = event.defaultTemplateId || (templates[0]?.id);
+    if (!templateIdToUse) {
+      alert("Please select a Default Template under Configuration on the right before issuing certificates.");
+      return;
+    }
+    setIssuingId(att.id);
+    try {
+      const res = await fetch("/api/certificates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipientName: att.name,
+          recipientEmail: att.email,
+          role: att.role || event.defaultRole || "Participant",
+          eventId: event.id,
+          templateId: templateIdToUse,
+        })
+      });
+      if (res.ok) {
+        router.refresh();
+      } else {
+        const data = await res.json().catch(() => null);
+        alert(data?.message || "Failed to issue certificate.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error issuing certificate.");
+    } finally {
+      setIssuingId(null);
+    }
+  };
+
 
   const filtered = attendances.filter(a => 
     a.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -318,6 +375,15 @@ export default function EventDetailsClient({
                                   <CheckCircle2 size={10} /> Issued
                                 </span>
                                 <button
+                                  onClick={() => handleResendEmail(att)}
+                                  disabled={resendingId === att.certificateId}
+                                  className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
+                                  title="Resend email"
+                                >
+                                  <Mail size={11} />
+                                  <span>{resendingId === att.certificateId ? "..." : "Resend"}</span>
+                                </button>
+                                <button
                                   onClick={() => toggleRevoke(att)}
                                   disabled={revokingId === att.certificateId}
                                   className="text-[11px] uppercase font-bold text-red-600 underline disabled:opacity-50"
@@ -327,9 +393,19 @@ export default function EventDetailsClient({
                               </div>
                             )
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-100 text-zinc-600 border border-zinc-200">
-                              <CircleDashed size={10} /> Pending
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-100 text-zinc-600 border border-zinc-200">
+                                <CircleDashed size={10} /> Pending
+                              </span>
+                              <button
+                                onClick={() => handleIssueCertificate(att)}
+                                disabled={issuingId === att.id}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition-colors disabled:opacity-50"
+                              >
+                                {issuingId === att.id ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle2 size={10} />}
+                                <span>{issuingId === att.id ? "Issuing..." : "Issue Now"}</span>
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -393,6 +469,15 @@ export default function EventDetailsClient({
                                       <CheckCircle2 size={10} /> Issued
                                     </span>
                                     <button
+                                      onClick={() => handleResendEmail(att)}
+                                      disabled={resendingId === att.certificateId}
+                                      className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
+                                      title="Resend email"
+                                    >
+                                      <Mail size={12} />
+                                      <span>{resendingId === att.certificateId ? "Sending..." : "Resend"}</span>
+                                    </button>
+                                    <button
                                       onClick={() => toggleRevoke(att)}
                                       disabled={revokingId === att.certificateId}
                                       className="text-[10px] uppercase font-bold text-red-500 hover:text-red-700 underline opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
@@ -402,9 +487,20 @@ export default function EventDetailsClient({
                                   </div>
                                 )
                               ) : (
-                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-100 text-zinc-600 border border-zinc-200">
-                                  <CircleDashed size={10} /> Pending
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-100 text-zinc-600 border border-zinc-200">
+                                    <CircleDashed size={10} /> Pending
+                                  </span>
+                                  <button
+                                    onClick={() => handleIssueCertificate(att)}
+                                    disabled={issuingId === att.id}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition-colors disabled:opacity-50"
+                                    title="Issue certificate now"
+                                  >
+                                    {issuingId === att.id ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle2 size={11} />}
+                                    <span>{issuingId === att.id ? "Issuing..." : "Issue Now"}</span>
+                                  </button>
+                                </div>
                               )}
                             </td>
                           </tr>

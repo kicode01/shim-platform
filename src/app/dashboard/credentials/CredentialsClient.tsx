@@ -77,6 +77,7 @@ export default function CredentialsClient({
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null);
   const [toast, setToast] = useState<{message: string, type: 'error' | 'success'} | null>(null);
   const [isTabLoading, setIsTabLoading] = useState(false);
 
@@ -126,6 +127,7 @@ export default function CredentialsClient({
 
       if (res.ok) {
         setCertificates(prev => prev.map(c => c.id === id ? { ...c, status: newStatus } : c));
+        setConfirmRevokeId(null);
       } else {
         showToast("Failed to update status", "error");
       }
@@ -344,12 +346,34 @@ export default function CredentialsClient({
                                 <button
                                   onClick={() => handleDeleteCertificate(cert.id)}
                                   className="w-7 h-7 bg-red-600 rounded text-white hover:bg-red-700 transition-colors flex items-center justify-center shrink-0 shadow-sm"
+                                  title="Confirm Delete"
                                 >
                                   {updatingId === cert.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} strokeWidth={2.5} />}
                                 </button>
                                 <button
                                   onClick={() => setConfirmDeleteId(null)}
                                   className="w-7 h-7 bg-white rounded text-zinc-600 hover:text-zinc-900 border border-zinc-200 hover:bg-zinc-50 transition-colors flex items-center justify-center shrink-0 shadow-sm"
+                                  title="Cancel"
+                                >
+                                  <X size={14} strokeWidth={2.5} />
+                                </button>
+                              </div>
+                            ) : confirmRevokeId === cert.id ? (
+                              <div className="flex items-center gap-1 bg-amber-50 p-1 rounded-md border border-amber-200">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 px-2 shrink-0">
+                                  Revoke?
+                                </span>
+                                <button
+                                  onClick={() => handleToggleStatus(cert.id, cert.status)}
+                                  className="w-7 h-7 bg-amber-600 rounded text-white hover:bg-amber-700 transition-colors flex items-center justify-center shrink-0 shadow-sm"
+                                  title="Confirm Revoke"
+                                >
+                                  {updatingId === cert.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} strokeWidth={2.5} />}
+                                </button>
+                                <button
+                                  onClick={() => setConfirmRevokeId(null)}
+                                  className="w-7 h-7 bg-white rounded text-zinc-600 hover:text-zinc-900 border border-zinc-200 hover:bg-zinc-50 transition-colors flex items-center justify-center shrink-0 shadow-sm"
+                                  title="Cancel"
                                 >
                                   <X size={14} strokeWidth={2.5} />
                                 </button>
@@ -358,7 +382,14 @@ export default function CredentialsClient({
                               <div className="flex items-center gap-1">
 
                                 <button
-                                  onClick={() => handleToggleStatus(cert.id, cert.status)}
+                                  onClick={() => {
+                                    if (cert.status === "valid") {
+                                      setConfirmRevokeId(cert.id);
+                                      setConfirmDeleteId(null);
+                                    } else {
+                                      handleToggleStatus(cert.id, cert.status);
+                                    }
+                                  }}
                                   disabled={updatingId === cert.id}
                                   className="w-8 h-8 rounded-md text-zinc-400 hover:text-zinc-800 hover:bg-zinc-100 transition-colors flex items-center justify-center shrink-0"
                                   title={cert.status === "valid" ? "Revoke Credential" : "Restore Credential"}
@@ -367,7 +398,10 @@ export default function CredentialsClient({
                                 </button>
 
                                 <button
-                                  onClick={() => setConfirmDeleteId(cert.id)}
+                                  onClick={() => {
+                                    setConfirmDeleteId(cert.id);
+                                    setConfirmRevokeId(null);
+                                  }}
                                   disabled={updatingId === cert.id}
                                   className="w-8 h-8 rounded-md text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center shrink-0"
                                   title="Delete permanently"
@@ -456,10 +490,32 @@ export default function CredentialsClient({
                               Cancel
                             </button>
                           </div>
-                        ) : (
+                        ) : confirmRevokeId === cert.id ? (
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => handleToggleStatus(cert.id, cert.status)}
+                              className="mob-card-action h-11 px-3 rounded-md bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold flex items-center justify-center shrink-0"
+                            >
+                              {updatingId === cert.id ? <Loader2 size={16} className="animate-spin" /> : "Revoke"}
+                            </button>
+                            <button
+                              onClick={() => setConfirmRevokeId(null)}
+                              className="mob-card-action h-11 px-3 rounded-md border border-zinc-200 text-zinc-600 text-xs font-medium flex items-center justify-center shrink-0"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                if (cert.status === "valid") {
+                                  setConfirmRevokeId(cert.id);
+                                  setConfirmDeleteId(null);
+                                } else {
+                                  handleToggleStatus(cert.id, cert.status);
+                                }
+                              }}
                               disabled={updatingId === cert.id}
                               className="mob-card-action h-11 px-3 rounded-md bg-zinc-100 text-zinc-700 hover:bg-zinc-200 text-xs font-medium flex items-center justify-center shrink-0"
                               title={cert.status === "valid" ? "Revoke Credential" : "Restore Credential"}
@@ -467,7 +523,10 @@ export default function CredentialsClient({
                               {updatingId === cert.id ? <Loader2 size={16} className="animate-spin" /> : cert.status === "valid" ? "Revoke" : "Restore"}
                             </button>
                             <button
-                              onClick={() => setConfirmDeleteId(cert.id)}
+                              onClick={() => {
+                                setConfirmDeleteId(cert.id);
+                                setConfirmRevokeId(null);
+                              }}
                               disabled={updatingId === cert.id}
                               className="mob-card-action w-11 h-11 rounded-md text-zinc-600 hover:text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center shrink-0"
                               title="Delete permanently"

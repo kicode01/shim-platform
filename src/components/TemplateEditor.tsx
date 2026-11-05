@@ -1702,14 +1702,30 @@ const duplicateElement = (id?: string) => {
   };
 
   useEffect(() => {
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (isRightClickPanning.current) {
+        const dx = e.clientX - dragStart.current.x;
+        const dy = e.clientY - dragStart.current.y;
+        setPanOffset({
+          x: dragStart.current.panX + dx,
+          y: dragStart.current.panY + dy
+        });
+      }
+    };
+
     const handleGlobalMouseUp = () => {
       if (isRightClickPanning.current) {
         isRightClickPanning.current = false;
         setIsRightPanningActive(false);
       }
     };
+
+    window.addEventListener("mousemove", handleGlobalMouseMove);
     window.addEventListener("mouseup", handleGlobalMouseUp);
-    return () => window.removeEventListener("mouseup", handleGlobalMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleGlobalMouseMove);
+      window.removeEventListener("mouseup", handleGlobalMouseUp);
+    };
   }, []);
 
   const handleCanvasTouchStart = (e: React.TouchEvent) => {
@@ -2932,6 +2948,11 @@ const duplicateElement = (id?: string) => {
             className={`flex-1 min-h-0 relative flex items-center justify-center bg-[#141416] lg:bg-zinc-200/50 overflow-hidden touch-none select-none ${isRightPanningActive ? 'cursor-grabbing' : isPanMode && hasOverflow ? 'cursor-grab active:cursor-grabbing' : ''}`}
             style={{ touchAction: 'none', overscrollBehavior: 'none' }}
             onContextMenu={(e) => e.preventDefault()}
+            onMouseDownCapture={(e) => {
+              if (e.button === 2) {
+                handleCanvasMouseDown(e);
+              }
+            }}
             onClick={(e) => { 
               if (e.target === e.currentTarget && !isPanMode && !isRightPanningActive) { 
                 setSelectedElementId(null); 
@@ -4396,9 +4417,16 @@ const duplicateElement = (id?: string) => {
 function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElementId, updateSelectedElement, updateElement, setActiveGuides, currentOrientation, scale, dummyQrCode, isPanMode }: any) {
   const [isEditing, setIsEditing] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
+  const elementRef = useRef<HTMLDivElement>(null);
   const dragStartData = useRef({ width: 0, fontSize: 0 });
   const isDraggingRef = useRef(false);
   const dragStartPos = useRef({ x: 0, y: 0 });
+
+  const s = Math.max(0.01, scale || 0.15);
+  const handlePx = Math.max(14, Math.round(14 / s));
+  const borderPx = Math.max(2, Math.round(2 / s));
+  const halfPx = Math.round(handlePx / 2);
+  const isText = el.type === 'staticText' || el.type === 'dynamicText';
 
   const handleRotateStart = (e: React.PointerEvent) => {
     e.stopPropagation();
@@ -4409,7 +4437,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
       /* ignore */
     }
 
-    const node = document.getElementById(`rnd-${el.id}`);
+    const node = elementRef.current;
     if (!node) return;
     const rect = node.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
@@ -4568,8 +4596,11 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         const canvasWidth = currentOrientation === 'landscape' ? 3508 : 2480;
         const canvasHeight = currentOrientation === 'landscape' ? 2480 : 3508;
 
+        const isText = el.type === 'staticText' || el.type === 'dynamicText';
+        const minH = isText ? Math.max(30, Math.round((el.fontSize || 16) * 1.1)) : 4;
+
         const clampedWidth = Math.max(10, Math.min(canvasWidth - safeX, Math.round(newWidth)));
-        const clampedHeight = newHeight !== undefined ? Math.max(4, Math.min(canvasHeight - safeY, Math.round(newHeight))) : undefined;
+        const clampedHeight = newHeight !== undefined ? Math.max(minH, Math.min(canvasHeight - safeY, Math.round(newHeight))) : undefined;
 
         updates.width = (el.type === 'signature' && !el.src) ? ref.offsetWidth : clampedWidth;
         if (newHeight !== undefined && !isNaN(newHeight)) {
@@ -4599,8 +4630,11 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         const canvasWidth = currentOrientation === 'landscape' ? 3508 : 2480;
         const canvasHeight = currentOrientation === 'landscape' ? 2480 : 3508;
 
+        const isText = el.type === 'staticText' || el.type === 'dynamicText';
+        const minH = isText ? Math.max(30, Math.round((el.fontSize || 16) * 1.1)) : 4;
+
         const clampedWidth = Math.max(10, Math.min(canvasWidth - safeX, Math.round(newWidth)));
-        const clampedHeight = newHeight !== undefined ? Math.max(4, Math.min(canvasHeight - safeY, Math.round(newHeight))) : undefined;
+        const clampedHeight = newHeight !== undefined ? Math.max(minH, Math.min(canvasHeight - safeY, Math.round(newHeight))) : undefined;
 
         updates.width = (el.type === 'signature' && !el.src) ? ref.offsetWidth : clampedWidth;
         if (newHeight !== undefined && !isNaN(newHeight)) {
@@ -4653,32 +4687,33 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
           : isSelected && !isEditing 
             ? (el.type === 'signature' && !el.src 
                 ? false 
-                : true)
+                : isText
+                  ? { left: true, right: true, topLeft: true, topRight: true, bottomLeft: true, bottomRight: true, top: false, bottom: false }
+                  : true)
             : false
       }
       lockAspectRatio={isProportional}
       resizeHandleStyles={{
-        bottomRight: { width: "16px", height: "16px", background: "white", border: "2px solid #18181b", borderRadius: "50%", right: "-8px", bottom: "-8px" },
-        right: { width: "16px", height: "16px", background: "white", border: "2px solid #18181b", borderRadius: "50%", right: "-8px", top: "50%", transform: "translateY(-50%)" },
-        bottom: { width: "16px", height: "16px", background: "white", border: "2px solid #18181b", borderRadius: "50%", bottom: "-8px", left: "50%", transform: "translateX(-50%)" },
-        bottomLeft: { width: "16px", height: "16px", background: "white", border: "2px solid #18181b", borderRadius: "50%", left: "-8px", bottom: "-8px" },
-        left: { width: "16px", height: "16px", background: "white", border: "2px solid #18181b", borderRadius: "50%", left: "-8px", top: "50%", transform: "translateY(-50%)" },
-        topLeft: { width: "16px", height: "16px", background: "white", border: "2px solid #18181b", borderRadius: "50%", left: "-8px", top: "-8px" },
-        top: { width: "16px", height: "16px", background: "white", border: "2px solid #18181b", borderRadius: "50%", top: "-8px", left: "50%", transform: "translateX(-50%)" },
-        topRight: { width: "16px", height: "16px", background: "white", border: "2px solid #18181b", borderRadius: "50%", right: "-8px", top: "-8px" }
+        bottomRight: { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", right: `-${halfPx}px`, bottom: `-${halfPx}px` },
+        right: { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", right: `-${halfPx}px`, top: "50%", transform: "translateY(-50%)" },
+        bottom: isText ? { display: 'none' } : { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", bottom: `-${halfPx}px`, left: "50%", transform: "translateX(-50%)" },
+        bottomLeft: { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", left: `-${halfPx}px`, bottom: `-${halfPx}px` },
+        left: { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", left: `-${halfPx}px`, top: "50%", transform: "translateY(-50%)" },
+        topLeft: { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", left: `-${halfPx}px`, top: `-${halfPx}px` },
+        top: isText ? { display: 'none' } : { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", top: `-${halfPx}px`, left: "50%", transform: "translateX(-50%)" },
+        topRight: { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", right: `-${halfPx}px`, top: `-${halfPx}px` }
       }}
     >
       <div 
-        className={`w-full h-full relative transition-shadow ${
-          isSelected 
-            ? "ring-2 ring-zinc-900 shadow-[0_0_0_1px_rgba(255,255,255,0.9),0_4px_14px_rgba(0,0,0,0.25)]" 
-            : "hover:ring-1 hover:ring-zinc-400/80"
-        }`}
+        ref={elementRef}
+        className="w-full h-full relative"
         style={{
           transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
           transformOrigin: "center center",
           backgroundColor: el.type === 'shape' ? (el.color || '#000000') : 'transparent',
-          padding: "2px"
+          border: isSelected ? `${borderPx}px solid #18181b` : undefined,
+          boxShadow: isSelected ? `0 0 0 ${Math.max(1, Math.round(1 / s))}px rgba(255,255,255,0.9)` : undefined,
+          padding: `${Math.max(1, Math.round(2 / s))}px`
         }}
       >
         <div onDoubleClick={handleDoubleClick} className={`w-full h-full flex flex-col pointer-events-auto ${(el.type === 'staticText' || el.type === 'dynamicText') ? 'justify-start' : (el.type === 'signature' ? 'justify-end' : 'justify-center')}`}>
@@ -4818,21 +4853,26 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         {/* Interactive Rotation Handle */}
         {isSelected && !isEditing && !el.locked && (
           <div
-            className="absolute -bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-auto z-[70] cursor-grab active:cursor-grabbing select-none"
+            className="absolute left-1/2 flex flex-col items-center pointer-events-auto z-[70] cursor-grab active:cursor-grabbing select-none"
+            style={{
+              bottom: `-${Math.round(44 / s)}px`,
+              transform: `translateX(-50%) scale(${1 / s})`,
+              transformOrigin: "top center"
+            }}
             onPointerDown={handleRotateStart}
             title="Drag to rotate element (Snaps to 0°, 45°, 90°, 180°)"
           >
             {/* Connector stem */}
-            <div className="w-[1.5px] h-2 bg-zinc-800" />
+            <div className="w-[1.5px] h-3 bg-zinc-700" />
             
             {/* Circular Handle Knob */}
-            <div className="w-6 h-6 bg-white rounded-full shadow-md border border-zinc-300 hover:border-zinc-900 flex items-center justify-center text-zinc-700 hover:text-black hover:scale-110 active:scale-95 transition-all">
-              <RotateCw size={12} className="pointer-events-none" />
+            <div className="w-8 h-8 bg-white rounded-full shadow-lg border-2 border-zinc-800 hover:border-black flex items-center justify-center text-zinc-800 hover:text-black hover:scale-110 active:scale-95 transition-all">
+              <RotateCw size={15} className="pointer-events-none" />
             </div>
 
             {/* Floating angle readout while dragging */}
             {isRotating && (
-              <div className="absolute top-8 px-2 py-0.5 bg-zinc-900 text-white text-[10px] font-mono font-bold rounded-md shadow-lg whitespace-nowrap pointer-events-none border border-zinc-700">
+              <div className="absolute top-11 px-2.5 py-1 bg-zinc-950/90 text-white text-xs font-mono font-bold rounded-lg shadow-xl whitespace-nowrap pointer-events-none border border-zinc-700 backdrop-blur-xs">
                 {Math.round(el.rotation || 0)}°
               </div>
             )}

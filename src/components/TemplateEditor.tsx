@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Layers, Save, ArrowLeft, Stamp, Sliders, Code2, ShieldCheck, CheckCircle2, RotateCcw, RotateCw, Image as ImageIcon, Move, LayoutTemplate, Loader2, Sparkles, Shapes, Type, FileImage, MousePointer2, Minus, Plus, Trash2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, Database, QrCode, Undo, Redo, Hand, X, ArrowUp, ArrowDown, ChevronDown, ChevronUp, Lock, Unlock, Eye, Search, Copy, MoreHorizontal, Palette, Check, RefreshCw } from "lucide-react";
+import { Layers, Save, ArrowLeft, Stamp, Sliders, Code2, ShieldCheck, CheckCircle2, RotateCcw, RotateCw, Image as ImageIcon, Move, LayoutTemplate, Loader2, Sparkles, Shapes, Type, FileImage, MousePointer2, Minus, Plus, Trash2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, Database, QrCode, Undo, Redo, Hand, X, ArrowUp, ArrowDown, ChevronDown, ChevronUp, Lock, Unlock, Eye, Search, Copy, MoreHorizontal, Palette, Check, RefreshCw, Crosshair } from "lucide-react";
 import { Rnd } from 'react-rnd';
 import CertificateView, { CertificateDesignConfig, CanvasElement, CanvasElementType } from "@/components/CertificateView";
 import { v4 as uuidv4 } from "uuid";
@@ -1126,6 +1126,7 @@ export default function TemplateEditor({
   const [saving, setSaving] = useState(false);
 
   const [activeGuides, setActiveGuides] = useState<{ vertical: number | null; horizontal: number | null }>({ vertical: null, horizontal: null });
+  const [showCenterGuides, setShowCenterGuides] = useState(false);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const signaturePadRef = useRef<any>(null);
 
@@ -2735,6 +2736,32 @@ const duplicateElement = (id?: string) => {
                                   </div>
                                 </div>
                               </div>
+                              <div className="flex gap-2 pt-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const canvasWidth = (design.orientation || 'landscape') === 'landscape' ? 3508 : 2480;
+                                    const w = selectedElement.width || 200;
+                                    updateSelectedElement({ x: Math.round((canvasWidth - w) / 2) });
+                                  }}
+                                  className="flex-1 py-1.5 px-2 rounded-lg text-[11px] font-semibold bg-zinc-100 hover:bg-zinc-200 text-zinc-700 flex items-center justify-center gap-1.5 border border-zinc-200 transition-colors"
+                                  title="Align element to horizontal center of page"
+                                >
+                                  Center X
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const canvasHeight = (design.orientation || 'landscape') === 'landscape' ? 2480 : 3508;
+                                    const h = selectedElement.height || 100;
+                                    updateSelectedElement({ y: Math.round((canvasHeight - h) / 2) });
+                                  }}
+                                  className="flex-1 py-1.5 px-2 rounded-lg text-[11px] font-semibold bg-zinc-100 hover:bg-zinc-200 text-zinc-700 flex items-center justify-center gap-1.5 border border-zinc-200 transition-colors"
+                                  title="Align element to vertical center of page"
+                                >
+                                  Center Y
+                                </button>
+                              </div>
                             </div>
 
                             <div className="space-y-4">
@@ -3028,23 +3055,57 @@ const duplicateElement = (id?: string) => {
                 );
               })}
 
-              {/* Dynamic Center Snapping Guidelines */}
+              {/* Optional Static Center Reference Crosshairs */}
+              {showCenterGuides && (
+                <>
+                  <div
+                    className="absolute top-0 bottom-0 pointer-events-none z-[25] border-l border-dashed border-indigo-400/60"
+                    style={{ left: "50%", width: "1px", transform: "translateX(-50%)" }}
+                  />
+                  <div
+                    className="absolute left-0 right-0 pointer-events-none z-[25] border-t border-dashed border-indigo-400/60"
+                    style={{ top: "50%", height: "1px", transform: "translateY(-50%)" }}
+                  />
+                  <div
+                    className="absolute pointer-events-none z-[26] w-5 h-5 rounded-full border border-indigo-400/70 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center bg-indigo-50/30"
+                    style={{ left: "50%", top: "50%" }}
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                  </div>
+                </>
+              )}
+
+              {/* Dynamic Center Snapping Guidelines (Canva/Figma magenta) */}
               {activeGuides.vertical !== null && (
                 <div
-                  className="absolute top-0 bottom-0 pointer-events-none z-[60] border-l-2 border-zinc-400 border-dashed"
-                  style={{ left: `${activeGuides.vertical}px` }}
+                  className="absolute top-0 bottom-0 pointer-events-none z-[60]"
+                  style={{
+                    left: `${activeGuides.vertical}px`,
+                    width: `${Math.max(2, Math.round(2 / (scale * userZoom)))}px`,
+                    transform: "translateX(-50%)",
+                    backgroundColor: "#ec4899",
+                    boxShadow: "0 0 6px rgba(236, 72, 153, 0.9)"
+                  }}
                 />
               )}
               {activeGuides.horizontal !== null && (
                 <div
-                  className="absolute left-0 right-0 pointer-events-none z-[60] border-t-2 border-zinc-400 border-dashed"
-                  style={{ top: `${activeGuides.horizontal}px` }}
+                  className="absolute left-0 right-0 pointer-events-none z-[60]"
+                  style={{
+                    top: `${activeGuides.horizontal}px`,
+                    height: `${Math.max(2, Math.round(2 / (scale * userZoom)))}px`,
+                    transform: "translateY(-50%)",
+                    backgroundColor: "#ec4899",
+                    boxShadow: "0 0 6px rgba(236, 72, 153, 0.9)"
+                  }}
                 />
               )}
             </div>
 
             {/* Mobile Floating Zoom Pill (Canva style) */}
             <div className="lg:hidden absolute bottom-3 right-3 z-30 flex items-center gap-1 bg-zinc-900/90 backdrop-blur-md rounded-xl px-2.5 py-1.5 border border-zinc-700/60 shadow-lg text-white">
+              <button onClick={() => setShowCenterGuides(!showCenterGuides)} className={`p-1 rounded-lg transition-colors ${showCenterGuides ? 'text-indigo-400 bg-white/20' : 'text-zinc-400 hover:text-white'}`} title="Toggle Center Guides"><Crosshair size={13} /></button>
+              <div className="w-px h-3 bg-zinc-700 mx-0.5" />
               <button onClick={() => setUserZoom(p => Math.max(0.5, Number((p - 0.25).toFixed(2))))} className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white active:scale-90 transition-all" title="Zoom Out"><Minus size={13} /></button>
               <button onClick={() => setUserZoom(1)} className="text-[11px] font-semibold px-1.5 text-zinc-200 hover:text-white active:scale-95 transition-transform" title="Reset to 100% Fit">{Math.round(userZoom * 100)}%</button>
               <button onClick={() => setUserZoom(p => Math.min(4, Number((p + 0.25).toFixed(2))))} className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white active:scale-90 transition-all" title="Zoom In"><Plus size={13} /></button>
@@ -3151,6 +3212,13 @@ const duplicateElement = (id?: string) => {
                     <Hand size={14} />
                   </button>
                 )}
+                <button
+                  onClick={() => setShowCenterGuides(!showCenterGuides)}
+                  className={`p-1 mr-1 rounded transition-colors flex items-center justify-center ${showCenterGuides ? 'bg-indigo-100 text-indigo-700 font-bold border border-indigo-300' : 'hover:bg-zinc-100 text-zinc-600'}`}
+                  title="Toggle Center Guidelines (X & Y axes)"
+                >
+                  <Crosshair size={14} />
+                </button>
                 <button onClick={() => setUserZoom(p => Math.max(0.1, p - (0.1 / scale)))} className="p-1 hover:bg-zinc-100 rounded text-zinc-600 transition-colors" title="Zoom Out">
                   <Minus size={14} />
                 </button>
@@ -4603,7 +4671,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         const elH = data.node.offsetHeight;
         const centerX = data.x + elW / 2;
         const centerY = data.y + elH / 2;
-        const snap = 25;
+        const snap = Math.max(35, Math.round(18 / s));
         const isNearV = Math.abs(centerX - canvasWidth / 2) < snap;
         const isNearH = Math.abs(centerY - canvasHeight / 2) < snap;
         setActiveGuides({
@@ -4647,7 +4715,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         const elH = data.node.offsetHeight;
         const centerX = finalX + elW / 2;
         const centerY = finalY + elH / 2;
-        const snap = 25;
+        const snap = Math.max(35, Math.round(18 / s));
         if (Math.abs(centerX - canvasWidth / 2) < snap) finalX = canvasWidth / 2 - elW / 2;
         if (Math.abs(centerY - canvasHeight / 2) < snap) finalY = canvasHeight / 2 - elH / 2;
 

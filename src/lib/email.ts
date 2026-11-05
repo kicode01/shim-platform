@@ -149,9 +149,24 @@ export async function sendCertificateEmail({
     `
         <p style="font-size: 16px; color: #374151;">Hi <strong>${recipientName}</strong>,</p>
         <p style="font-size: 16px; color: #374151;">${introLine}</p>
-        <p style="font-size: 16px; color: #374151;">
-          <strong>Role:</strong> ${role}
-        </p>
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px 20px; margin: 24px 0;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #334155;">
+            <tr>
+              <td style="padding: 6px 0; color: #64748b; width: 130px; vertical-align: top;">Event:</td>
+              <td style="padding: 6px 0; font-weight: 600; color: #0f172a;">${eventName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b; vertical-align: top;">Role:</td>
+              <td style="padding: 6px 0; font-weight: 600; color: #0f172a;">${role}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b; vertical-align: top;">Certificate ID:</td>
+              <td style="padding: 6px 0;">
+                <code style="background-color: #e2e8f0; color: #0f172a; padding: 4px 8px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 13px; font-weight: 600; letter-spacing: 0.5px; display: inline-block;">${certificateId}</code>
+              </td>
+            </tr>
+          </table>
+        </div>
         ${primaryCta}
         <p style="font-size: 13px; color: #9ca3af; text-align: center;">
           Or copy this link into your browser:<br>

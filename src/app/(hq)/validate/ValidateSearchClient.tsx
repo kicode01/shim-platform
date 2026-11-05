@@ -56,6 +56,29 @@ interface FetchedCertificate {
   };
 }
 
+export function extractCertificateId(input: string): string {
+  const trimmed = input.trim();
+  if (!trimmed) return "";
+  try {
+    if (trimmed.includes("://") || trimmed.includes("/validate")) {
+      const parsedUrl = trimmed.includes("://")
+        ? new URL(trimmed)
+        : new URL(trimmed, typeof window !== "undefined" ? window.location.origin : "http://localhost");
+      const idParam = parsedUrl.searchParams.get("id");
+      if (idParam) return idParam.trim();
+      const match = parsedUrl.pathname.match(/\/validate\/([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) return match[1].trim();
+    }
+  } catch {
+    // Fallback regex matching if URL parsing fails
+    const queryMatch = trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (queryMatch && queryMatch[1]) return queryMatch[1].trim();
+    const pathMatch = trimmed.match(/\/validate\/([a-zA-Z0-9_-]+)/);
+    if (pathMatch && pathMatch[1]) return pathMatch[1].trim();
+  }
+  return trimmed;
+}
+
 export default function ValidateSearchClient() {
   const router = useRouter();
   const { data: session } = useSession();
@@ -162,9 +185,12 @@ export default function ValidateSearchClient() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = searchId.trim();
-    if (trimmed) {
-      fetchCertificate(trimmed);
+    const extracted = extractCertificateId(searchId);
+    if (extracted) {
+      if (extracted !== searchId.trim()) {
+        setSearchId(extracted);
+      }
+      fetchCertificate(extracted);
     }
   };
 
@@ -298,28 +324,8 @@ export default function ValidateSearchClient() {
   };
 
   const handleScannedUrl = async (url: string, fileOrImage?: File | string) => {
-    // Extract ID from URL (e.g. https://shim.app/validate/cmtzoowrv0008... or https://shim.app/validate?id=cmtzoowrv0008...)
-    let idToFetch = url.trim();
-    
-    try {
-      const parsedUrl = url.includes("://") ? new URL(url) : new URL(url, window.location.origin);
-      const idParam = parsedUrl.searchParams.get("id");
-      
-      if (idParam) {
-        idToFetch = idParam.trim();
-      } else {
-        const match = parsedUrl.pathname.match(/\/validate\/([a-zA-Z0-9_-]+)/);
-        if (match && match[1]) {
-          idToFetch = match[1].trim();
-        }
-      }
-    } catch {
-      // Fallback regex matching if URL parsing fails
-      const match = url.match(/\/validate\/([a-zA-Z0-9_-]+)/);
-      if (match && match[1]) {
-        idToFetch = match[1].trim();
-      }
-    }
+    const idToFetch = extractCertificateId(url);
+    if (!idToFetch) return;
     
     setSearchId(idToFetch);
     const cert = await fetchCertificate(idToFetch);
@@ -428,8 +434,8 @@ export default function ValidateSearchClient() {
                   </div>
                   <input
                     type="text"
-                    placeholder="e.g. cmtzoowrv0008585767kqhhyk"
-                    className="flex-1 bg-transparent text-zinc-100 placeholder-zinc-600 text-sm font-mono focus:outline-none"
+                    placeholder="Enter Certificate ID (e.g. cmtzoowrv...) or paste verification link"
+                    className="flex-1 bg-transparent text-zinc-100 placeholder-zinc-500 text-xs sm:text-sm font-mono focus:outline-none"
                     value={searchId}
                     onChange={(e) => setSearchId(e.target.value)}
                     required
@@ -452,8 +458,12 @@ export default function ValidateSearchClient() {
                   )}
                 </form>
 
-                <div className="flex items-center justify-end w-full mb-8">
-                  <label className="flex items-center gap-3 cursor-pointer group">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 w-full mb-8">
+                  <p className="text-[11px] sm:text-xs text-zinc-500 flex items-center gap-1.5">
+                    <span>💡</span>
+                    <span>Certificate ID is found on your certificate, in your email, or in the QR code.</span>
+                  </p>
+                  <label className="flex items-center gap-3 cursor-pointer group self-end sm:self-auto shrink-0">
                     <span className="text-[11px] font-semibold text-zinc-500 group-hover:text-zinc-400 transition-colors uppercase tracking-widest flex items-center gap-1.5">
                       Advanced Mode
                     </span>

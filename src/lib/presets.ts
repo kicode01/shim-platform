@@ -42,7 +42,8 @@ export const PRESETS: PresetInfo[] = [
         { id: uuidv4(), type: "staticText", text: "has successfully completed the requirements for", x: 280, y: 1560, width: 2950, fontSize: 80, color: "#0f172a", fontWeight: "500", fontFamily: "var(--font-inter, sans-serif)" },
         { id: uuidv4(), type: "dynamicText", text: "eventName", x: 280, y: 1690, width: 2400, fontSize: 115, maxFontSize: 115, autoFit: true, color: "#0f172a", fontWeight: "900", letterSpacing: -2, fontFamily: "var(--font-inter, sans-serif)" },
         { id: uuidv4(), type: "signature", text: "John Smith|EVENT DIRECTOR", x: 280, y: 1990, width: 900, height: 250, color: "#0f172a", align: "center", fontFamily: "var(--font-script, cursive)" },
-        { id: uuidv4(), type: "qrCode", text: "", x: 2830, y: 1830, width: 400, height: 400 }
+        { id: uuidv4(), type: "qrCode", text: "", x: 2830, y: 1830, width: 400, height: 400 },
+        { id: uuidv4(), type: "dynamicText", text: "certificateId", x: 2630, y: 2250, width: 800, align: "center", fontSize: 36, color: "#64748b", fontWeight: "600", fontFamily: "var(--font-spacemono, monospace)" }
       ]
     }
   },
@@ -63,7 +64,8 @@ export const PRESETS: PresetInfo[] = [
         { id: uuidv4(), type: "badge", text: "", x: 1600, y: 1830, width: 300, height: 300 },
         { id: uuidv4(), type: "shape", text: "", x: 2190, y: 2060, width: 800, height: 4, color: "#1e293b" },
         { id: uuidv4(), type: "dynamicText", text: "issueDate", x: 2190, y: 1915, width: 800, align: "center", fontSize: 88, color: "#1e293b", fontFamily: "var(--font-playfair, serif)" },
-        { id: uuidv4(), type: "staticText", text: "DATE OF ISSUE", x: 2190, y: 2105, width: 800, align: "center", fontSize: 44, color: "#64748b", fontWeight: "700", letterSpacing: 9, fontFamily: "var(--font-inter, sans-serif)" }
+        { id: uuidv4(), type: "staticText", text: "DATE OF ISSUE", x: 2190, y: 2105, width: 800, align: "center", fontSize: 44, color: "#64748b", fontWeight: "700", letterSpacing: 9, fontFamily: "var(--font-inter, sans-serif)" },
+        { id: uuidv4(), type: "dynamicText", text: "certificateId", x: 0, y: 2260, width: 3508, align: "center", fontSize: 36, color: "#94a3b8", letterSpacing: 4, fontFamily: "var(--font-spacemono, monospace)" }
       ]
     }
   },
@@ -81,7 +83,8 @@ export const PRESETS: PresetInfo[] = [
         { id: uuidv4(), type: "staticText", text: "Awarded first place in the", x: 350, y: 1380, width: 2800, fontSize: 76, color: "#475569", fontWeight: "400", fontFamily: "var(--font-outfit, sans-serif)" },
         { id: uuidv4(), type: "dynamicText", text: "eventName", x: 350, y: 1500, width: 2800, fontSize: 100, maxFontSize: 100, autoFit: true, color: "#047857", fontWeight: "800", fontFamily: "var(--font-outfit, sans-serif)" },
         { id: uuidv4(), type: "signature", text: "Michael Chen|LEAD ORGANIZER", x: 2280, y: 1860, width: 877, height: 250, color: "#0f172a", align: "center", fontFamily: "var(--font-script, cursive)" },
-        { id: uuidv4(), type: "qrCode", text: "", x: 350, y: 1880, width: 340, height: 340 }
+        { id: uuidv4(), type: "qrCode", text: "", x: 350, y: 1880, width: 340, height: 340 },
+        { id: uuidv4(), type: "dynamicText", text: "certificateId", x: 350, y: 2240, width: 900, align: "left", fontSize: 38, color: "#047857", fontWeight: "600", fontFamily: "var(--font-spacemono, monospace)" }
       ]
     }
   },
@@ -94,6 +97,7 @@ export const PRESETS: PresetInfo[] = [
       canvasElements: [
         { id: uuidv4(), type: "staticText", text: "SHIM INSTITUTE", x: 175, y: 165, width: 1200, fontSize: 118, color: "#ffffff", fontWeight: "900", letterSpacing: -2, fontFamily: "var(--font-outfit, sans-serif)" },
         { id: uuidv4(), type: "staticText", text: "ENTERPRISE CREDENTIAL", x: 175, y: 310, width: 1200, fontSize: 52, color: "#a5b4fc", fontWeight: "600", letterSpacing: 4, fontFamily: "var(--font-outfit, sans-serif)" },
+        { id: uuidv4(), type: "dynamicText", text: "certificateId", x: 1950, y: 200, width: 1380, align: "right", fontSize: 48, color: "#e0e7ff", fontWeight: "600", fontFamily: "var(--font-spacemono, monospace)" },
         { id: uuidv4(), type: "staticText", text: "CERTIFICATE OF COMPLETION", x: 175, y: 900, width: 2400, fontSize: 70, color: "#4338ca", fontWeight: "800", letterSpacing: 9, fontFamily: "var(--font-outfit, sans-serif)" },
         { id: uuidv4(), type: "dynamicText", text: "recipientName", x: 175, y: 1070, width: 2900, fontSize: 220, maxFontSize: 220, autoFit: true, color: "#1e1b4b", fontWeight: "900", letterSpacing: -4, fontFamily: "var(--font-outfit, sans-serif)" },
         { id: uuidv4(), type: "staticText", text: "has completed the professional training program:", x: 175, y: 1450, width: 2900, fontSize: 76, color: "#475569", fontWeight: "400", fontFamily: "var(--font-outfit, sans-serif)" },
@@ -131,7 +135,8 @@ export const PRESETS: PresetInfo[] = [
         { id: uuidv4(), type: "dynamicText", text: "recipientName", x: 0, y: 960, width: 3300, align: "center", fontSize: 240, maxFontSize: 240, autoFit: true, color: "#000000", fontWeight: "400", fontFamily: "var(--font-cormorant, serif)" },
         { id: uuidv4(), type: "staticText", text: "FOR EXCEPTIONAL PERFORMANCE IN", x: 0, y: 1390, width: 3508, align: "center", fontSize: 50, color: "#71717a", fontWeight: "400", letterSpacing: 10, fontFamily: "var(--font-cormorant, serif)" },
         { id: uuidv4(), type: "dynamicText", text: "eventName", x: 0, y: 1530, width: 3100, align: "center", fontSize: 130, maxFontSize: 130, autoFit: true, color: "#000000", fontWeight: "600", fontFamily: "var(--font-cinzel, serif)" },
-        { id: uuidv4(), type: "signature", text: "Eleanor Vance|MANAGING DIRECTOR", x: 1300, y: 1940, width: 900, height: 250, color: "#000000", align: "center", fontFamily: "var(--font-script, cursive)" }
+        { id: uuidv4(), type: "signature", text: "Eleanor Vance|MANAGING DIRECTOR", x: 1300, y: 1940, width: 900, height: 250, color: "#000000", align: "center", fontFamily: "var(--font-script, cursive)" },
+        { id: uuidv4(), type: "dynamicText", text: "certificateId", x: 0, y: 2250, width: 3508, align: "center", fontSize: 36, color: "#71717a", letterSpacing: 6, fontFamily: "var(--font-cinzel, serif)" }
       ]
     }
   },
@@ -166,7 +171,8 @@ export const PRESETS: PresetInfo[] = [
         { id: uuidv4(), type: "staticText", text: "for completing the environmental training program:", x: 0, y: 1420, width: 3508, align: "center", fontSize: 58, color: "#15803d", fontWeight: "500", fontFamily: "var(--font-inter, sans-serif)" },
         { id: uuidv4(), type: "dynamicText", text: "eventName", x: 0, y: 1550, width: 3100, align: "center", fontSize: 112, maxFontSize: 112, autoFit: true, color: "#166534", fontWeight: "700", fontFamily: "var(--font-outfit, sans-serif)" },
         { id: uuidv4(), type: "signature", text: "Maya Lin|GREEN INITIATIVE LEAD", x: 1250, y: 1980, width: 900, height: 250, color: "#14532d", align: "center", fontFamily: "var(--font-script, cursive)" },
-        { id: uuidv4(), type: "badge", text: "", x: 2620, y: 1900, width: 340, height: 340 }
+        { id: uuidv4(), type: "badge", text: "", x: 2620, y: 1900, width: 340, height: 340 },
+        { id: uuidv4(), type: "dynamicText", text: "certificateId", x: 0, y: 2260, width: 3508, align: "center", fontSize: 36, color: "#15803d", letterSpacing: 4, fontFamily: "var(--font-spacemono, monospace)" }
       ]
     }
   }

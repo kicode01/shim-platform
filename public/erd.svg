@@ -1,564 +1,189 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="2700" height="1850" viewBox="0 0 2700 1850" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', Helvetica, Arial, sans-serif">
+<svg width="2300" height="1350" viewBox="0 0 2300 1350" xmlns="http://www.w3.org/2000/svg" font-family="Arial, Helvetica, sans-serif">
   <defs>
-    <!-- Background Gradient -->
-    <linearGradient id="canvasBg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#090d16" />
-      <stop offset="50%" stop-color="#0b1120" />
-      <stop offset="100%" stop-color="#030712" />
-    </linearGradient>
-
-    <!-- Subtle Dot Pattern -->
-    <pattern id="dotGrid" width="40" height="40" patternUnits="userSpaceOnUse">
-      <circle cx="2" cy="2" r="1.5" fill="#1e293b" opacity="0.45" />
-    </pattern>
-
-    <!-- Drop Shadows -->
-    <filter id="cardShadow" x="-10%" y="-10%" width="125%" height="125%">
-      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.55" />
-      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000000" flood-opacity="0.3" />
-    </filter>
-
-    <filter id="glowEffect" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="3" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
-    </filter>
-
-    <!-- Arrowhead Marker -->
-    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-      <path d="M 0 1 L 8 5 L 0 9 z" fill="#38bdf8" />
-    </marker>
-    <marker id="arrowGreen" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-      <path d="M 0 1 L 8 5 L 0 9 z" fill="#10b981" />
-    </marker>
-    <marker id="arrowAmber" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-      <path d="M 0 1 L 8 5 L 0 9 z" fill="#f59e0b" />
-    </marker>
-    <marker id="arrowPink" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-      <path d="M 0 1 L 8 5 L 0 9 z" fill="#ec4899" />
+    <!-- Sharp black arrow head marker -->
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#111111" />
     </marker>
   </defs>
 
-  <!-- Canvas Background -->
-  <rect width="100%" height="100%" fill="url(#canvasBg)" />
-  <rect width="100%" height="100%" fill="url(#dotGrid)" />
+  <!-- Clean Pure White Background -->
+  <rect width="100%" height="100%" fill="#ffffff" />
 
-  <!-- Diagram Header Banner -->
-  <g id="header" transform="translate(100, 50)">
-    <rect x="0" y="0" width="130" height="30" rx="15" fill="rgba(14, 165, 233, 0.15)" stroke="#0ea5e9" stroke-width="1.5" />
-    <text x="65" y="20" fill="#38bdf8" font-size="12" font-weight="700" letter-spacing="1.5" text-anchor="middle">RELATIONAL ERD</text>
+  <!-- Top Title matching reference style -->
+  <text x="1150" y="52" fill="#111111" font-size="28" font-weight="bold" text-anchor="middle" letter-spacing="-0.5">Database Entity Relationship Diagram (ERD)</text>
 
-    <text x="145" y="23" fill="#f8fafc" font-size="28" font-weight="800" letter-spacing="-0.5">SHIM PLATFORM • DATABASE SCHEMA</text>
-    <text x="0" y="62" fill="#94a3b8" font-size="14" font-weight="500">
-      PostgreSQL / Prisma ORM Architecture • 10 Relational Models • Cryptographic Verification &amp; Credential Ledger
-    </text>
-
-    <!-- Legend -->
-    <g transform="translate(1620, -10)">
-      <rect x="0" y="0" width="880" height="76" rx="12" fill="#0f172a" stroke="#334155" stroke-width="1" />
-      <text x="24" y="26" fill="#cbd5e1" font-size="12" font-weight="700" letter-spacing="1">KEY NOTATIONS &amp; CONSTRAINTS</text>
-
-      <g transform="translate(24, 46)">
-        <rect x="0" y="-12" width="28" height="18" rx="4" fill="#f59e0b" />
-        <text x="14" y="1" fill="#0f172a" font-size="10" font-weight="800" text-anchor="middle">PK</text>
-        <text x="36" y="1" fill="#94a3b8" font-size="12" font-weight="500">Primary Key</text>
-
-        <rect x="130" y="-12" width="28" height="18" rx="4" fill="#06b6d4" />
-        <text x="144" y="1" fill="#0f172a" font-size="10" font-weight="800" text-anchor="middle">FK</text>
-        <text x="166" y="1" fill="#94a3b8" font-size="12" font-weight="500">Foreign Key</text>
-
-        <rect x="260" y="-12" width="28" height="18" rx="4" fill="#a855f7" />
-        <text x="274" y="1" fill="#ffffff" font-size="10" font-weight="800" text-anchor="middle">UK</text>
-        <text x="296" y="1" fill="#94a3b8" font-size="12" font-weight="500">Unique Index</text>
-
-        <circle cx="410" cy="-3" r="5" fill="#ef4444" />
-        <text x="424" y="1" fill="#94a3b8" font-size="12" font-weight="500">Cascade Delete</text>
-
-        <circle cx="545" cy="-3" r="5" fill="#10b981" />
-        <text x="559" y="1" fill="#94a3b8" font-size="12" font-weight="500">Restrict (Locked)</text>
-
-        <circle cx="685" cy="-3" r="5" fill="#eab308" />
-        <text x="699" y="1" fill="#94a3b8" font-size="12" font-weight="500">SetNull (Decoupled)</text>
-      </g>
-    </g>
+  <!-- CONNECTOR LINES LAYER -->
+  <g id="connectors" fill="none" stroke="#222222" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 740,130 L 740,85 L 195,85 L 195,130" marker-end="url(#arrow)" />
+    <path d="M 710,190 L 650,190" marker-end="url(#arrow)" />
+    <path d="M 990,190 L 1090,190" marker-end="url(#arrow)" />
+    <path d="M 880,130 L 880,85 L 1640,85 L 1640,130" marker-end="url(#arrow)" />
+    <path d="M 940,130 L 940,65 L 2030,65 L 2030,130" marker-end="url(#arrow)" />
+    <path d="M 850,346 L 850,520" marker-end="url(#arrow)" />
+    <path d="M 1240,390 L 1240,570" marker-end="url(#arrow)" />
+    <path d="M 1160,390 L 1160,460 L 950,460 L 950,520" marker-end="url(#arrow)" />
+    <path d="M 1580,346 L 1580,485 L 980,485 L 980,520" marker-end="url(#arrow)" />
+    <path d="M 1000,868 L 1000,940 L 1640,940 L 1640,764" marker-end="url(#arrow)" />
+    <path d="M 2030,280 L 2030,990 L 800,990 L 800,868" marker-end="url(#arrow)" />
   </g>
 
-  <!-- RELATIONSHIP PATHS LAYER -->
-  <g id="relationships" stroke-width="2.5" fill="none">
-    <path d="M 1040,220 L 470,220" stroke="#38bdf8" stroke-opacity="0.15" stroke-width="8" stroke-linecap="round" />
-    <path d="M 1040,220 L 470,220" stroke="#38bdf8" stroke-width="2.2" stroke-dasharray="none" stroke-linecap="round" />
-    <circle cx="1040" cy="220" r="4.5" fill="#38bdf8" stroke="#0f172a" stroke-width="2" />
-    <circle cx="470" cy="220" r="4.5" fill="#38bdf8" stroke="#0f172a" stroke-width="2" />
-    <path d="M 1040,280 L 890,280" stroke="#38bdf8" stroke-opacity="0.15" stroke-width="8" stroke-linecap="round" />
-    <path d="M 1040,280 L 890,280" stroke="#38bdf8" stroke-width="2.2" stroke-dasharray="none" stroke-linecap="round" />
-    <circle cx="1040" cy="280" r="4.5" fill="#38bdf8" stroke="#0f172a" stroke-width="2" />
-    <circle cx="890" cy="280" r="4.5" fill="#38bdf8" stroke="#0f172a" stroke-width="2" />
-    <path d="M 1430,250 L 1580,250" stroke="#38bdf8" stroke-opacity="0.15" stroke-width="8" stroke-linecap="round" />
-    <path d="M 1430,250 L 1580,250" stroke="#38bdf8" stroke-width="2.2" stroke-dasharray="none" stroke-linecap="round" />
-    <circle cx="1430" cy="250" r="4.5" fill="#38bdf8" stroke="#0f172a" stroke-width="2" />
-    <circle cx="1580" cy="250" r="4.5" fill="#38bdf8" stroke="#0f172a" stroke-width="2" />
-    <path d="M 1120,480 C 1120,620 800,600 800,730" stroke="#38bdf8" stroke-opacity="0.15" stroke-width="8" stroke-linecap="round" />
-    <path d="M 1120,480 C 1120,620 800,600 800,730" stroke="#38bdf8" stroke-width="2.2" stroke-dasharray="none" stroke-linecap="round" />
-    <circle cx="1120" cy="480" r="4.5" fill="#38bdf8" stroke="#0f172a" stroke-width="2" />
-    <circle cx="800" cy="730" r="4.5" fill="#38bdf8" stroke="#0f172a" stroke-width="2" />
-    <path d="M 1350,480 C 1350,600 1680,570 1680,690" stroke="#38bdf8" stroke-opacity="0.15" stroke-width="8" stroke-linecap="round" />
-    <path d="M 1350,480 C 1350,600 1680,570 1680,690" stroke="#38bdf8" stroke-width="2.2" stroke-dasharray="none" stroke-linecap="round" />
-    <circle cx="1350" cy="480" r="4.5" fill="#38bdf8" stroke="#0f172a" stroke-width="2" />
-    <circle cx="1680" cy="690" r="4.5" fill="#38bdf8" stroke="#0f172a" stroke-width="2" />
-    <path d="M 1245,480 L 1245,1140" stroke="#10b981" stroke-opacity="0.15" stroke-width="8" stroke-linecap="round" />
-    <path d="M 1245,480 L 1245,1140" stroke="#10b981" stroke-width="2.2" stroke-dasharray="none" stroke-linecap="round" />
-    <circle cx="1245" cy="480" r="4.5" fill="#10b981" stroke="#0f172a" stroke-width="2" />
-    <circle cx="1245" cy="1140" r="4.5" fill="#10b981" stroke="#0f172a" stroke-width="2" />
-    <path d="M 550,880 L 470,880" stroke="#f59e0b" stroke-opacity="0.15" stroke-width="8" stroke-linecap="round" />
-    <path d="M 550,880 L 470,880" stroke="#f59e0b" stroke-width="2.2" stroke-dasharray="none" stroke-linecap="round" />
-    <circle cx="550" cy="880" r="4.5" fill="#f59e0b" stroke="#0f172a" stroke-width="2" />
-    <circle cx="470" cy="880" r="4.5" fill="#f59e0b" stroke="#0f172a" stroke-width="2" />
-    <path d="M 860,1090 C 860,1220 950,1260 1010,1260" stroke="#10b981" stroke-opacity="0.15" stroke-width="8" stroke-linecap="round" />
-    <path d="M 860,1090 C 860,1220 950,1260 1010,1260" stroke="#10b981" stroke-width="2.2" stroke-dasharray="none" stroke-linecap="round" />
-    <circle cx="860" cy="1090" r="4.5" fill="#10b981" stroke="#0f172a" stroke-width="2" />
-    <circle cx="1010" cy="1260" r="4.5" fill="#10b981" stroke="#0f172a" stroke-width="2" />
-    <path d="M 1650,1000 C 1650,1180 1550,1260 1480,1260" stroke="#10b981" stroke-opacity="0.15" stroke-width="8" stroke-linecap="round" />
-    <path d="M 1650,1000 C 1650,1180 1550,1260 1480,1260" stroke="#10b981" stroke-width="2.2" stroke-dasharray="none" stroke-linecap="round" />
-    <circle cx="1650" cy="1000" r="4.5" fill="#10b981" stroke="#0f172a" stroke-width="2" />
-    <circle cx="1480" cy="1260" r="4.5" fill="#10b981" stroke="#0f172a" stroke-width="2" />
-    <path d="M 1880,380 C 2150,380 2150,1460 1480,1460" stroke="#eab308" stroke-opacity="0.15" stroke-width="8" stroke-linecap="round" />
-    <path d="M 1880,380 C 2150,380 2150,1460 1480,1460" stroke="#eab308" stroke-width="2.2" stroke-dasharray="6 4" stroke-linecap="round" />
-    <circle cx="1880" cy="380" r="4.5" fill="#eab308" stroke="#0f172a" stroke-width="2" />
-    <circle cx="1480" cy="1460" r="4.5" fill="#eab308" stroke="#0f172a" stroke-width="2" />
-    <path d="M 1480,1360 L 1610,1360" stroke="#38bdf8" stroke-opacity="0.15" stroke-width="8" stroke-linecap="round" />
-    <path d="M 1480,1360 L 1610,1360" stroke="#38bdf8" stroke-width="2.2" stroke-dasharray="none" stroke-linecap="round" />
-    <circle cx="1480" cy="1360" r="4.5" fill="#38bdf8" stroke="#0f172a" stroke-width="2" />
-    <circle cx="1610" cy="1360" r="4.5" fill="#38bdf8" stroke="#0f172a" stroke-width="2" />
+  <!-- LABELS LAYER -->
+  <g id="labels" font-size="13" font-weight="bold" fill="#111111" text-anchor="middle">
+    <rect x="438" y="63" width="44" height="18" fill="#ffffff" />
+    <text x="460" y="77">1 : M</text>
+    <rect x="658" y="168" width="44" height="18" fill="#ffffff" />
+    <text x="680" y="182">1 : M</text>
+    <rect x="1018" y="168" width="44" height="18" fill="#ffffff" />
+    <text x="1040" y="182">1 : M</text>
+    <rect x="1238" y="63" width="44" height="18" fill="#ffffff" />
+    <text x="1260" y="77">1 : M</text>
+    <rect x="1478" y="43" width="44" height="18" fill="#ffffff" />
+    <text x="1500" y="57">1 : 1</text>
+    <rect x="843" y="418" width="44" height="18" fill="#ffffff" />
+    <text x="865" y="432">1 : M</text>
+    <rect x="1233" y="468" width="44" height="18" fill="#ffffff" />
+    <text x="1255" y="482">1 : M</text>
+    <rect x="1033" y="438" width="44" height="18" fill="#ffffff" />
+    <text x="1055" y="452">1 : M</text>
+    <rect x="1358" y="463" width="44" height="18" fill="#ffffff" />
+    <text x="1380" y="477">1 : M</text>
+    <rect x="1298" y="918" width="44" height="18" fill="#ffffff" />
+    <text x="1320" y="932">1 : M</text>
+    <rect x="1388" y="968" width="44" height="18" fill="#ffffff" />
+    <text x="1410" y="982">1 : M</text>
   </g>
 
   <!-- TABLES LAYER -->
   <!-- TABLE: ACCOUNT -->
-  <g id="table-ACCOUNT" transform="translate(100, 160)" filter="url(#cardShadow)">
-    <rect x="0" y="0" width="370" height="492" rx="14" fill="#0f172a" stroke="#1e293b" stroke-width="1.5" />
-    <rect x="0" y="0" width="370" height="66" rx="14" fill="#131e36" />
-    <rect x="0" y="52" width="370" height="14" fill="#131e36" />
-    <line x1="0" y1="66" x2="370" y2="66" stroke="#1e293b" stroke-width="1.5" />
-    <rect x="18" y="18" width="6" height="30" rx="3" fill="#6366f1" />
-    <text x="36" y="36" fill="#f8fafc" font-size="18" font-weight="700">Account</text>
-    <text x="36" y="53" fill="#64748b" font-size="11" font-weight="500">OAuth Provider Accounts</text>
-    <rect x="18" y="82" width="26" height="17" rx="4" fill="#f59e0b" />
-    <text x="31" y="95" fill="#0f172a" font-size="10" font-weight="800" text-anchor="middle">PK</text>
-    <text x="52" y="96" fill="#e2e8f0" font-size="13" font-weight="600">id</text>
-    <text x="352" y="96" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="6" y="110" width="358" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <rect x="18" y="114" width="26" height="17" rx="4" fill="#06b6d4" />
-    <text x="31" y="127" fill="#0f172a" font-size="10" font-weight="800" text-anchor="middle">FK</text>
-    <text x="52" y="128" fill="#e2e8f0" font-size="13" font-weight="600">userId</text>
-    <text x="352" y="128" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <circle cx="28" cy="155" r="2" fill="#334155" />
-    <text x="52" y="160" fill="#94a3b8" font-size="13" font-weight="400">type</text>
-    <text x="352" y="160" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="6" y="174" width="358" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <rect x="18" y="178" width="26" height="17" rx="4" fill="#a855f7" />
-    <text x="31" y="191" fill="#ffffff" font-size="9" font-weight="800" text-anchor="middle">UK</text>
-    <text x="52" y="192" fill="#e2e8f0" font-size="13" font-weight="600">provider</text>
-    <text x="352" y="192" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="18" y="210" width="26" height="17" rx="4" fill="#a855f7" />
-    <text x="31" y="223" fill="#ffffff" font-size="9" font-weight="800" text-anchor="middle">UK</text>
-    <text x="52" y="224" fill="#e2e8f0" font-size="13" font-weight="600">providerAccountId</text>
-    <text x="352" y="224" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="6" y="238" width="358" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="251" r="2" fill="#334155" />
-    <text x="52" y="256" fill="#94a3b8" font-size="13" font-weight="400">refresh_token</text>
-    <text x="352" y="256" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String?</text>
-    <circle cx="28" cy="283" r="2" fill="#334155" />
-    <text x="52" y="288" fill="#94a3b8" font-size="13" font-weight="400">access_token</text>
-    <text x="352" y="288" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String?</text>
-    <rect x="6" y="302" width="358" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="315" r="2" fill="#334155" />
-    <text x="52" y="320" fill="#94a3b8" font-size="13" font-weight="400">expires_at</text>
-    <text x="352" y="320" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">Int?</text>
-    <circle cx="28" cy="347" r="2" fill="#334155" />
-    <text x="52" y="352" fill="#94a3b8" font-size="13" font-weight="400">token_type</text>
-    <text x="352" y="352" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String?</text>
-    <rect x="6" y="366" width="358" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="379" r="2" fill="#334155" />
-    <text x="52" y="384" fill="#94a3b8" font-size="13" font-weight="400">scope</text>
-    <text x="352" y="384" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String?</text>
-    <circle cx="28" cy="411" r="2" fill="#334155" />
-    <text x="52" y="416" fill="#94a3b8" font-size="13" font-weight="400">id_token</text>
-    <text x="352" y="416" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String?</text>
-    <rect x="6" y="430" width="358" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="443" r="2" fill="#334155" />
-    <text x="52" y="448" fill="#94a3b8" font-size="13" font-weight="400">session_state</text>
-    <text x="352" y="448" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String?</text>
-    <text x="20" y="476" fill="#64748b" font-size="10" font-style="italic">* Composite Unique: [provider, providerAccountId]</text>
+  <g id="table-ACCOUNT" transform="translate(50, 130)">
+    <rect x="0" y="0" width="290" height="326" rx="6" fill="#ffffff" stroke="#222222" stroke-width="1.8" />
+    <path d="M 0,6 Q 0,0 6,0 L 284,0 Q 290,0 290,6 L 290,36 L 0,36 Z" fill="#efefef" stroke="#222222" stroke-width="1.8" />
+    <text x="145" y="23" fill="#111111" font-size="14" font-weight="bold" text-anchor="middle" letter-spacing="0.5">ACCOUNT</text>
+    <text x="16" y="56" fill="#111111" font-size="12" font-weight="bold">PK id</text>
+    <text x="16" y="78" fill="#111111" font-size="12" font-weight="bold">FK user_id</text>
+    <text x="16" y="100" fill="#111111" font-size="12" font-weight="normal">type</text>
+    <text x="16" y="122" fill="#111111" font-size="12" font-weight="normal">provider</text>
+    <text x="16" y="144" fill="#111111" font-size="12" font-weight="normal">provider_account_id</text>
+    <text x="16" y="166" fill="#111111" font-size="12" font-weight="normal">refresh_token</text>
+    <text x="16" y="188" fill="#111111" font-size="12" font-weight="normal">access_token</text>
+    <text x="16" y="210" fill="#111111" font-size="12" font-weight="normal">expires_at</text>
+    <text x="16" y="232" fill="#111111" font-size="12" font-weight="normal">token_type</text>
+    <text x="16" y="254" fill="#111111" font-size="12" font-weight="normal">scope</text>
+    <text x="16" y="276" fill="#111111" font-size="12" font-weight="normal">id_token</text>
+    <text x="16" y="298" fill="#111111" font-size="12" font-weight="normal">session_state</text>
   </g>
   <!-- TABLE: SESSION -->
-  <g id="table-SESSION" transform="translate(540, 160)" filter="url(#cardShadow)">
-    <rect x="0" y="0" width="350" height="216" rx="14" fill="#0f172a" stroke="#1e293b" stroke-width="1.5" />
-    <rect x="0" y="0" width="350" height="66" rx="14" fill="#131e36" />
-    <rect x="0" y="52" width="350" height="14" fill="#131e36" />
-    <line x1="0" y1="66" x2="350" y2="66" stroke="#1e293b" stroke-width="1.5" />
-    <rect x="18" y="18" width="6" height="30" rx="3" fill="#6366f1" />
-    <text x="36" y="36" fill="#f8fafc" font-size="18" font-weight="700">Session</text>
-    <text x="36" y="53" fill="#64748b" font-size="11" font-weight="500">Active Auth Sessions</text>
-    <rect x="18" y="82" width="26" height="17" rx="4" fill="#f59e0b" />
-    <text x="31" y="95" fill="#0f172a" font-size="10" font-weight="800" text-anchor="middle">PK</text>
-    <text x="52" y="96" fill="#e2e8f0" font-size="13" font-weight="600">id</text>
-    <text x="332" y="96" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="6" y="110" width="338" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <rect x="18" y="114" width="26" height="17" rx="4" fill="#a855f7" />
-    <text x="31" y="127" fill="#ffffff" font-size="9" font-weight="800" text-anchor="middle">UK</text>
-    <text x="52" y="128" fill="#e2e8f0" font-size="13" font-weight="600">sessionToken</text>
-    <text x="332" y="128" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="18" y="146" width="26" height="17" rx="4" fill="#06b6d4" />
-    <text x="31" y="159" fill="#0f172a" font-size="10" font-weight="800" text-anchor="middle">FK</text>
-    <text x="52" y="160" fill="#e2e8f0" font-size="13" font-weight="600">userId</text>
-    <text x="332" y="160" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="6" y="174" width="338" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="187" r="2" fill="#334155" />
-    <text x="52" y="192" fill="#94a3b8" font-size="13" font-weight="400">expires</text>
-    <text x="332" y="192" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">DateTime</text>
+  <g id="table-SESSION" transform="translate(390, 130)">
+    <rect x="0" y="0" width="260" height="150" rx="6" fill="#ffffff" stroke="#222222" stroke-width="1.8" />
+    <path d="M 0,6 Q 0,0 6,0 L 254,0 Q 260,0 260,6 L 260,36 L 0,36 Z" fill="#efefef" stroke="#222222" stroke-width="1.8" />
+    <text x="130" y="23" fill="#111111" font-size="14" font-weight="bold" text-anchor="middle" letter-spacing="0.5">SESSION</text>
+    <text x="16" y="56" fill="#111111" font-size="12" font-weight="bold">PK id</text>
+    <text x="16" y="78" fill="#111111" font-size="12" font-weight="bold">FK user_id</text>
+    <text x="16" y="100" fill="#111111" font-size="12" font-weight="bold">UK session_token</text>
+    <text x="16" y="122" fill="#111111" font-size="12" font-weight="normal">expires</text>
   </g>
   <!-- TABLE: VERIFICATION_TOKEN -->
-  <g id="table-VERIFICATION_TOKEN" transform="translate(540, 400)" filter="url(#cardShadow)">
-    <rect x="0" y="0" width="350" height="204" rx="14" fill="#0f172a" stroke="#1e293b" stroke-width="1.5" />
-    <rect x="0" y="0" width="350" height="66" rx="14" fill="#131e36" />
-    <rect x="0" y="52" width="350" height="14" fill="#131e36" />
-    <line x1="0" y1="66" x2="350" y2="66" stroke="#1e293b" stroke-width="1.5" />
-    <rect x="18" y="18" width="6" height="30" rx="3" fill="#8b5cf6" />
-    <text x="36" y="36" fill="#f8fafc" font-size="18" font-weight="700">VerificationToken</text>
-    <text x="36" y="53" fill="#64748b" font-size="11" font-weight="500">Magic Link / Sign-in Tokens</text>
-    <rect x="18" y="82" width="26" height="17" rx="4" fill="#a855f7" />
-    <text x="31" y="95" fill="#ffffff" font-size="9" font-weight="800" text-anchor="middle">UK</text>
-    <text x="52" y="96" fill="#e2e8f0" font-size="13" font-weight="600">identifier</text>
-    <text x="332" y="96" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="6" y="110" width="338" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <rect x="18" y="114" width="26" height="17" rx="4" fill="#a855f7" />
-    <text x="31" y="127" fill="#ffffff" font-size="9" font-weight="800" text-anchor="middle">UK</text>
-    <text x="52" y="128" fill="#e2e8f0" font-size="13" font-weight="600">token</text>
-    <text x="332" y="128" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <circle cx="28" cy="155" r="2" fill="#334155" />
-    <text x="52" y="160" fill="#94a3b8" font-size="13" font-weight="400">expires</text>
-    <text x="332" y="160" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">DateTime</text>
-    <text x="20" y="188" fill="#64748b" font-size="10" font-style="italic">* Composite Unique: [identifier, token]</text>
+  <g id="table-VERIFICATION_TOKEN" transform="translate(390, 330)">
+    <rect x="0" y="0" width="260" height="128" rx="6" fill="#ffffff" stroke="#222222" stroke-width="1.8" />
+    <path d="M 0,6 Q 0,0 6,0 L 254,0 Q 260,0 260,6 L 260,36 L 0,36 Z" fill="#efefef" stroke="#222222" stroke-width="1.8" />
+    <text x="130" y="23" fill="#111111" font-size="14" font-weight="bold" text-anchor="middle" letter-spacing="0.5">VERIFICATION_TOKEN</text>
+    <text x="16" y="56" fill="#111111" font-size="12" font-weight="bold">UK identifier</text>
+    <text x="16" y="78" fill="#111111" font-size="12" font-weight="bold">UK token</text>
+    <text x="16" y="100" fill="#111111" font-size="12" font-weight="normal">expires</text>
   </g>
   <!-- TABLE: USER -->
-  <g id="table-USER" transform="translate(1040, 160)" filter="url(#cardShadow)">
-    <rect x="0" y="0" width="390" height="312" rx="14" fill="#0f172a" stroke="#1e293b" stroke-width="1.5" />
-    <rect x="0" y="0" width="390" height="66" rx="14" fill="#131e36" />
-    <rect x="0" y="52" width="390" height="14" fill="#131e36" />
-    <line x1="0" y1="66" x2="390" y2="66" stroke="#1e293b" stroke-width="1.5" />
-    <rect x="18" y="18" width="6" height="30" rx="3" fill="#0ea5e9" />
-    <text x="36" y="36" fill="#f8fafc" font-size="18" font-weight="700">User</text>
-    <text x="36" y="53" fill="#64748b" font-size="11" font-weight="500">Central Identity &amp; Organizers</text>
-    <rect x="18" y="82" width="26" height="17" rx="4" fill="#f59e0b" />
-    <text x="31" y="95" fill="#0f172a" font-size="10" font-weight="800" text-anchor="middle">PK</text>
-    <text x="52" y="96" fill="#e2e8f0" font-size="13" font-weight="600">id</text>
-    <text x="372" y="96" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="6" y="110" width="378" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="123" r="2" fill="#334155" />
-    <text x="52" y="128" fill="#94a3b8" font-size="13" font-weight="400">name</text>
-    <text x="372" y="128" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String?</text>
-    <rect x="18" y="146" width="26" height="17" rx="4" fill="#a855f7" />
-    <text x="31" y="159" fill="#ffffff" font-size="9" font-weight="800" text-anchor="middle">UK</text>
-    <text x="52" y="160" fill="#e2e8f0" font-size="13" font-weight="600">email</text>
-    <text x="372" y="160" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String?</text>
-    <rect x="6" y="174" width="378" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="187" r="2" fill="#334155" />
-    <text x="52" y="192" fill="#94a3b8" font-size="13" font-weight="400">emailVerified</text>
-    <text x="372" y="192" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">DateTime?</text>
-    <circle cx="28" cy="219" r="2" fill="#334155" />
-    <text x="52" y="224" fill="#94a3b8" font-size="13" font-weight="400">image</text>
-    <text x="372" y="224" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String?</text>
-    <rect x="6" y="238" width="378" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="251" r="2" fill="#334155" />
-    <text x="52" y="256" fill="#94a3b8" font-size="13" font-weight="400">role</text>
-    <text x="372" y="256" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="18" y="274" width="26" height="17" rx="4" fill="#a855f7" />
-    <text x="31" y="287" fill="#ffffff" font-size="9" font-weight="800" text-anchor="middle">UK</text>
-    <text x="52" y="288" fill="#e2e8f0" font-size="13" font-weight="600">membershipId</text>
-    <text x="372" y="288" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String?</text>
-  </g>
-  <!-- TABLE: WALLET -->
-  <g id="table-WALLET" transform="translate(1580, 160)" filter="url(#cardShadow)">
-    <rect x="0" y="0" width="360" height="216" rx="14" fill="#0f172a" stroke="#1e293b" stroke-width="1.5" />
-    <rect x="0" y="0" width="360" height="66" rx="14" fill="#131e36" />
-    <rect x="0" y="52" width="360" height="14" fill="#131e36" />
-    <line x1="0" y1="66" x2="360" y2="66" stroke="#1e293b" stroke-width="1.5" />
-    <rect x="18" y="18" width="6" height="30" rx="3" fill="#10b981" />
-    <text x="36" y="36" fill="#f8fafc" font-size="18" font-weight="700">Wallet</text>
-    <text x="36" y="53" fill="#64748b" font-size="11" font-weight="500">User's Credential Vault</text>
-    <rect x="18" y="82" width="26" height="17" rx="4" fill="#f59e0b" />
-    <text x="31" y="95" fill="#0f172a" font-size="10" font-weight="800" text-anchor="middle">PK</text>
-    <text x="52" y="96" fill="#e2e8f0" font-size="13" font-weight="600">id</text>
-    <text x="342" y="96" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="6" y="110" width="348" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <rect x="18" y="114" width="26" height="17" rx="4" fill="#06b6d4" />
-    <text x="31" y="127" fill="#0f172a" font-size="10" font-weight="800" text-anchor="middle">FK</text>
-    <text x="52" y="128" fill="#e2e8f0" font-size="13" font-weight="600">userId</text>
-    <text x="342" y="128" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <circle cx="28" cy="155" r="2" fill="#334155" />
-    <text x="52" y="160" fill="#94a3b8" font-size="13" font-weight="400">createdAt</text>
-    <text x="342" y="160" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">DateTime</text>
-    <rect x="6" y="174" width="348" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="187" r="2" fill="#334155" />
-    <text x="52" y="192" fill="#94a3b8" font-size="13" font-weight="400">updatedAt</text>
-    <text x="342" y="192" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">DateTime</text>
-  </g>
-  <!-- TABLE: ATTENDANCE -->
-  <g id="table-ATTENDANCE" transform="translate(100, 770)" filter="url(#cardShadow)">
-    <rect x="0" y="0" width="370" height="300" rx="14" fill="#0f172a" stroke="#1e293b" stroke-width="1.5" />
-    <rect x="0" y="0" width="370" height="66" rx="14" fill="#131e36" />
-    <rect x="0" y="52" width="370" height="14" fill="#131e36" />
-    <line x1="0" y1="66" x2="370" y2="66" stroke="#1e293b" stroke-width="1.5" />
-    <rect x="18" y="18" width="6" height="30" rx="3" fill="#f59e0b" />
-    <text x="36" y="36" fill="#f8fafc" font-size="18" font-weight="700">Attendance</text>
-    <text x="36" y="53" fill="#64748b" font-size="11" font-weight="500">Event Attendee Check-Ins</text>
-    <rect x="18" y="82" width="26" height="17" rx="4" fill="#f59e0b" />
-    <text x="31" y="95" fill="#0f172a" font-size="10" font-weight="800" text-anchor="middle">PK</text>
-    <text x="52" y="96" fill="#e2e8f0" font-size="13" font-weight="600">id</text>
-    <text x="352" y="96" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="6" y="110" width="358" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <rect x="18" y="114" width="26" height="17" rx="4" fill="#06b6d4" />
-    <text x="31" y="127" fill="#0f172a" font-size="10" font-weight="800" text-anchor="middle">FK</text>
-    <text x="52" y="128" fill="#e2e8f0" font-size="13" font-weight="600">eventId</text>
-    <text x="352" y="128" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <circle cx="28" cy="155" r="2" fill="#334155" />
-    <text x="52" y="160" fill="#94a3b8" font-size="13" font-weight="400">name</text>
-    <text x="352" y="160" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="6" y="174" width="358" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <rect x="18" y="178" width="26" height="17" rx="4" fill="#a855f7" />
-    <text x="31" y="191" fill="#ffffff" font-size="9" font-weight="800" text-anchor="middle">UK</text>
-    <text x="52" y="192" fill="#e2e8f0" font-size="13" font-weight="600">email</text>
-    <text x="352" y="192" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <circle cx="28" cy="219" r="2" fill="#334155" />
-    <text x="52" y="224" fill="#94a3b8" font-size="13" font-weight="400">role</text>
-    <text x="352" y="224" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="6" y="238" width="358" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="251" r="2" fill="#334155" />
-    <text x="52" y="256" fill="#94a3b8" font-size="13" font-weight="400">checkedInAt</text>
-    <text x="352" y="256" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">DateTime</text>
-    <text x="20" y="284" fill="#64748b" font-size="10" font-style="italic">* Composite Unique: [eventId, email]</text>
+  <g id="table-USER" transform="translate(710, 130)">
+    <rect x="0" y="0" width="280" height="216" rx="6" fill="#ffffff" stroke="#222222" stroke-width="1.8" />
+    <path d="M 0,6 Q 0,0 6,0 L 274,0 Q 280,0 280,6 L 280,36 L 0,36 Z" fill="#efefef" stroke="#222222" stroke-width="1.8" />
+    <text x="140" y="23" fill="#111111" font-size="14" font-weight="bold" text-anchor="middle" letter-spacing="0.5">USER</text>
+    <text x="16" y="56" fill="#111111" font-size="12" font-weight="bold">PK id</text>
+    <text x="16" y="78" fill="#111111" font-size="12" font-weight="normal">name</text>
+    <text x="16" y="100" fill="#111111" font-size="12" font-weight="bold">UK email</text>
+    <text x="16" y="122" fill="#111111" font-size="12" font-weight="normal">email_verified</text>
+    <text x="16" y="144" fill="#111111" font-size="12" font-weight="normal">image</text>
+    <text x="16" y="166" fill="#111111" font-size="12" font-weight="normal">role</text>
+    <text x="16" y="188" fill="#111111" font-size="12" font-weight="bold">UK membership_id</text>
   </g>
   <!-- TABLE: EVENT -->
-  <g id="table-EVENT" transform="translate(550, 730)" filter="url(#cardShadow)">
-    <rect x="0" y="0" width="410" height="376" rx="14" fill="#0f172a" stroke="#1e293b" stroke-width="1.5" />
-    <rect x="0" y="0" width="410" height="66" rx="14" fill="#131e36" />
-    <rect x="0" y="52" width="410" height="14" fill="#131e36" />
-    <line x1="0" y1="66" x2="410" y2="66" stroke="#1e293b" stroke-width="1.5" />
-    <rect x="18" y="18" width="6" height="30" rx="3" fill="#f59e0b" />
-    <text x="36" y="36" fill="#f8fafc" font-size="18" font-weight="700">Event</text>
-    <text x="36" y="53" fill="#64748b" font-size="11" font-weight="500">Conferences &amp; Seminars</text>
-    <rect x="18" y="82" width="26" height="17" rx="4" fill="#f59e0b" />
-    <text x="31" y="95" fill="#0f172a" font-size="10" font-weight="800" text-anchor="middle">PK</text>
-    <text x="52" y="96" fill="#e2e8f0" font-size="13" font-weight="600">id</text>
-    <text x="392" y="96" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="6" y="110" width="398" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="123" r="2" fill="#334155" />
-    <text x="52" y="128" fill="#94a3b8" font-size="13" font-weight="400">name</text>
-    <text x="392" y="128" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <circle cx="28" cy="155" r="2" fill="#334155" />
-    <text x="52" y="160" fill="#94a3b8" font-size="13" font-weight="400">date</text>
-    <text x="392" y="160" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">DateTime?</text>
-    <rect x="6" y="174" width="398" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="187" r="2" fill="#334155" />
-    <text x="52" y="192" fill="#94a3b8" font-size="13" font-weight="400">description</text>
-    <text x="392" y="192" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String?</text>
-    <circle cx="28" cy="219" r="2" fill="#334155" />
-    <text x="52" y="224" fill="#94a3b8" font-size="13" font-weight="400">defaultTemplateId</text>
-    <text x="392" y="224" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String?</text>
-    <rect x="6" y="238" width="398" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="251" r="2" fill="#334155" />
-    <text x="52" y="256" fill="#94a3b8" font-size="13" font-weight="400">defaultRole</text>
-    <text x="392" y="256" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="18" y="274" width="26" height="17" rx="4" fill="#06b6d4" />
-    <text x="31" y="287" fill="#0f172a" font-size="10" font-weight="800" text-anchor="middle">FK</text>
-    <text x="52" y="288" fill="#e2e8f0" font-size="13" font-weight="600">organizerId</text>
-    <text x="392" y="288" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="6" y="302" width="398" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="315" r="2" fill="#334155" />
-    <text x="52" y="320" fill="#94a3b8" font-size="13" font-weight="400">createdAt</text>
-    <text x="392" y="320" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">DateTime</text>
-    <circle cx="28" cy="347" r="2" fill="#334155" />
-    <text x="52" y="352" fill="#94a3b8" font-size="13" font-weight="400">updatedAt</text>
-    <text x="392" y="352" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">DateTime</text>
+  <g id="table-EVENT" transform="translate(1090, 130)">
+    <rect x="0" y="0" width="300" height="260" rx="6" fill="#ffffff" stroke="#222222" stroke-width="1.8" />
+    <path d="M 0,6 Q 0,0 6,0 L 294,0 Q 300,0 300,6 L 300,36 L 0,36 Z" fill="#efefef" stroke="#222222" stroke-width="1.8" />
+    <text x="150" y="23" fill="#111111" font-size="14" font-weight="bold" text-anchor="middle" letter-spacing="0.5">EVENT</text>
+    <text x="16" y="56" fill="#111111" font-size="12" font-weight="bold">PK id</text>
+    <text x="16" y="78" fill="#111111" font-size="12" font-weight="bold">FK organizer_id</text>
+    <text x="16" y="100" fill="#111111" font-size="12" font-weight="normal">name</text>
+    <text x="16" y="122" fill="#111111" font-size="12" font-weight="normal">date</text>
+    <text x="16" y="144" fill="#111111" font-size="12" font-weight="normal">description</text>
+    <text x="16" y="166" fill="#111111" font-size="12" font-weight="normal">default_template_id</text>
+    <text x="16" y="188" fill="#111111" font-size="12" font-weight="normal">default_role</text>
+    <text x="16" y="210" fill="#111111" font-size="12" font-weight="normal">created_at</text>
+    <text x="16" y="232" fill="#111111" font-size="12" font-weight="normal">updated_at</text>
   </g>
   <!-- TABLE: TEMPLATE -->
-  <g id="table-TEMPLATE" transform="translate(1560, 690)" filter="url(#cardShadow)">
-    <rect x="0" y="0" width="410" height="312" rx="14" fill="#0f172a" stroke="#1e293b" stroke-width="1.5" />
-    <rect x="0" y="0" width="410" height="66" rx="14" fill="#131e36" />
-    <rect x="0" y="52" width="410" height="14" fill="#131e36" />
-    <line x1="0" y1="66" x2="410" y2="66" stroke="#1e293b" stroke-width="1.5" />
-    <rect x="18" y="18" width="6" height="30" rx="3" fill="#ec4899" />
-    <text x="36" y="36" fill="#f8fafc" font-size="18" font-weight="700">Template</text>
-    <text x="36" y="53" fill="#64748b" font-size="11" font-weight="500">Visual Certificate Layouts</text>
-    <rect x="18" y="82" width="26" height="17" rx="4" fill="#f59e0b" />
-    <text x="31" y="95" fill="#0f172a" font-size="10" font-weight="800" text-anchor="middle">PK</text>
-    <text x="52" y="96" fill="#e2e8f0" font-size="13" font-weight="600">id</text>
-    <text x="392" y="96" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="6" y="110" width="398" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="123" r="2" fill="#334155" />
-    <text x="52" y="128" fill="#94a3b8" font-size="13" font-weight="400">name</text>
-    <text x="392" y="128" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <circle cx="28" cy="155" r="2" fill="#334155" />
-    <text x="52" y="160" fill="#94a3b8" font-size="13" font-weight="400">description</text>
-    <text x="392" y="160" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String?</text>
-    <rect x="6" y="174" width="398" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="187" r="2" fill="#334155" />
-    <text x="52" y="192" fill="#94a3b8" font-size="13" font-weight="400">designData</text>
-    <text x="392" y="192" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="18" y="210" width="26" height="17" rx="4" fill="#06b6d4" />
-    <text x="31" y="223" fill="#0f172a" font-size="10" font-weight="800" text-anchor="middle">FK</text>
-    <text x="52" y="224" fill="#e2e8f0" font-size="13" font-weight="600">userId</text>
-    <text x="392" y="224" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="6" y="238" width="398" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="251" r="2" fill="#334155" />
-    <text x="52" y="256" fill="#94a3b8" font-size="13" font-weight="400">createdAt</text>
-    <text x="392" y="256" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">DateTime</text>
-    <circle cx="28" cy="283" r="2" fill="#334155" />
-    <text x="52" y="288" fill="#94a3b8" font-size="13" font-weight="400">updatedAt</text>
-    <text x="392" y="288" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">DateTime</text>
+  <g id="table-TEMPLATE" transform="translate(1490, 130)">
+    <rect x="0" y="0" width="300" height="216" rx="6" fill="#ffffff" stroke="#222222" stroke-width="1.8" />
+    <path d="M 0,6 Q 0,0 6,0 L 294,0 Q 300,0 300,6 L 300,36 L 0,36 Z" fill="#efefef" stroke="#222222" stroke-width="1.8" />
+    <text x="150" y="23" fill="#111111" font-size="14" font-weight="bold" text-anchor="middle" letter-spacing="0.5">CERTIFICATE_TEMPLATE</text>
+    <text x="16" y="56" fill="#111111" font-size="12" font-weight="bold">PK id</text>
+    <text x="16" y="78" fill="#111111" font-size="12" font-weight="bold">FK user_id</text>
+    <text x="16" y="100" fill="#111111" font-size="12" font-weight="normal">name</text>
+    <text x="16" y="122" fill="#111111" font-size="12" font-weight="normal">description</text>
+    <text x="16" y="144" fill="#111111" font-size="12" font-weight="normal">design_data</text>
+    <text x="16" y="166" fill="#111111" font-size="12" font-weight="normal">created_at</text>
+    <text x="16" y="188" fill="#111111" font-size="12" font-weight="normal">updated_at</text>
+  </g>
+  <!-- TABLE: WALLET -->
+  <g id="table-WALLET" transform="translate(1890, 130)">
+    <rect x="0" y="0" width="280" height="150" rx="6" fill="#ffffff" stroke="#222222" stroke-width="1.8" />
+    <path d="M 0,6 Q 0,0 6,0 L 274,0 Q 280,0 280,6 L 280,36 L 0,36 Z" fill="#efefef" stroke="#222222" stroke-width="1.8" />
+    <text x="140" y="23" fill="#111111" font-size="14" font-weight="bold" text-anchor="middle" letter-spacing="0.5">WALLET</text>
+    <text x="16" y="56" fill="#111111" font-size="12" font-weight="bold">PK id</text>
+    <text x="16" y="78" fill="#111111" font-size="12" font-weight="bold">FK user_id (unique)</text>
+    <text x="16" y="100" fill="#111111" font-size="12" font-weight="normal">created_at</text>
+    <text x="16" y="122" fill="#111111" font-size="12" font-weight="normal">updated_at</text>
+  </g>
+  <!-- TABLE: ATTENDANCE -->
+  <g id="table-ATTENDANCE" transform="translate(1090, 570)">
+    <rect x="0" y="0" width="300" height="194" rx="6" fill="#ffffff" stroke="#222222" stroke-width="1.8" />
+    <path d="M 0,6 Q 0,0 6,0 L 294,0 Q 300,0 300,6 L 300,36 L 0,36 Z" fill="#efefef" stroke="#222222" stroke-width="1.8" />
+    <text x="150" y="23" fill="#111111" font-size="14" font-weight="bold" text-anchor="middle" letter-spacing="0.5">ATTENDANCE</text>
+    <text x="16" y="56" fill="#111111" font-size="12" font-weight="bold">PK id</text>
+    <text x="16" y="78" fill="#111111" font-size="12" font-weight="bold">FK event_id</text>
+    <text x="16" y="100" fill="#111111" font-size="12" font-weight="normal">name</text>
+    <text x="16" y="122" fill="#111111" font-size="12" font-weight="bold">UK email</text>
+    <text x="16" y="144" fill="#111111" font-size="12" font-weight="normal">role</text>
+    <text x="16" y="166" fill="#111111" font-size="12" font-weight="normal">checked_in_at</text>
   </g>
   <!-- TABLE: CERTIFICATE -->
-  <g id="table-CERTIFICATE" transform="translate(1010, 1140)" filter="url(#cardShadow)">
-    <rect x="0" y="0" width="470" height="504" rx="14" fill="#0f172a" stroke="#1e293b" stroke-width="1.5" />
-    <rect x="0" y="0" width="470" height="66" rx="14" fill="#131e36" />
-    <rect x="0" y="52" width="470" height="14" fill="#131e36" />
-    <line x1="0" y1="66" x2="470" y2="66" stroke="#1e293b" stroke-width="1.5" />
-    <rect x="18" y="18" width="6" height="30" rx="3" fill="#14b8a6" />
-    <text x="36" y="36" fill="#f8fafc" font-size="18" font-weight="700">Certificate</text>
-    <text x="36" y="53" fill="#64748b" font-size="11" font-weight="500">Issued Cryptographic Credential</text>
-    <rect x="18" y="82" width="26" height="17" rx="4" fill="#f59e0b" />
-    <text x="31" y="95" fill="#0f172a" font-size="10" font-weight="800" text-anchor="middle">PK</text>
-    <text x="52" y="96" fill="#e2e8f0" font-size="13" font-weight="600">id</text>
-    <text x="452" y="96" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="6" y="110" width="458" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="123" r="2" fill="#334155" />
-    <text x="52" y="128" fill="#94a3b8" font-size="13" font-weight="400">recipientName</text>
-    <text x="452" y="128" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <circle cx="28" cy="155" r="2" fill="#334155" />
-    <text x="52" y="160" fill="#94a3b8" font-size="13" font-weight="400">recipientEmail</text>
-    <text x="452" y="160" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String?</text>
-    <rect x="6" y="174" width="458" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="187" r="2" fill="#334155" />
-    <text x="52" y="192" fill="#94a3b8" font-size="13" font-weight="400">role</text>
-    <text x="452" y="192" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <circle cx="28" cy="219" r="2" fill="#334155" />
-    <text x="52" y="224" fill="#94a3b8" font-size="13" font-weight="400">issueDate</text>
-    <text x="452" y="224" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">DateTime</text>
-    <rect x="6" y="238" width="458" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="251" r="2" fill="#334155" />
-    <text x="52" y="256" fill="#94a3b8" font-size="13" font-weight="400">status</text>
-    <text x="452" y="256" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="18" y="274" width="26" height="17" rx="4" fill="#06b6d4" />
-    <text x="31" y="287" fill="#0f172a" font-size="10" font-weight="800" text-anchor="middle">FK</text>
-    <text x="52" y="288" fill="#e2e8f0" font-size="13" font-weight="600">eventId</text>
-    <text x="452" y="288" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="6" y="302" width="458" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <rect x="18" y="306" width="26" height="17" rx="4" fill="#06b6d4" />
-    <text x="31" y="319" fill="#0f172a" font-size="10" font-weight="800" text-anchor="middle">FK</text>
-    <text x="52" y="320" fill="#e2e8f0" font-size="13" font-weight="600">templateId</text>
-    <text x="452" y="320" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="18" y="338" width="26" height="17" rx="4" fill="#06b6d4" />
-    <text x="31" y="351" fill="#0f172a" font-size="10" font-weight="800" text-anchor="middle">FK</text>
-    <text x="52" y="352" fill="#e2e8f0" font-size="13" font-weight="600">issuerId</text>
-    <text x="452" y="352" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="6" y="366" width="458" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="379" r="2" fill="#334155" />
-    <text x="52" y="384" fill="#94a3b8" font-size="13" font-weight="400">qrCodeUrl</text>
-    <text x="452" y="384" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String?</text>
-    <circle cx="28" cy="411" r="2" fill="#334155" />
-    <text x="52" y="416" fill="#94a3b8" font-size="13" font-weight="400">isClaimed</text>
-    <text x="452" y="416" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">Boolean</text>
-    <rect x="6" y="430" width="458" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="443" r="2" fill="#334155" />
-    <text x="52" y="448" fill="#94a3b8" font-size="13" font-weight="400">claimedAt</text>
-    <text x="452" y="448" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">DateTime?</text>
-    <rect x="18" y="466" width="26" height="17" rx="4" fill="#06b6d4" />
-    <text x="31" y="479" fill="#0f172a" font-size="10" font-weight="800" text-anchor="middle">FK</text>
-    <text x="52" y="480" fill="#e2e8f0" font-size="13" font-weight="600">walletId</text>
-    <text x="452" y="480" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String?</text>
+  <g id="table-CERTIFICATE" transform="translate(700, 520)">
+    <rect x="0" y="0" width="300" height="348" rx="6" fill="#ffffff" stroke="#222222" stroke-width="1.8" />
+    <path d="M 0,6 Q 0,0 6,0 L 294,0 Q 300,0 300,6 L 300,36 L 0,36 Z" fill="#efefef" stroke="#222222" stroke-width="1.8" />
+    <text x="150" y="23" fill="#111111" font-size="14" font-weight="bold" text-anchor="middle" letter-spacing="0.5">CERTIFICATE</text>
+    <text x="16" y="56" fill="#111111" font-size="12" font-weight="bold">PK id (cuid)</text>
+    <text x="16" y="78" fill="#111111" font-size="12" font-weight="bold">FK event_id</text>
+    <text x="16" y="100" fill="#111111" font-size="12" font-weight="bold">FK template_id</text>
+    <text x="16" y="122" fill="#111111" font-size="12" font-weight="bold">FK issuer_id</text>
+    <text x="16" y="144" fill="#111111" font-size="12" font-weight="normal">recipient_name</text>
+    <text x="16" y="166" fill="#111111" font-size="12" font-weight="normal">recipient_email</text>
+    <text x="16" y="188" fill="#111111" font-size="12" font-weight="normal">role</text>
+    <text x="16" y="210" fill="#111111" font-size="12" font-weight="normal">issue_date</text>
+    <text x="16" y="232" fill="#111111" font-size="12" font-weight="normal">status</text>
+    <text x="16" y="254" fill="#111111" font-size="12" font-weight="normal">qr_code_url</text>
+    <text x="16" y="276" fill="#111111" font-size="12" font-weight="normal">is_claimed</text>
+    <text x="16" y="298" fill="#111111" font-size="12" font-weight="normal">claimed_at</text>
+    <text x="16" y="320" fill="#111111" font-size="12" font-weight="bold">FK wallet_id</text>
   </g>
   <!-- TABLE: AUDIT_LOG -->
-  <g id="table-AUDIT_LOG" transform="translate(1610, 1240)" filter="url(#cardShadow)">
-    <rect x="0" y="0" width="410" height="280" rx="14" fill="#0f172a" stroke="#1e293b" stroke-width="1.5" />
-    <rect x="0" y="0" width="410" height="66" rx="14" fill="#131e36" />
-    <rect x="0" y="52" width="410" height="14" fill="#131e36" />
-    <line x1="0" y1="66" x2="410" y2="66" stroke="#1e293b" stroke-width="1.5" />
-    <rect x="18" y="18" width="6" height="30" rx="3" fill="#64748b" />
-    <text x="36" y="36" fill="#f8fafc" font-size="18" font-weight="700">AuditLog</text>
-    <text x="36" y="53" fill="#64748b" font-size="11" font-weight="500">Cryptographic Audit Ledger</text>
-    <rect x="18" y="82" width="26" height="17" rx="4" fill="#f59e0b" />
-    <text x="31" y="95" fill="#0f172a" font-size="10" font-weight="800" text-anchor="middle">PK</text>
-    <text x="52" y="96" fill="#e2e8f0" font-size="13" font-weight="600">id</text>
-    <text x="392" y="96" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="6" y="110" width="398" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="123" r="2" fill="#334155" />
-    <text x="52" y="128" fill="#94a3b8" font-size="13" font-weight="400">action</text>
-    <text x="392" y="128" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="18" y="146" width="26" height="17" rx="4" fill="#06b6d4" />
-    <text x="31" y="159" fill="#0f172a" font-size="10" font-weight="800" text-anchor="middle">FK</text>
-    <text x="52" y="160" fill="#e2e8f0" font-size="13" font-weight="600">certificateId</text>
-    <text x="392" y="160" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String</text>
-    <rect x="6" y="174" width="398" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="187" r="2" fill="#334155" />
-    <text x="52" y="192" fill="#94a3b8" font-size="13" font-weight="400">details</text>
-    <text x="392" y="192" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String?</text>
-    <circle cx="28" cy="219" r="2" fill="#334155" />
-    <text x="52" y="224" fill="#94a3b8" font-size="13" font-weight="400">ipAddress</text>
-    <text x="392" y="224" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">String?</text>
-    <rect x="6" y="238" width="398" height="30" rx="6" fill="#131c31" opacity="0.5" />
-    <circle cx="28" cy="251" r="2" fill="#334155" />
-    <text x="52" y="256" fill="#94a3b8" font-size="13" font-weight="400">createdAt</text>
-    <text x="392" y="256" fill="#38bdf8" font-size="12" font-family="'SF Mono', Menlo, Consolas, monospace" font-weight="500" text-anchor="end">DateTime</text>
-  </g>
-
-  <!-- RELATIONSHIP LABELS CHIPS -->
-  <g transform="translate(679, 198)">
-    <rect x="0" y="0" width="122" height="24" rx="6" fill="#090d16" stroke="#38bdf8" stroke-width="1.2" stroke-opacity="0.8" />
-    <text x="61" y="16" fill="#38bdf8" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="0.2">1 : N • Cascade</text>
-  </g>
-  <g transform="translate(904, 258)">
-    <rect x="0" y="0" width="122" height="24" rx="6" fill="#090d16" stroke="#38bdf8" stroke-width="1.2" stroke-opacity="0.8" />
-    <text x="61" y="16" fill="#38bdf8" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="0.2">1 : N • Cascade</text>
-  </g>
-  <g transform="translate(1444, 228)">
-    <rect x="0" y="0" width="122" height="24" rx="6" fill="#090d16" stroke="#10b981" stroke-width="1.2" stroke-opacity="0.8" />
-    <text x="61" y="16" fill="#10b981" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="0.2">1 : 1 • Cascade</text>
-  </g>
-  <g transform="translate(859, 598)">
-    <rect x="0" y="0" width="122" height="24" rx="6" fill="#090d16" stroke="#38bdf8" stroke-width="1.2" stroke-opacity="0.8" />
-    <text x="61" y="16" fill="#38bdf8" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="0.2">1 : N • Cascade</text>
-  </g>
-  <g transform="translate(1479, 578)">
-    <rect x="0" y="0" width="122" height="24" rx="6" fill="#090d16" stroke="#ec4899" stroke-width="1.2" stroke-opacity="0.8" />
-    <text x="61" y="16" fill="#ec4899" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="0.2">1 : N • Cascade</text>
-  </g>
-  <g transform="translate(1160, 828)">
-    <rect x="0" y="0" width="190" height="24" rx="6" fill="#090d16" stroke="#10b981" stroke-width="1.2" stroke-opacity="0.8" />
-    <text x="95" y="16" fill="#10b981" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="0.2">1 : N • Issuer (Restrict)</text>
-  </g>
-  <g transform="translate(449, 858)">
-    <rect x="0" y="0" width="122" height="24" rx="6" fill="#090d16" stroke="#f59e0b" stroke-width="1.2" stroke-opacity="0.8" />
-    <text x="61" y="16" fill="#f59e0b" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="0.2">1 : N • Cascade</text>
-  </g>
-  <g transform="translate(855.6, 1198)">
-    <rect x="0" y="0" width="128.8" height="24" rx="6" fill="#090d16" stroke="#10b981" stroke-width="1.2" stroke-opacity="0.8" />
-    <text x="64.4" y="16" fill="#10b981" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="0.2">1 : N • Restrict</text>
-  </g>
-  <g transform="translate(1495.6, 1178)">
-    <rect x="0" y="0" width="128.8" height="24" rx="6" fill="#090d16" stroke="#10b981" stroke-width="1.2" stroke-opacity="0.8" />
-    <text x="64.4" y="16" fill="#10b981" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="0.2">1 : N • Restrict</text>
-  </g>
-  <g transform="translate(2035, 908)">
-    <rect x="0" y="0" width="190" height="24" rx="6" fill="#090d16" stroke="#eab308" stroke-width="1.2" stroke-opacity="0.8" />
-    <text x="95" y="16" fill="#eab308" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="0.2">1 : N • Claimed (SetNull)</text>
-  </g>
-  <g transform="translate(1484, 1338)">
-    <rect x="0" y="0" width="122" height="24" rx="6" fill="#090d16" stroke="#64748b" stroke-width="1.2" stroke-opacity="0.8" />
-    <text x="61" y="16" fill="#64748b" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="0.2">1 : N • Cascade</text>
-  </g>
-
-  <g id="footer" transform="translate(100, 1800)">
-    <text x="0" y="0" fill="#475569" font-size="12" font-weight="500">
-      Shim Credentialing System Architecture • PostgreSQL v16 • Generated dynamically from schema.prisma
-    </text>
+  <g id="table-AUDIT_LOG" transform="translate(1490, 570)">
+    <rect x="0" y="0" width="300" height="194" rx="6" fill="#ffffff" stroke="#222222" stroke-width="1.8" />
+    <path d="M 0,6 Q 0,0 6,0 L 294,0 Q 300,0 300,6 L 300,36 L 0,36 Z" fill="#efefef" stroke="#222222" stroke-width="1.8" />
+    <text x="150" y="23" fill="#111111" font-size="14" font-weight="bold" text-anchor="middle" letter-spacing="0.5">AUDIT_LOG</text>
+    <text x="16" y="56" fill="#111111" font-size="12" font-weight="bold">PK id</text>
+    <text x="16" y="78" fill="#111111" font-size="12" font-weight="bold">FK certificate_id</text>
+    <text x="16" y="100" fill="#111111" font-size="12" font-weight="normal">action</text>
+    <text x="16" y="122" fill="#111111" font-size="12" font-weight="normal">details</text>
+    <text x="16" y="144" fill="#111111" font-size="12" font-weight="normal">ip_address</text>
+    <text x="16" y="166" fill="#111111" font-size="12" font-weight="normal">created_at</text>
   </g>
 </svg>

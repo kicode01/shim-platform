@@ -115,6 +115,14 @@ export default function ValidateSearchClient() {
   const [ocrProgress, setOcrProgress] = useState<number>(0);
   const [ocrMessage, setOcrMessage] = useState<string>("");
 
+  // Live Camera Scanner States
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const scanTimerRef = useRef<number | null>(null);
+
   // Load history on mount
   useEffect(() => {
     const saved = localStorage.getItem("shim_validation_history");
@@ -503,6 +511,130 @@ export default function ValidateSearchClient() {
     }
   };
 
+  const stopCamera = () => {
+    if (scanTimerRef.current) {
+      window.clearInterval(scanTimerRef.current);
+      scanTimerRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setIsCameraOpen(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (scanTimerRef.current) window.clearInterval(scanTimerRef.current);
+      if (streamRef.current) streamRef.current.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
+
+  const startCameraStream = async (mode: "environment" | "user") => {
+    setCameraError(null);
+    if (scanTimerRef.current) {
+      window.clearInterval(scanTimerRef.current);
+      scanTimerRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+
+    try {
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: mode }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: false,
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      }
+
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(() => {});
+      }
+
+      // Live QR code scanning loop every 200ms
+      scanTimerRef.current = window.setInterval(() => {
+        const video = videoRef.current;
+        if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const qrData = tryDecodeQrFromCanvas(canvas);
+        if (qrData) {
+          const snapshotUrl = canvas.toDataURL("image/png");
+          stopCamera();
+          setLoading(true);
+          setScanError(null);
+          handleScannedUrl(qrData, snapshotUrl).finally(() => setLoading(false));
+        }
+      }, 200);
+    } catch (err: any) {
+      setCameraError(
+        err?.name === "NotAllowedError"
+          ? "Camera permission was denied. Please allow camera access in your browser settings."
+          : "Unable to access camera on this device. You can upload an image or PDF instead."
+      );
+    }
+  };
+
+  const openCameraModal = () => {
+    setIsCameraOpen(true);
+    setScanError(null);
+    setTimeout(() => {
+      startCameraStream(facingMode);
+    }, 50);
+  };
+
+  const switchCamera = () => {
+    const nextMode = facingMode === "environment" ? "user" : "environment";
+    setFacingMode(nextMode);
+    startCameraStream(nextMode);
+  };
+
+  const handleCaptureCameraPhoto = async () => {
+    const video = videoRef.current;
+    if (!video || !video.videoWidth || !video.videoHeight) return;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const snapshotUrl = canvas.toDataURL("image/png");
+    const qrData = tryDecodeQrFromCanvas(canvas);
+
+    stopCamera();
+    setLoading(true);
+    setScanError(null);
+
+    try {
+      if (qrData) {
+        await handleScannedUrl(qrData, snapshotUrl);
+      } else {
+        await handleNoQrFallback(snapshotUrl, canvas);
+      }
+    } catch (err: any) {
+      setScanError(err.message || "Could not read credential from captured photo.");
+      setLoading(false);
+    }
+  };
+
   const handleReset = () => {
     setCertificate(null);
     setSearchId("");
@@ -520,6 +652,105 @@ export default function ValidateSearchClient() {
           accept="image/*,application/pdf"
           onChange={handleFileUpload}
         />
+
+        {/* Live Camera Scanner & Document Capture Modal */}
+        <AnimatePresence>
+          {isCameraOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col"
+              >
+                <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <Camera size={18} className="text-emerald-400" />
+                    <div>
+                      <h3 className="text-sm font-semibold text-zinc-100">Camera Credential Scanner</h3>
+                      <p className="text-[11px] text-zinc-400">Point at a QR code or capture the full certificate for AI verification</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={stopCamera}
+                    className="w-8 h-8 rounded-lg bg-zinc-800/80 hover:bg-zinc-700 flex items-center justify-center text-zinc-400 hover:text-zinc-100 transition-colors"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <div className="relative bg-black aspect-[4/3] w-full flex items-center justify-center overflow-hidden">
+                  {cameraError ? (
+                    <div className="p-6 text-center max-w-xs">
+                      <ShieldAlert size={32} className="text-red-400 mx-auto mb-3" />
+                      <p className="text-xs text-red-300 leading-relaxed mb-4">{cameraError}</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          stopCamera();
+                          fileInputRef.current?.click();
+                        }}
+                        className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-zinc-200 transition-colors"
+                      >
+                        Upload Image / PDF Instead
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <video
+                        ref={videoRef}
+                        playsInline
+                        muted
+                        autoPlay
+                        className="w-full h-full object-cover"
+                      />
+                      {/* Viewfinder Overlay */}
+                      <div className="absolute inset-6 border border-white/20 rounded-xl pointer-events-none flex items-center justify-center">
+                        <div className="w-48 h-48 relative">
+                          <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-emerald-400 rounded-tl-md" />
+                          <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-emerald-400 rounded-tr-md" />
+                          <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-emerald-400 rounded-bl-md" />
+                          <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-emerald-400 rounded-br-md" />
+                        </div>
+                      </div>
+                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/70 border border-white/10 text-[11px] text-zinc-300 flex items-center gap-1.5 pointer-events-none">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <span>Auto-scanning QR code...</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {!cameraError && (
+                  <div className="p-4 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={switchCamera}
+                      className="px-3.5 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-zinc-300 transition-colors shrink-0"
+                    >
+                      Flip Camera
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCaptureCameraPhoto}
+                      className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Scan size={15} />
+                      <span>Capture & Verify Document</span>
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <AnimatePresence mode="wait">
           {loading && !certificate ? (
             // STATE 0: Full Screen Loading
@@ -559,7 +790,7 @@ export default function ValidateSearchClient() {
                   Verify Credential
                 </h1>
                 <p className="text-zinc-400 text-sm sm:text-base max-w-lg mx-auto leading-relaxed">
-                  Enter credential ID or upload document to verify on ledger.
+                  Enter credential ID, upload a PDF or image, or scan with your camera to verify on the ledger.
                 </p>
               </div>
 
@@ -583,14 +814,25 @@ export default function ValidateSearchClient() {
                       <Loader2 size={20} className="text-zinc-500 animate-spin" />
                     </div>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex items-center justify-center px-6 hover:bg-zinc-800/50 transition-colors group cursor-pointer"
-                      title="Upload Certificate"
-                    >
-                      <Upload size={20} className="text-zinc-500 group-hover:text-zinc-300 transition-colors" />
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={openCameraModal}
+                        className="flex items-center justify-center px-4 sm:px-5 hover:bg-zinc-800/50 transition-colors group cursor-pointer"
+                        title="Scan with Camera"
+                      >
+                        <Camera size={20} className="text-zinc-500 group-hover:text-zinc-300 transition-colors" />
+                      </button>
+                      <div className="w-px bg-zinc-800 my-3"></div>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex items-center justify-center px-4 sm:px-5 hover:bg-zinc-800/50 transition-colors group cursor-pointer"
+                        title="Upload Certificate (Image or PDF)"
+                      >
+                        <Upload size={20} className="text-zinc-500 group-hover:text-zinc-300 transition-colors" />
+                      </button>
+                    </>
                   )}
                 </form>
 

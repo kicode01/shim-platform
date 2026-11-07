@@ -393,16 +393,16 @@ export default function EventDetailsClient({
                               </div>
                             )
                           ) : (
-                            <div className="flex items-center gap-2">
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-100 text-zinc-600 border border-zinc-200">
-                                <CircleDashed size={10} /> Pending
+                            <div className="flex items-center gap-2 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-100 text-zinc-600 border border-zinc-200 shrink-0">
+                                <CircleDashed size={10} className="shrink-0" /> Pending
                               </span>
                               <button
                                 onClick={() => handleIssueCertificate(att)}
                                 disabled={issuingId === att.id}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition-colors disabled:opacity-50"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200 transition-colors disabled:opacity-50 whitespace-nowrap shrink-0"
                               >
-                                {issuingId === att.id ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle2 size={10} />}
+                                {issuingId === att.id ? <Loader2 size={10} className="animate-spin shrink-0" /> : <CheckCircle2 size={10} className="shrink-0" />}
                                 <span>{issuingId === att.id ? "Issuing..." : "Issue Now"}</span>
                               </button>
                             </div>
@@ -419,10 +419,10 @@ export default function EventDetailsClient({
                     <table className="w-full table-fixed text-sm">
                       <thead>
                         <tr>
-                          <th className="w-[35%] px-5 py-3 text-left text-xs font-semibold text-zinc-500 tracking-wide">Attendee</th>
-                          <th className="w-[20%] px-5 py-3 text-left text-xs font-semibold text-zinc-500 tracking-wide">Role</th>
-                          <th className="w-[25%] px-5 py-3 text-left text-xs font-semibold text-zinc-500 tracking-wide">Checked In</th>
-                          <th className="w-[20%] px-5 py-3 text-left text-xs font-semibold text-zinc-500 tracking-wide">Status</th>
+                          <th className="w-[30%] px-5 py-3 text-left text-xs font-semibold text-zinc-500 tracking-wide">Attendee</th>
+                          <th className="w-[16%] px-5 py-3 text-left text-xs font-semibold text-zinc-500 tracking-wide">Role</th>
+                          <th className="w-[22%] px-5 py-3 text-left text-xs font-semibold text-zinc-500 tracking-wide">Checked In</th>
+                          <th className="w-[32%] px-5 py-3 text-left text-xs font-semibold text-zinc-500 tracking-wide">Status</th>
                         </tr>
                       </thead>
                     </table>
@@ -432,72 +432,72 @@ export default function EventDetailsClient({
                       <tbody className="divide-y divide-zinc-100">
                         {filtered.map((att) => (
                           <tr key={att.id} className="hover:bg-zinc-50/80 transition-colors group">
-                            <td className="w-[35%] px-5 py-3 overflow-hidden">
+                            <td className="w-[30%] px-5 py-3 overflow-hidden">
                               <div className="font-medium text-zinc-700 truncate">{att.name}</div>
                               <div className="text-zinc-500 truncate mt-0.5 text-xs">{att.email}</div>
                             </td>
-                            <td className="w-[20%] px-5 py-3">
-                              <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md text-xs font-medium bg-zinc-100 text-zinc-700 border border-zinc-200/50">
+                            <td className="w-[16%] px-5 py-3">
+                              <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md text-xs font-medium bg-zinc-100 text-zinc-700 border border-zinc-200/50 truncate max-w-full">
                                 {att.role}
                               </span>
                             </td>
-                            <td className="w-[25%] px-5 py-3">
-                              <div className="text-zinc-600 text-xs">
+                            <td className="w-[22%] px-5 py-3">
+                              <div className="text-zinc-600 text-xs whitespace-nowrap">
                                 {new Date(att.checkedInAt).toLocaleString("en-US", { 
                                   month: "short", day: "numeric", hour: "numeric", minute: "2-digit" 
                                 })}
                               </div>
                             </td>
-                            <td className="w-[20%] px-5 py-3">
+                            <td className="w-[32%] px-5 py-3">
                               {att.hasCertificate ? (
                                 att.certificateStatus === "revoked" ? (
-                                  <div className="flex items-center gap-2">
-                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-700 border border-red-200">
-                                      <ShieldAlert size={10} /> Revoked
+                                  <div className="flex items-center gap-2 whitespace-nowrap">
+                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-700 border border-red-200 shrink-0">
+                                      <ShieldAlert size={10} className="shrink-0" /> Revoked
                                     </span>
                                     <button
                                       onClick={() => toggleRevoke(att)}
                                       disabled={revokingId === att.certificateId}
-                                      className="text-[10px] uppercase font-bold text-zinc-500 hover:text-zinc-700 underline disabled:opacity-50"
+                                      className="text-[10px] uppercase font-bold text-zinc-500 hover:text-zinc-700 underline disabled:opacity-50 shrink-0"
                                     >
                                       {revokingId === att.certificateId ? "Wait..." : "Restore"}
                                     </button>
                                   </div>
                                 ) : (
-                                  <div className="flex items-center gap-2">
-                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                      <CheckCircle2 size={10} /> Issued
+                                  <div className="flex items-center gap-2 whitespace-nowrap">
+                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                                      <CheckCircle2 size={10} className="shrink-0" /> Issued
                                     </span>
                                     <button
                                       onClick={() => handleResendEmail(att)}
                                       disabled={resendingId === att.certificateId}
-                                      className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
+                                      className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-600 hover:text-indigo-800 disabled:opacity-50 shrink-0"
                                       title="Resend email"
                                     >
-                                      <Mail size={12} />
+                                      <Mail size={12} className="shrink-0" />
                                       <span>{resendingId === att.certificateId ? "Sending..." : "Resend"}</span>
                                     </button>
                                     <button
                                       onClick={() => toggleRevoke(att)}
                                       disabled={revokingId === att.certificateId}
-                                      className="text-[10px] uppercase font-bold text-red-500 hover:text-red-700 underline opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                                      className="text-[10px] uppercase font-bold text-red-500 hover:text-red-700 underline opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 shrink-0"
                                     >
                                       {revokingId === att.certificateId ? "Wait..." : "Revoke"}
                                     </button>
                                   </div>
                                 )
                               ) : (
-                                <div className="flex items-center gap-2">
-                                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-100 text-zinc-600 border border-zinc-200">
-                                    <CircleDashed size={10} /> Pending
+                                <div className="flex items-center gap-2 whitespace-nowrap">
+                                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-100 text-zinc-600 border border-zinc-200 shrink-0">
+                                    <CircleDashed size={10} className="shrink-0" /> Pending
                                   </span>
                                   <button
                                     onClick={() => handleIssueCertificate(att)}
                                     disabled={issuingId === att.id}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition-colors disabled:opacity-50"
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200 transition-colors disabled:opacity-50 whitespace-nowrap shrink-0"
                                     title="Issue certificate now"
                                   >
-                                    {issuingId === att.id ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle2 size={11} />}
+                                    {issuingId === att.id ? <Loader2 size={10} className="animate-spin shrink-0" /> : <CheckCircle2 size={10} className="shrink-0" />}
                                     <span>{issuingId === att.id ? "Issuing..." : "Issue Now"}</span>
                                   </button>
                                 </div>

@@ -26,6 +26,7 @@ const QrCodeElement = ({
   const displayId = certificateId || "SERIAL-NO-PLACEHOLDER";
   const numWidth = typeof elWidth === "number" ? elWidth : (typeof width === "number" ? width : 400);
   const fontSize = Math.min(24, Math.max(12, Math.floor(numWidth / 18)));
+  const qrSize = Math.max(80, Math.floor(numWidth * 0.78));
 
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between" }}>
@@ -33,9 +34,9 @@ const QrCodeElement = ({
         <QRCodeSVG 
           value={url} 
           fgColor={color || "#000000"} 
-          bgColor="#fcfbf7" 
-          width="100%" 
-          height="100%" 
+          bgColor="#ffffff" 
+          size={qrSize}
+          style={{ width: `${qrSize}px`, height: `${qrSize}px`, maxWidth: "100%", maxHeight: "100%" }}
           level="M"
           marginSize={1}
         />

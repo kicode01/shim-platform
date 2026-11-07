@@ -260,26 +260,78 @@ export default function ValidateSearchClient() {
     }
   };
 
-  const handleNoQrFallback = async (fileOrImage: File | string) => {
+  const extractIdFromOcrText = (rawText: string): string => {
+    if (!rawText) return "";
+    // 1. Direct match after ID: / 1D: / lD:
+    const directMatch = rawText.match(/(?:[I1l|]D|CREDENTIAL)[:.;\s-]+([a-zA-Z0-9]{18,32})/i);
+    if (directMatch?.[1]) return directMatch[1].trim().toLowerCase();
+
+    // 2. Match after ID: even if OCR inserted a space inside the 25-char CUID
+    const lines = rawText.split(/\r?\n/);
+    for (const line of lines) {
+      const m = line.match(/(?:[I1l|]D)[:.;\s-]+([a-zA-Z0-9\s]{20,35})/i);
+      if (m?.[1]) {
+        const compact = m[1].replace(/\s+/g, "").toLowerCase();
+        if (compact.length >= 20 && compact.length <= 30) {
+          return compact;
+        }
+      }
+    }
+
+    // 3. Standalone CUID-like token starting with 'c' (or 'e'/'o' if OCR misread 'c') followed by 20-28 alphanumeric chars
+    const tokenMatch = rawText.match(/\b([ce][m][a-z0-9]{18,28})\b/i) || rawText.match(/\b(c[a-z0-9]{20,28})\b/i);
+    if (tokenMatch?.[1]) {
+      const tok = tokenMatch[1].trim().toLowerCase();
+      return tok.startsWith("em") ? "c" + tok.slice(1) : tok;
+    }
+    return "";
+  };
+
+  const cropBottomStripDataUrl = (sourceCanvas: HTMLCanvasElement): string => {
+    const startY = Math.floor(sourceCanvas.height * 0.72);
+    const stripH = sourceCanvas.height - startY;
+    const stripW = sourceCanvas.width;
+    const scale = 2;
+
+    const cropCanvas = document.createElement("canvas");
+    cropCanvas.width = stripW * scale + 40;
+    cropCanvas.height = stripH * scale + 40;
+    const ctx = cropCanvas.getContext("2d");
+    if (!ctx) return sourceCanvas.toDataURL("image/png");
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, cropCanvas.width, cropCanvas.height);
+    ctx.drawImage(sourceCanvas, 0, startY, stripW, stripH, 20, 20, stripW * scale, stripH * scale);
+    return cropCanvas.toDataURL("image/png");
+  };
+
+  const handleNoQrFallback = async (fileOrImage: File | string, sourceCanvas?: HTMLCanvasElement) => {
     // 1. Check if a Certificate ID is already typed or loaded on screen
     let candidateId = extractCertificateId(searchId) || certificate?.id || "";
 
-    // 2. If no ID is typed yet, attempt to extract the ID from the document text via OCR
+    // 2. If no ID is typed yet, attempt to extract the ID from the bottom credential strip first, then full page via OCR
     if (!candidateId) {
       setOcrStatus("loading");
       setOcrProgress(0);
       setOcrMessage("Scanning document for Credential ID...");
-      const ocrResult = await Tesseract.recognize(fileOrImage, "eng", {
-        logger: m => {
-          if (m.status === "recognizing text") {
-            setOcrProgress(Math.floor(m.progress * 100));
+
+      if (sourceCanvas) {
+        try {
+          const bottomStripUrl = cropBottomStripDataUrl(sourceCanvas);
+          const stripRes = await Tesseract.recognize(bottomStripUrl, "eng");
+          candidateId = extractIdFromOcrText(stripRes.data.text || "");
+        } catch {}
+      }
+
+      if (!candidateId) {
+        const ocrResult = await Tesseract.recognize(fileOrImage, "eng", {
+          logger: m => {
+            if (m.status === "recognizing text") {
+              setOcrProgress(Math.floor(m.progress * 100));
+            }
           }
-        }
-      });
-      const rawText = ocrResult.data.text || "";
-      const idMatch = rawText.match(/ID[:\s]+([a-zA-Z0-9]{15,32})/i) || rawText.match(/\b(c[a-z0-9]{20,30})\b/i);
-      if (idMatch && idMatch[1]) {
-        candidateId = idMatch[1].trim().toLowerCase();
+        });
+        candidateId = extractIdFromOcrText(ocrResult.data.text || "");
       }
     }
 
@@ -290,11 +342,38 @@ export default function ValidateSearchClient() {
 
     setSearchId(candidateId);
     const cert = await fetchCertificate(candidateId);
-    if (cert && advancedMode) {
+    if (cert) {
+      if (cert.id !== candidateId) {
+        setSearchId(cert.id);
+      }
+      setAdvancedMode(true);
       await runAdvancedAnalysis(fileOrImage, cert);
-    } else if (!cert) {
+    } else {
       setOcrStatus("idle");
     }
+  };
+
+  const tryDecodeQrFromCanvas = (canvas: HTMLCanvasElement): string | null => {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+
+    // 1. Full image scan
+    const fullData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const fullCode = jsQR(fullData.data, fullData.width, fullData.height);
+    if (fullCode?.data) return fullCode.data;
+
+    // 2. Bottom-right and bottom-left quadrant scans (higher relative resolution for corner QR codes)
+    const halfW = Math.floor(canvas.width / 2);
+    const halfH = Math.floor(canvas.height / 2);
+    const brData = ctx.getImageData(halfW, halfH, canvas.width - halfW, canvas.height - halfH);
+    const brCode = jsQR(brData.data, brData.width, brData.height);
+    if (brCode?.data) return brCode.data;
+
+    const blData = ctx.getImageData(0, halfH, halfW, canvas.height - halfH);
+    const blCode = jsQR(blData.data, blData.width, blData.height);
+    if (blCode?.data) return blCode.data;
+
+    return null;
   };
 
   const processImage = (file: File) => {
@@ -311,15 +390,14 @@ export default function ValidateSearchClient() {
           canvas.height = img.height;
           ctx.drawImage(img, 0, 0);
 
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const code = jsQR(imageData.data, imageData.width, imageData.height);
+          const qrData = tryDecodeQrFromCanvas(canvas);
 
-          if (code && code.data) {
-            await handleScannedUrl(code.data, file);
+          if (qrData) {
+            await handleScannedUrl(qrData, file);
             resolve();
           } else {
             try {
-              await handleNoQrFallback(file);
+              await handleNoQrFallback(file, canvas);
               resolve();
             } catch (fallbackErr) {
               reject(fallbackErr);
@@ -339,7 +417,7 @@ export default function ValidateSearchClient() {
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       const page = await pdf.getPage(1);
-      const viewport = page.getViewport({ scale: 1.5 });
+      const viewport = page.getViewport({ scale: 2.5 });
 
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
@@ -350,15 +428,27 @@ export default function ValidateSearchClient() {
 
       await page.render({ canvasContext: ctx, viewport } as any).promise;
 
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(imageData.data, imageData.width, imageData.height);
-      const dataUrl = canvas.toDataURL("image/jpeg");
+      const dataUrl = canvas.toDataURL("image/png");
+      let qrData = tryDecodeQrFromCanvas(canvas);
 
-      if (code && code.data) {
-        // Convert canvas to data URL for OCR
-        await handleScannedUrl(code.data, dataUrl);
+      // Also check PDF metadata if exported with embedded SHIM-CERT-ID
+      if (!qrData) {
+        try {
+          const meta: any = await pdf.getMetadata();
+          const subj = meta?.info?.Subject || "";
+          const kw = meta?.info?.Keywords || "";
+          if (subj.startsWith("SHIM-CERT-ID:")) {
+            qrData = subj.replace("SHIM-CERT-ID:", "").trim();
+          } else if (kw && /^c[a-z0-9]{20,30}$/i.test(kw.trim())) {
+            qrData = kw.trim();
+          }
+        } catch {}
+      }
+
+      if (qrData) {
+        await handleScannedUrl(qrData, dataUrl);
       } else {
-        await handleNoQrFallback(dataUrl);
+        await handleNoQrFallback(dataUrl, canvas);
       }
     } catch (err: any) {
       throw new Error(err.message || "Failed to process PDF.");
@@ -372,7 +462,11 @@ export default function ValidateSearchClient() {
     setSearchId(idToFetch);
     const cert = await fetchCertificate(idToFetch);
     
-    if (cert && advancedMode && fileOrImage) {
+    if (cert && fileOrImage) {
+      if (cert.id !== idToFetch) {
+        setSearchId(cert.id);
+      }
+      setAdvancedMode(true);
       runAdvancedAnalysis(fileOrImage, cert);
     }
   };

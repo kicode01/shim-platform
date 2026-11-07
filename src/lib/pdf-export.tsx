@@ -244,6 +244,14 @@ export async function downloadCertificatePdf(
   const pdfWidth = pdf.internal.pageSize.getWidth();
   const pdfHeight = pdf.internal.pageSize.getHeight();
 
+  if (cert.certificateId) {
+    pdf.setProperties({
+      title: `Certificate - ${cert.recipientName || "Recipient"}`,
+      subject: `SHIM-CERT-ID:${cert.certificateId}`,
+      keywords: cert.certificateId,
+    });
+  }
+
   // Use lossless PNG to guarantee 1:1 crystal-clear graphics without compression artifacts
   const imgData = canvas.toDataURL("image/png");
   pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight, undefined, "FAST");

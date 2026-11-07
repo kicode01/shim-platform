@@ -22,15 +22,25 @@ export async function GET(
       }
     });
 
-    // OCR / human-typo fallback for 24-26 char CUIDs (e.g. 'u' vs 'v', '0' vs '8'/'o', 'l' vs '1')
-    if (!certificate && id.length >= 20) {
-      const prefix = id.slice(0, 7).toLowerCase();
-      const suffix = id.slice(-5).toLowerCase();
+    // OCR / human-typo fallback for 20-30 char CUIDs (handles Space Mono dotted '0'->'8'/'o', 'u'->'v', 'l'->'1'/'i', '5'->'s')
+    if (!certificate && id.length >= 18) {
+      const normalizeOcr = (s: string) =>
+        s
+          .toLowerCase()
+          .replace(/[08oq]/g, "0")
+          .replace(/[uv]/g, "v")
+          .replace(/[1li|]/g, "l")
+          .replace(/[5s]/g, "5")
+          .replace(/[2z]/g, "2");
+
+      const cleanId = id.trim().toLowerCase();
+      const prefix3 = cleanId.slice(0, 3);
+      const suffix3 = cleanId.slice(-3);
       const candidates = await prisma.certificate.findMany({
         where: {
           OR: [
-            { id: { startsWith: prefix } },
-            { id: { endsWith: suffix } }
+            { id: { startsWith: prefix3 } },
+            { id: { endsWith: suffix3 } }
           ]
         },
         include: {
@@ -42,18 +52,23 @@ export async function GET(
         }
       });
 
-      const target = id.toLowerCase();
+      const normTarget = normalizeOcr(cleanId);
       let bestMatch = null;
-      let bestDiff = 999;
+      let bestScore = 999;
+
       for (const cand of candidates) {
-        if (Math.abs(cand.id.length - target.length) > 1) continue;
-        let diff = 0;
-        const len = Math.max(cand.id.length, target.length);
+        if (Math.abs(cand.id.length - cleanId.length) > 2) continue;
+        const normCand = normalizeOcr(cand.id);
+        let normDiff = 0;
+        let rawDiff = 0;
+        const len = Math.max(normCand.length, normTarget.length);
         for (let i = 0; i < len; i++) {
-          if (cand.id[i] !== target[i]) diff++;
+          if (normCand[i] !== normTarget[i]) normDiff++;
+          if (cand.id[i] !== cleanId[i]) rawDiff++;
         }
-        if (diff <= 2 && diff < bestDiff) {
-          bestDiff = diff;
+        // Accept if OCR-normalized strings differ by at most 3 chars (out of 25), or raw strings by at most 4
+        if ((normDiff <= 3 || rawDiff <= 4) && normDiff * 10 + rawDiff < bestScore) {
+          bestScore = normDiff * 10 + rawDiff;
           bestMatch = cand;
         }
       }

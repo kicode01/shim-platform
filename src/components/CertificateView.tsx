@@ -1134,27 +1134,24 @@ export default function CertificateView({
               </div>
             );
           })}
-          {/* Safety Credential ID stamp if older template lacked both QR code and Certificate ID dynamic text */}
-          {!parsedDesign.canvasElements.some(el => el.type === "qrCode" || (el.type === "dynamicText" && el.text === "certificateId")) && certificateId && (
+          {/* Safety Credential QR + ID stamp if older template lacked a QR code */}
+          {!parsedDesign.canvasElements.some(el => el.type === "qrCode") && certificateId && (
             <div
               style={{
                 position: "absolute",
-                bottom: "40px",
-                right: "60px",
+                bottom: "140px",
+                right: "140px",
+                width: "260px",
+                height: "300px",
                 zIndex: 10,
-                fontFamily: "var(--font-spacemono, monospace)",
-                fontSize: "28px",
-                fontWeight: 600,
-                color: "#475569",
-                letterSpacing: "0.5px",
-                backgroundColor: "rgba(255, 255, 255, 0.92)",
-                padding: "8px 20px",
-                borderRadius: "8px",
+                backgroundColor: "rgba(255, 255, 255, 0.96)",
+                padding: "16px",
+                borderRadius: "12px",
                 border: "1px solid rgba(148, 163, 184, 0.5)",
                 boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
               }}
             >
-              ID: {certificateId}
+              <QrCodeElement url={validateUrl} certificateId={certificateId} color="#0f172a" width="100%" height="100%" elWidth={228} />
             </div>
           )}
         </div>

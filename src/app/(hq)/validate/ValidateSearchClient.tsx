@@ -260,12 +260,49 @@ export default function ValidateSearchClient() {
     }
   };
 
+  const handleNoQrFallback = async (fileOrImage: File | string) => {
+    // 1. Check if a Certificate ID is already typed or loaded on screen
+    let candidateId = extractCertificateId(searchId) || certificate?.id || "";
+
+    // 2. If no ID is typed yet, attempt to extract the ID from the document text via OCR
+    if (!candidateId) {
+      setOcrStatus("loading");
+      setOcrProgress(0);
+      setOcrMessage("Scanning document for Credential ID...");
+      const ocrResult = await Tesseract.recognize(fileOrImage, "eng", {
+        logger: m => {
+          if (m.status === "recognizing text") {
+            setOcrProgress(Math.floor(m.progress * 100));
+          }
+        }
+      });
+      const rawText = ocrResult.data.text || "";
+      const idMatch = rawText.match(/ID[:\s]+([a-zA-Z0-9]{15,32})/i) || rawText.match(/\b(c[a-z0-9]{20,30})\b/i);
+      if (idMatch && idMatch[1]) {
+        candidateId = idMatch[1].trim().toLowerCase();
+      }
+    }
+
+    if (!candidateId) {
+      setOcrStatus("idle");
+      throw new Error("No QR code or readable Credential ID found. Enter the Certificate ID in the search bar first, then upload the file to run AI verification.");
+    }
+
+    setSearchId(candidateId);
+    const cert = await fetchCertificate(candidateId);
+    if (cert && advancedMode) {
+      await runAdvancedAnalysis(fileOrImage, cert);
+    } else if (!cert) {
+      setOcrStatus("idle");
+    }
+  };
+
   const processImage = (file: File) => {
     return new Promise<void>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const img = new Image();
-        img.onload = () => {
+        img.onload = async () => {
           const canvas = document.createElement("canvas");
           const ctx = canvas.getContext("2d");
           if (!ctx) return reject(new Error("Canvas not supported"));
@@ -278,10 +315,15 @@ export default function ValidateSearchClient() {
           const code = jsQR(imageData.data, imageData.width, imageData.height);
 
           if (code && code.data) {
-            handleScannedUrl(code.data, file);
+            await handleScannedUrl(code.data, file);
             resolve();
           } else {
-            reject(new Error("No QR code found in the image."));
+            try {
+              await handleNoQrFallback(file);
+              resolve();
+            } catch (fallbackErr) {
+              reject(fallbackErr);
+            }
           }
         };
         img.onerror = () => reject(new Error("Invalid image file."));
@@ -310,13 +352,13 @@ export default function ValidateSearchClient() {
 
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const code = jsQR(imageData.data, imageData.width, imageData.height);
+      const dataUrl = canvas.toDataURL("image/jpeg");
 
       if (code && code.data) {
         // Convert canvas to data URL for OCR
-        const dataUrl = canvas.toDataURL("image/jpeg");
-        handleScannedUrl(code.data, dataUrl);
+        await handleScannedUrl(code.data, dataUrl);
       } else {
-        throw new Error("No QR code found on the first page of the PDF.");
+        await handleNoQrFallback(dataUrl);
       }
     } catch (err: any) {
       throw new Error(err.message || "Failed to process PDF.");

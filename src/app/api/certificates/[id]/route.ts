@@ -11,7 +11,7 @@ export async function GET(
   const { id } = await props.params;
 
   try {
-    const certificate = await prisma.certificate.findUnique({
+    let certificate = await prisma.certificate.findUnique({
       where: { id },
       include: {
         template: true,
@@ -22,6 +22,46 @@ export async function GET(
       }
     });
 
+    // OCR / human-typo fallback for 24-26 char CUIDs (e.g. 'u' vs 'v', '0' vs '8'/'o', 'l' vs '1')
+    if (!certificate && id.length >= 20) {
+      const prefix = id.slice(0, 7).toLowerCase();
+      const suffix = id.slice(-5).toLowerCase();
+      const candidates = await prisma.certificate.findMany({
+        where: {
+          OR: [
+            { id: { startsWith: prefix } },
+            { id: { endsWith: suffix } }
+          ]
+        },
+        include: {
+          template: true,
+          event: true,
+          issuer: {
+            select: { id: true, name: true, email: true }
+          }
+        }
+      });
+
+      const target = id.toLowerCase();
+      let bestMatch = null;
+      let bestDiff = 999;
+      for (const cand of candidates) {
+        if (Math.abs(cand.id.length - target.length) > 1) continue;
+        let diff = 0;
+        const len = Math.max(cand.id.length, target.length);
+        for (let i = 0; i < len; i++) {
+          if (cand.id[i] !== target[i]) diff++;
+        }
+        if (diff <= 2 && diff < bestDiff) {
+          bestDiff = diff;
+          bestMatch = cand;
+        }
+      }
+      if (bestMatch) {
+        certificate = bestMatch;
+      }
+    }
+
     if (!certificate) {
       return NextResponse.json({ message: "Certificate not found" }, { status: 404 });
     }
@@ -30,7 +70,7 @@ export async function GET(
     await prisma.auditLog.create({
       data: {
         action: "VERIFIED",
-        certificateId: id,
+        certificateId: certificate.id,
         ipAddress: req.headers.get("x-forwarded-for") || "unknown"
       }
     });

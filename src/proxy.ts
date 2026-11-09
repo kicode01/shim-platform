@@ -66,8 +66,13 @@ export function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Main Domain (HQ) - Allow dashboard and portal to resolve normally
-
+    // Main Domain (HQ) - If dashboard or portal are accessed on shim-hq, redirect to the landing page
+  if (!isStudio && !isWallet) {
+    const isLocal = hostname.includes('localhost') || hostname.includes('127.0.0.1');
+    if (!isLocal && (pathname.startsWith('/dashboard') || pathname.startsWith('/portal'))) {
+      return NextResponse.redirect(new URL('/', req.url));
+    }
+  }
 
   return NextResponse.next();
 }

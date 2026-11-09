@@ -90,6 +90,21 @@ export default function LoginPage() {
       if (res?.error) {
         setError("Invalid credentials. Please try again.");
       } else {
+        if (window.location.hostname.includes("shim-hq")) {
+          try {
+            const handoffRes = await fetch("/api/auth/handoff");
+            if (handoffRes.ok) {
+              const data = await handoffRes.json();
+              if (data.url) {
+                window.location.href = data.url;
+                return;
+              }
+            }
+          } catch (e) {
+            console.error("Handoff failed", e);
+          }
+        }
+
         if (window.location.hostname.includes("shim-wallet")) {
           window.location.href = "/portal";
           return;

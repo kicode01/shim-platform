@@ -21,7 +21,7 @@ export default async function LoginPage() {
     } else if (host.includes("shim-studio")) {
       redirect("/dashboard");
     } else {
-      redirect((session.user as any).role === "member" ? "/portal" : "/dashboard");
+      redirect("/");
     }
   }
 

@@ -66,15 +66,8 @@ export function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Main Domain (HQ)
-  if (!isStudio && !isWallet) {
-    const isLocal = hostname.includes('localhost') || hostname.includes('127.0.0.1');
-    // Block access to dashboard and portal from main domain, UNLESS we are developing locally
-    if (!isLocal && (pathname.startsWith('/dashboard') || pathname.startsWith('/portal'))) {
-      url.pathname = '/404';
-      return NextResponse.rewrite(url);
-    }
-  }
+  // Main Domain (HQ) - Allow dashboard and portal to resolve normally
+
 
   return NextResponse.next();
 }

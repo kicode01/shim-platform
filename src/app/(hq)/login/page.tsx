@@ -21,7 +21,12 @@ export default async function LoginPage() {
     } else if (host.includes("shim-studio")) {
       redirect("/dashboard");
     } else {
-      redirect((session.user as any).role === "member" ? "/portal" : "/dashboard");
+      const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
+      if (isLocal) {
+        redirect((session.user as any).role === "member" ? "/portal" : "/dashboard");
+      } else {
+        redirect((session.user as any).role === "member" ? "https://shim-wallet.vercel.app" : "https://shim-studio.vercel.app");
+      }
     }
   }
 

@@ -42,10 +42,7 @@ export default async function PortalPage() {
   const session = await getServerSession(authOptions);
 
   if (!session) {
-    const headersList = await headers();
-    const host = headersList.get("host") || "";
-    const isLocal = host.includes("localhost");
-    redirect(isLocal ? "/login" : "https://shim-hq.vercel.app/login");
+    redirect("/login");
   }
 
   let user = await prisma.user.findUnique({

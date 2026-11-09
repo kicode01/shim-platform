@@ -9,16 +9,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const session = await getServerSession(authOptions);
 
   if (!session) {
-    const headersList = await headers();
-    const host = headersList.get("host") || "";
-    const isLocal = host.includes("localhost");
-    redirect(isLocal ? "/login" : "https://shim-hq.vercel.app/login");
+    redirect("/login");
   }
 
   if ((session.user as any).role === "member") {
     const headersList = await headers();
     const host = headersList.get("host") || "";
-    const isLocal = host.includes("localhost");
+    const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
     redirect(isLocal ? "/portal" : "https://shim-wallet.vercel.app");
   }
 

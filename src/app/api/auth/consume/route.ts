@@ -52,23 +52,45 @@ export async function GET(req: Request) {
       maxAge: 30 * 24 * 60 * 60, // 30 days
     });
 
-    // 4. Set the session cookie directly
+    // 4. Determine redirect destination
+    const destination = user.role === "member" ? "/portal" : "/dashboard";
+    const redirectUrl = new URL(destination, req.url);
+    const response = NextResponse.redirect(redirectUrl);
+
+    // 5. Set the session cookie directly on both response and cookieStore
     const proto = req.headers.get("x-forwarded-proto") || (req.url.startsWith("https://") ? "https" : "http");
     const isHttps = proto === "https";
-    const cookieName = isHttps ? "__Secure-next-auth.session-token" : "next-auth.session-token";
+    const secureCookieName = "__Secure-next-auth.session-token";
+    const standardCookieName = "next-auth.session-token";
 
-    const cookieStore = await cookies();
-    cookieStore.set(cookieName, sessionJwt, {
+    const cookieOptions = {
       httpOnly: true,
       secure: isHttps,
-      sameSite: "lax",
+      sameSite: "lax" as const,
       path: "/",
       maxAge: 30 * 24 * 60 * 60,
-    });
+    };
 
-    // 5. Redirect instantly to their correct portal based on role
-    const destination = user.role === "member" ? "/portal" : "/dashboard";
-    return NextResponse.redirect(new URL(destination, req.url));
+    if (isHttps) {
+      response.cookies.set(secureCookieName, sessionJwt, cookieOptions);
+      response.cookies.set(standardCookieName, sessionJwt, { ...cookieOptions, secure: false });
+    } else {
+      response.cookies.set(standardCookieName, sessionJwt, cookieOptions);
+    }
+
+    try {
+      const cookieStore = await cookies();
+      if (isHttps) {
+        cookieStore.set(secureCookieName, sessionJwt, cookieOptions);
+        cookieStore.set(standardCookieName, sessionJwt, { ...cookieOptions, secure: false });
+      } else {
+        cookieStore.set(standardCookieName, sessionJwt, cookieOptions);
+      }
+    } catch {
+      // Ignore if cookieStore is read-only
+    }
+
+    return response;
 
   } catch (error) {
     console.error("Handoff consumption error:", error);

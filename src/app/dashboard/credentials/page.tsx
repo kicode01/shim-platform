@@ -14,7 +14,10 @@ export default async function CredentialsPage() {
   const session = await getServerSession(authOptions);
 
   if (!session) {
-    redirect("/login");
+    const headersList = await headers();
+    const host = headersList.get("host") || "";
+    const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
+    redirect(isLocal ? "/login" : "https://shim-hq.vercel.app/login");
   }
 
   const userRole = (session.user as any).role;

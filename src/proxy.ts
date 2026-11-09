@@ -31,10 +31,15 @@ export function proxy(req: NextRequest) {
       const rest = pathname.replace(/^\/portal/, '') || '';
       return NextResponse.redirect(new URL(`https://shim-wallet.vercel.app${rest}`, req.url));
     }
+
+    // Redirect root to /dashboard so client routers and active tabs match
+    if (pathname === '/') {
+      return NextResponse.redirect(new URL('/dashboard', req.url));
+    }
     
-    // Map root and subpaths to /dashboard seamlessly
+    // Map subpaths to /dashboard seamlessly
     if (!pathname.startsWith('/dashboard')) {
-      url.pathname = `/dashboard${pathname === '/' ? '' : pathname}`;
+      url.pathname = `/dashboard${pathname}`;
       return NextResponse.rewrite(url);
     }
     return NextResponse.next();
@@ -48,9 +53,14 @@ export function proxy(req: NextRequest) {
       return NextResponse.redirect(new URL(`https://shim-studio.vercel.app${rest}`, req.url));
     }
 
-    // Map root and subpaths to /portal seamlessly
+    // Redirect root to /portal so client routers and active tabs match
+    if (pathname === '/') {
+      return NextResponse.redirect(new URL('/portal', req.url));
+    }
+
+    // Map subpaths to /portal seamlessly
     if (!pathname.startsWith('/portal')) {
-      url.pathname = `/portal${pathname === '/' ? '' : pathname}`;
+      url.pathname = `/portal${pathname}`;
       return NextResponse.rewrite(url);
     }
     return NextResponse.next();

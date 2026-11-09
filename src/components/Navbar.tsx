@@ -24,11 +24,21 @@ export default function Navbar() {
   const router = useRouter();
   const { data: session } = useSession();
 
+  const [host, setHost] = useState("");
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setHost(window.location.hostname);
+    }
+  }, []);
+
+  const isStudioHost = host.includes("shim-studio");
+  const isWalletHost = host.includes("shim-wallet");
+
   const isAuthPage = pathname === "/login" || pathname === "/register";
-  const isLandingMode = pathname === "/" || isAuthPage;
   const isValidateMode = pathname.startsWith("/validate");
-  const isDashboardMode = pathname.startsWith("/dashboard");
-  const isPortalMode = pathname.startsWith("/portal");
+  const isDashboardMode = pathname.startsWith("/dashboard") || (isStudioHost && !isAuthPage && !isValidateMode);
+  const isPortalMode = pathname.startsWith("/portal") || (isWalletHost && !isAuthPage && !isValidateMode);
+  const isLandingMode = !isDashboardMode && !isPortalMode && (pathname === "/" || isAuthPage);
 
   const [confirmLogout, setConfirmLogout] = useState(false);
   const logoutTimeoutRef = useRef<NodeJS.Timeout | null>(null);

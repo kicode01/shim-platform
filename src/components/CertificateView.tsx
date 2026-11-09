@@ -589,6 +589,8 @@ export interface CanvasElement {
   maxLines?: number;
   /** Rotation angle in degrees (0 - 360) */
   rotation?: number;
+  /** Holographic animated metallic shine effect (for badge elements) */
+  enableShine?: boolean;
 }
 
 export interface CertificateDesignConfig {
@@ -1011,12 +1013,14 @@ export default function CertificateView({
               );
             }
             if (el.type === "image" || el.type === "badge") {
+              const isBadge = el.type === "badge";
+              const showBadgeShine = !printMode && isBadge && el.enableShine !== false;
               return (
                 <div key={el.id} style={{ position: "absolute", zIndex: 1, left: el.x, top: el.y, width: el.width, height: el.height, transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined, transformOrigin: "center center" }}>
                   {el.src ? (
                     <div style={{ position: "relative", width: "100%", height: "100%" }}>
                       <img crossOrigin="anonymous" src={el.src} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.1)) drop-shadow(0 10px 15px rgba(0,0,0,0.1))" }} />
-                      {!printMode && (
+                      {showBadgeShine && (
                         <div className="animate-badge-shine" style={{
                           position: "absolute",
                           top: 0, left: 0, right: 0, bottom: 0,
@@ -1030,7 +1034,7 @@ export default function CertificateView({
                         }} />
                       )}
                     </div>
-                  ) : el.type === "badge" ? (
+                  ) : isBadge ? (
                     <svg viewBox="0 0 120 120" className="w-full h-full drop-shadow-xl" xmlns="http://www.w3.org/2000/svg">
                       <defs>
                         <linearGradient id="goldOuterBadgeV" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -1045,22 +1049,24 @@ export default function CertificateView({
                         </linearGradient>
                         
                         {/* Animated Shine Effect */}
-                        <linearGradient id="badgeShineV" x1="-100%" y1="-100%" x2="0%" y2="0%">
-                          <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
-                          <stop offset="50%" stopColor="#ffffff" stopOpacity="0.3" />
-                          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
-                          <animate attributeName="x1" values="-100%; 200%" dur="3s" repeatCount="indefinite" />
-                          <animate attributeName="x2" values="0%; 300%" dur="3s" repeatCount="indefinite" />
-                          <animate attributeName="y1" values="-100%; 200%" dur="3s" repeatCount="indefinite" />
-                          <animate attributeName="y2" values="0%; 300%" dur="3s" repeatCount="indefinite" />
-                        </linearGradient>
+                        {showBadgeShine && (
+                          <linearGradient id="badgeShineV" x1="-100%" y1="-100%" x2="0%" y2="0%">
+                            <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
+                            <stop offset="50%" stopColor="#ffffff" stopOpacity="0.3" />
+                            <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+                            <animate attributeName="x1" values="-100%; 200%" dur="3s" repeatCount="indefinite" />
+                            <animate attributeName="x2" values="0%; 300%" dur="3s" repeatCount="indefinite" />
+                            <animate attributeName="y1" values="-100%; 200%" dur="3s" repeatCount="indefinite" />
+                            <animate attributeName="y2" values="0%; 300%" dur="3s" repeatCount="indefinite" />
+                          </linearGradient>
+                        )}
                       </defs>
 
                       {/* Sharp Rosette Base */}
                       <path d="M 60.0 10.0 L 65.7 16.4 L 72.9 11.7 L 76.8 19.3 L 85.0 16.7 L 86.8 25.1 L 95.4 24.6 L 94.9 33.2 L 103.3 35.0 L 100.7 43.2 L 108.3 47.1 L 103.6 54.3 L 110.0 60.0 L 103.6 65.7 L 108.3 72.9 L 100.7 76.8 L 103.3 85.0 L 94.9 86.8 L 95.4 95.4 L 86.8 94.9 L 85.0 103.3 L 76.8 100.7 L 72.9 108.3 L 65.7 103.6 L 60.0 110.0 L 54.3 103.6 L 47.1 108.3 L 43.2 100.7 L 35.0 103.3 L 33.2 94.9 L 24.6 95.4 L 25.1 86.8 L 16.7 85.0 L 19.3 76.8 L 11.7 72.9 L 16.4 65.7 L 10.0 60.0 L 16.4 54.3 L 11.7 47.1 L 19.3 43.2 L 16.7 35.0 L 25.1 33.2 L 24.6 24.6 L 33.2 25.1 L 35.0 16.7 L 43.2 19.3 L 47.1 11.7 L 54.3 16.4 Z" fill="url(#goldOuterBadgeV)" />
                       
                       {/* Animated Shine overlaying the rosette base in interactive mode only */}
-                      {!printMode && (
+                      {showBadgeShine && (
                         <path d="M 60.0 10.0 L 65.7 16.4 L 72.9 11.7 L 76.8 19.3 L 85.0 16.7 L 86.8 25.1 L 95.4 24.6 L 94.9 33.2 L 103.3 35.0 L 100.7 43.2 L 108.3 47.1 L 103.6 54.3 L 110.0 60.0 L 103.6 65.7 L 108.3 72.9 L 100.7 76.8 L 103.3 85.0 L 94.9 86.8 L 95.4 95.4 L 86.8 94.9 L 85.0 103.3 L 76.8 100.7 L 72.9 108.3 L 65.7 103.6 L 60.0 110.0 L 54.3 103.6 L 47.1 108.3 L 43.2 100.7 L 35.0 103.3 L 33.2 94.9 L 24.6 95.4 L 25.1 86.8 L 16.7 85.0 L 19.3 76.8 L 11.7 72.9 L 16.4 65.7 L 10.0 60.0 L 16.4 54.3 L 11.7 47.1 L 19.3 43.2 L 16.7 35.0 L 25.1 33.2 L 24.6 24.6 L 33.2 25.1 L 35.0 16.7 L 43.2 19.3 L 47.1 11.7 L 54.3 16.4 Z" fill="url(#badgeShineV)" />
                       )}
                       

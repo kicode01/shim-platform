@@ -2446,6 +2446,27 @@ const duplicateElement = (id?: string) => {
                                 {selectedElement.src && (
                                   <button onClick={() => updateSelectedElement({ src: undefined })} className="text-[10px] font-medium text-red-500 w-full text-center hover:text-red-700 transition-colors mt-2">Remove File</button>
                                 )}
+
+                                {selectedElement.type === "badge" && (
+                                  <div className="pt-4 border-t border-zinc-100 mt-4">
+                                    <label className="flex items-center justify-between cursor-pointer group">
+                                      <div>
+                                        <span className="text-xs font-semibold text-zinc-800 block">Holographic Shine</span>
+                                        <span className="text-[11px] text-zinc-400">Animated metallic reflection sweep</span>
+                                      </div>
+                                      <div className="relative">
+                                        <input
+                                          type="checkbox"
+                                          className="sr-only"
+                                          checked={selectedElement.enableShine !== false}
+                                          onChange={(e) => updateSelectedElement({ enableShine: e.target.checked })}
+                                        />
+                                        <div className={`block w-9 h-5 rounded-full transition-colors ${selectedElement.enableShine !== false ? 'bg-zinc-900' : 'bg-zinc-200'}`}></div>
+                                        <div className={`absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white transition-transform shadow-sm ${selectedElement.enableShine !== false ? 'translate-x-4' : ''}`}></div>
+                                      </div>
+                                    </label>
+                                  </div>
+                                )}
                               </div>
                             )}
 
@@ -4179,6 +4200,20 @@ const duplicateElement = (id?: string) => {
                                 Remove Custom Graphic
                               </button>
                             )}
+                            {selectedElement.type === "badge" && (
+                              <div className="flex items-center justify-between py-2 border-t border-zinc-800">
+                                <div>
+                                  <span className="text-xs font-medium text-zinc-200 block">Holographic Shine</span>
+                                  <span className="text-[10px] text-zinc-500">Animated metallic sweep</span>
+                                </div>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedElement.enableShine !== false}
+                                  onChange={(e) => updateSelectedElement({ enableShine: e.target.checked })}
+                                  className="w-4 h-4 accent-white rounded cursor-pointer"
+                                />
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -4998,17 +5033,19 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
             {el.src ? (
               <div style={{ position: "relative", width: "100%", height: "100%" }}>
                 <img src={el.src} alt="" className="w-full h-full object-contain" style={{ filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.1)) drop-shadow(0 10px 15px rgba(0,0,0,0.1))" }} />
-                <div className="animate-badge-shine" style={{
-                  position: "absolute",
-                  top: 0, left: 0, right: 0, bottom: 0,
-                  background: "linear-gradient(110deg, transparent 20%, rgba(255,255,255,0.4) 40%, rgba(255,255,255,0.8) 50%, rgba(255,255,255,0.4) 60%, transparent 80%)",
-                  backgroundSize: "200% 100%",
-                  WebkitMaskImage: `url(${el.src})`,
-                  WebkitMaskSize: "contain",
-                  WebkitMaskPosition: "center",
-                  WebkitMaskRepeat: "no-repeat",
-                  pointerEvents: "none"
-                }} />
+                {el.type === 'badge' && el.enableShine !== false && (
+                  <div className="animate-badge-shine" style={{
+                    position: "absolute",
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    background: "linear-gradient(110deg, transparent 20%, rgba(255,255,255,0.4) 40%, rgba(255,255,255,0.8) 50%, rgba(255,255,255,0.4) 60%, transparent 80%)",
+                    backgroundSize: "200% 100%",
+                    WebkitMaskImage: `url(${el.src})`,
+                    WebkitMaskSize: "contain",
+                    WebkitMaskPosition: "center",
+                    WebkitMaskRepeat: "no-repeat",
+                    pointerEvents: "none"
+                  }} />
+                )}
               </div>
             ) : el.type === 'badge' ? (
               <svg viewBox="0 0 120 120" className="w-full h-full drop-shadow-xl" xmlns="http://www.w3.org/2000/svg">
@@ -5025,22 +5062,26 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
                   </linearGradient>
 
                   {/* Animated Shine Effect */}
-                  <linearGradient id="badgeShine" x1="-100%" y1="-100%" x2="0%" y2="0%">
-                    <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
-                    <stop offset="50%" stopColor="#ffffff" stopOpacity="0.3" />
-                    <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
-                    <animate attributeName="x1" values="-100%; 200%" dur="3s" repeatCount="indefinite" />
-                    <animate attributeName="x2" values="0%; 300%" dur="3s" repeatCount="indefinite" />
-                    <animate attributeName="y1" values="-100%; 200%" dur="3s" repeatCount="indefinite" />
-                    <animate attributeName="y2" values="0%; 300%" dur="3s" repeatCount="indefinite" />
-                  </linearGradient>
+                  {el.enableShine !== false && (
+                    <linearGradient id="badgeShine" x1="-100%" y1="-100%" x2="0%" y2="0%">
+                      <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
+                      <stop offset="50%" stopColor="#ffffff" stopOpacity="0.3" />
+                      <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+                      <animate attributeName="x1" values="-100%; 200%" dur="3s" repeatCount="indefinite" />
+                      <animate attributeName="x2" values="0%; 300%" dur="3s" repeatCount="indefinite" />
+                      <animate attributeName="y1" values="-100%; 200%" dur="3s" repeatCount="indefinite" />
+                      <animate attributeName="y2" values="0%; 300%" dur="3s" repeatCount="indefinite" />
+                    </linearGradient>
+                  )}
                 </defs>
 
                 {/* Sharp Rosette Base */}
                 <path d="M 60.0 10.0 L 65.7 16.4 L 72.9 11.7 L 76.8 19.3 L 85.0 16.7 L 86.8 25.1 L 95.4 24.6 L 94.9 33.2 L 103.3 35.0 L 100.7 43.2 L 108.3 47.1 L 103.6 54.3 L 110.0 60.0 L 103.6 65.7 L 108.3 72.9 L 100.7 76.8 L 103.3 85.0 L 94.9 86.8 L 95.4 95.4 L 86.8 94.9 L 85.0 103.3 L 76.8 100.7 L 72.9 108.3 L 65.7 103.6 L 60.0 110.0 L 54.3 103.6 L 47.1 108.3 L 43.2 100.7 L 35.0 103.3 L 33.2 94.9 L 24.6 95.4 L 25.1 86.8 L 16.7 85.0 L 19.3 76.8 L 11.7 72.9 L 16.4 65.7 L 10.0 60.0 L 16.4 54.3 L 11.7 47.1 L 19.3 43.2 L 16.7 35.0 L 25.1 33.2 L 24.6 24.6 L 33.2 25.1 L 35.0 16.7 L 43.2 19.3 L 47.1 11.7 L 54.3 16.4 Z" fill="url(#goldOuterBadge)" />
 
                 {/* Animated Shine overlaying the rosette base */}
-                <path d="M 60.0 10.0 L 65.7 16.4 L 72.9 11.7 L 76.8 19.3 L 85.0 16.7 L 86.8 25.1 L 95.4 24.6 L 94.9 33.2 L 103.3 35.0 L 100.7 43.2 L 108.3 47.1 L 103.6 54.3 L 110.0 60.0 L 103.6 65.7 L 108.3 72.9 L 100.7 76.8 L 103.3 85.0 L 94.9 86.8 L 95.4 95.4 L 86.8 94.9 L 85.0 103.3 L 76.8 100.7 L 72.9 108.3 L 65.7 103.6 L 60.0 110.0 L 54.3 103.6 L 47.1 108.3 L 43.2 100.7 L 35.0 103.3 L 33.2 94.9 L 24.6 95.4 L 25.1 86.8 L 16.7 85.0 L 19.3 76.8 L 11.7 72.9 L 16.4 65.7 L 10.0 60.0 L 16.4 54.3 L 11.7 47.1 L 19.3 43.2 L 16.7 35.0 L 25.1 33.2 L 24.6 24.6 L 33.2 25.1 L 35.0 16.7 L 43.2 19.3 L 47.1 11.7 L 54.3 16.4 Z" fill="url(#badgeShine)" />
+                {el.enableShine !== false && (
+                  <path d="M 60.0 10.0 L 65.7 16.4 L 72.9 11.7 L 76.8 19.3 L 85.0 16.7 L 86.8 25.1 L 95.4 24.6 L 94.9 33.2 L 103.3 35.0 L 100.7 43.2 L 108.3 47.1 L 103.6 54.3 L 110.0 60.0 L 103.6 65.7 L 108.3 72.9 L 100.7 76.8 L 103.3 85.0 L 94.9 86.8 L 95.4 95.4 L 86.8 94.9 L 85.0 103.3 L 76.8 100.7 L 72.9 108.3 L 65.7 103.6 L 60.0 110.0 L 54.3 103.6 L 47.1 108.3 L 43.2 100.7 L 35.0 103.3 L 33.2 94.9 L 24.6 95.4 L 25.1 86.8 L 16.7 85.0 L 19.3 76.8 L 11.7 72.9 L 16.4 65.7 L 10.0 60.0 L 16.4 54.3 L 11.7 47.1 L 19.3 43.2 L 16.7 35.0 L 25.1 33.2 L 24.6 24.6 L 33.2 25.1 L 35.0 16.7 L 43.2 19.3 L 47.1 11.7 L 54.3 16.4 Z" fill="url(#badgeShine)" />
+                )}
 
                 {/* Inner Bevel / Ring */}
                 <circle cx="60" cy="60" r="41" fill="url(#goldInnerBadge)" />

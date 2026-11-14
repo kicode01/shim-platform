@@ -1882,6 +1882,7 @@ const duplicateElement = (id?: string) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [userZoom, setUserZoom] = useState(1);
+  const userZoomRef = useRef(1);
   const [isLayersOpen, setIsLayersOpen] = useState(false);
 
   // Pan & Zoom Logic
@@ -1891,10 +1892,19 @@ const duplicateElement = (id?: string) => {
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const panOffsetRef = useRef({ x: 0, y: 0 });
 
+  const updateUserZoom = (next: number) => {
+    userZoomRef.current = next;
+    setUserZoom(next);
+  };
+
   const updatePanOffset = (next: { x: number; y: number }) => {
     panOffsetRef.current = next;
     setPanOffset(next);
   };
+
+  useEffect(() => {
+    userZoomRef.current = userZoom;
+  }, [userZoom]);
 
   useEffect(() => {
     panOffsetRef.current = panOffset;
@@ -1906,7 +1916,7 @@ const duplicateElement = (id?: string) => {
   const [hasOverflow, setHasOverflow] = useState(false);
 
   useEffect(() => {
-    if (userZoom <= 1) {
+    if (userZoom <= 1 && !touchPanRef.current.active) {
       updatePanOffset({ x: 0, y: 0 });
       setIsPanMode(false);
     }
@@ -1934,6 +1944,10 @@ const duplicateElement = (id?: string) => {
     startY: 0,
     panX: 0,
     panY: 0,
+    startDist: 0,
+    startZoom: 1,
+    containerCenterX: 0,
+    containerCenterY: 0,
     moved: false,
   });
   const touchDidPanRef = useRef(false);
@@ -1950,6 +1964,14 @@ const duplicateElement = (id?: string) => {
       };
     }
     return { x: touches[0].clientX, y: touches[0].clientY };
+  };
+
+  const getTouchDistance = (touches: React.TouchList) => {
+    if (touches.length < 2) return 0;
+    return Math.hypot(
+      touches[1].clientX - touches[0].clientX,
+      touches[1].clientY - touches[0].clientY
+    );
   };
 
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
@@ -2029,6 +2051,7 @@ const duplicateElement = (id?: string) => {
 
   const anchorTouchPan = (touches: React.TouchList, moved: boolean = false) => {
     const pt = getTouchPoint(touches);
+    const rect = containerRef.current?.getBoundingClientRect();
     touchPanRef.current = {
       active: true,
       touchCount: touches.length,
@@ -2036,6 +2059,10 @@ const duplicateElement = (id?: string) => {
       startY: pt.y,
       panX: panOffsetRef.current.x,
       panY: panOffsetRef.current.y,
+      startDist: touches.length >= 2 ? getTouchDistance(touches) : 0,
+      startZoom: userZoomRef.current,
+      containerCenterX: rect ? rect.left + rect.width / 2 : 0,
+      containerCenterY: rect ? rect.top + rect.height / 2 : 0,
       moved,
     };
   };
@@ -2045,14 +2072,17 @@ const duplicateElement = (id?: string) => {
     const target = e.target as HTMLElement | null;
     if (isNonPanInteractiveTarget(target)) return;
 
-    if (touchDidPanTimerRef.current !== null) {
-      window.clearTimeout(touchDidPanTimerRef.current);
-      touchDidPanTimerRef.current = null;
+    const preserveGesture = touchPanRef.current.active && touchPanRef.current.moved;
+    if (!touchPanRef.current.active) {
+      if (touchDidPanTimerRef.current !== null) {
+        window.clearTimeout(touchDidPanTimerRef.current);
+        touchDidPanTimerRef.current = null;
+      }
+      touchDidPanRef.current = false;
     }
-    touchDidPanRef.current = false;
 
     if (e.touches.length >= 2) {
-      anchorTouchPan(e.touches);
+      anchorTouchPan(e.touches, preserveGesture);
       return;
     }
 
@@ -2061,6 +2091,19 @@ const duplicateElement = (id?: string) => {
       if (isPanMode || !touchedElement) {
         anchorTouchPan(e.touches);
       }
+    }
+  };
+
+  const applyTouchTranslate = (dx: number, dy: number) => {
+    if (!touchPanRef.current.moved && Math.hypot(dx, dy) > 4) {
+      touchPanRef.current.moved = true;
+      touchDidPanRef.current = true;
+    }
+    if (touchPanRef.current.moved) {
+      updatePanOffset({
+        x: touchPanRef.current.panX + dx,
+        y: touchPanRef.current.panY + dy,
+      });
     }
   };
 
@@ -2077,16 +2120,43 @@ const duplicateElement = (id?: string) => {
     const pt = getTouchPoint(e.touches);
     const dx = pt.x - touchPanRef.current.startX;
     const dy = pt.y - touchPanRef.current.startY;
-    if (!touchPanRef.current.moved && Math.hypot(dx, dy) > 4) {
-      touchPanRef.current.moved = true;
-      touchDidPanRef.current = true;
+
+    // Two-finger pinch-to-zoom centered on the finger midpoint + simultaneous pan
+    if (e.touches.length >= 2 && touchPanRef.current.touchCount >= 2) {
+      const dist = getTouchDistance(e.touches);
+      if (touchPanRef.current.startDist < 10) {
+        if (dist >= 10) {
+          anchorTouchPan(e.touches, touchPanRef.current.moved);
+        } else {
+          applyTouchTranslate(dx, dy);
+        }
+        return;
+      }
+
+      const distDelta = Math.abs(dist - touchPanRef.current.startDist);
+      if (!touchPanRef.current.moved && (Math.hypot(dx, dy) > 4 || distDelta > 4)) {
+        touchPanRef.current.moved = true;
+        touchDidPanRef.current = true;
+      }
+      if (touchPanRef.current.moved) {
+        const ratio = dist / touchPanRef.current.startDist;
+        const nextZoom = Math.min(4, Math.max(0.5, Number((touchPanRef.current.startZoom * ratio).toFixed(4))));
+        const appliedRatio = touchPanRef.current.startZoom > 0 ? nextZoom / touchPanRef.current.startZoom : 1;
+        const offset0X = touchPanRef.current.startX - touchPanRef.current.containerCenterX;
+        const offset0Y = touchPanRef.current.startY - touchPanRef.current.containerCenterY;
+        const offset1X = pt.x - touchPanRef.current.containerCenterX;
+        const offset1Y = pt.y - touchPanRef.current.containerCenterY;
+
+        updateUserZoom(nextZoom);
+        updatePanOffset({
+          x: offset1X - appliedRatio * (offset0X - touchPanRef.current.panX),
+          y: offset1Y - appliedRatio * (offset0Y - touchPanRef.current.panY),
+        });
+      }
+      return;
     }
-    if (touchPanRef.current.moved) {
-      updatePanOffset({
-        x: touchPanRef.current.panX + dx,
-        y: touchPanRef.current.panY + dy,
-      });
-    }
+
+    applyTouchTranslate(dx, dy);
   };
 
   const handleCanvasTouchStartCapture = (e: React.TouchEvent) => {
@@ -3842,9 +3912,9 @@ const duplicateElement = (id?: string) => {
             <div data-no-pan="true" className="lg:hidden absolute bottom-3 right-3 z-[110] flex items-center gap-1 bg-zinc-900/90 backdrop-blur-md rounded-xl px-2.5 py-1.5 border border-zinc-700/60 shadow-lg text-white">
               <button onClick={() => setShowCenterGuides(!showCenterGuides)} className={`p-1 rounded-lg transition-colors ${showCenterGuides ? 'text-indigo-400 bg-white/20' : 'text-zinc-400 hover:text-white'}`} title="Toggle Center Guides"><Crosshair size={13} /></button>
               <div className="w-px h-3 bg-zinc-700 mx-0.5" />
-              <button onClick={() => setUserZoom(p => Math.max(0.5, Number((p - 0.25).toFixed(2))))} className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white active:scale-90 transition-all" title="Zoom Out"><Minus size={13} /></button>
-              <button onClick={() => { setUserZoom(1); setPanOffset({ x: 0, y: 0 }); }} className="text-[11px] font-semibold px-1.5 text-zinc-200 hover:text-white active:scale-95 transition-transform" title="Reset to 100% Fit">{Math.round(userZoom * 100)}%</button>
-              <button onClick={() => setUserZoom(p => Math.min(4, Number((p + 0.25).toFixed(2))))} className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white active:scale-90 transition-all" title="Zoom In"><Plus size={13} /></button>
+              <button onClick={() => updateUserZoom(Math.max(0.5, Number((userZoomRef.current - 0.25).toFixed(2))))} className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white active:scale-90 transition-all" title="Zoom Out"><Minus size={13} /></button>
+              <button onClick={() => { updateUserZoom(1); updatePanOffset({ x: 0, y: 0 }); }} className="text-[11px] font-semibold px-1.5 text-zinc-200 hover:text-white active:scale-95 transition-transform" title="Reset to 100% Fit">{Math.round(userZoom * 100)}%</button>
+              <button onClick={() => updateUserZoom(Math.min(4, Number((userZoomRef.current + 0.25).toFixed(2))))} className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white active:scale-90 transition-all" title="Zoom In"><Plus size={13} /></button>
               <div className="w-px h-3 bg-zinc-700 mx-0.5" />
               <button onClick={() => setIsPanMode(!isPanMode)} className={`p-1 rounded-lg transition-colors ${isPanMode ? 'text-white bg-white/20' : 'text-zinc-400 hover:text-white'}`} title="Toggle Pan"><Hand size={13} /></button>
             </div>
@@ -3956,14 +4026,14 @@ const duplicateElement = (id?: string) => {
                 >
                   <Crosshair size={14} />
                 </button>
-                <button onClick={() => setUserZoom(p => Math.max(0.1, p - (0.1 / scale)))} className="p-1 hover:bg-zinc-100 rounded text-zinc-600 transition-colors" title="Zoom Out">
+                <button onClick={() => updateUserZoom(Math.max(0.1, userZoomRef.current - (0.1 / scale)))} className="p-1 hover:bg-zinc-100 rounded text-zinc-600 transition-colors" title="Zoom Out">
                   <Minus size={14} />
                 </button>
-                <button onClick={() => { setUserZoom(1); setPanOffset({ x: 0, y: 0 }); }} className="px-2 py-1 hover:bg-zinc-100 rounded text-zinc-600 transition-colors text-xs font-medium w-auto sm:w-[140px] text-center" title="Reset Zoom">
+                <button onClick={() => { updateUserZoom(1); updatePanOffset({ x: 0, y: 0 }); }} className="px-2 py-1 hover:bg-zinc-100 rounded text-zinc-600 transition-colors text-xs font-medium w-auto sm:w-[140px] text-center" title="Reset Zoom">
                   <span className="hidden sm:inline">{design.orientation === 'portrait' ? '2480 x 3508 ' : '3508 x 2480 '}</span>
                   <span>{Math.round(scale * userZoom * 100)}%</span>
                 </button>
-                <button onClick={() => setUserZoom(p => Math.min(20, p + (0.1 / scale)))} className="p-1 hover:bg-zinc-100 rounded text-zinc-600 transition-colors" title="Zoom In">
+                <button onClick={() => updateUserZoom(Math.min(20, userZoomRef.current + (0.1 / scale)))} className="p-1 hover:bg-zinc-100 rounded text-zinc-600 transition-colors" title="Zoom In">
                   <Plus size={14} />
                 </button>
               </div>

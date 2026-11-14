@@ -5224,6 +5224,15 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
 
   const isLockedImage = resolveImageAspectLocked(el);
   const isProportional = el.type === 'qrCode' || el.type === 'badge' || isLockedImage;
+  const hasTopEdgeHandle = !isRotated && !isRotating && !(isText || isLockedImage || isTypedSignature);
+  const baseResizeHandleStyle = {
+    width: `${handlePx}px`,
+    height: `${handlePx}px`,
+    background: "white",
+    border: `${borderPx}px solid #18181b`,
+    borderRadius: "50%",
+    zIndex: 80,
+  };
   const textLines = (displayText || el.text || ' ').split('\n').length;
   const textMinH = Math.max(24, Math.round((el.fontSize || 16) * (el.lineSpacing || 1.2) * textLines));
 
@@ -5404,14 +5413,14 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
       }
       lockAspectRatio={isProportional}
       resizeHandleStyles={{
-        bottomRight: { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", right: `-${halfPx}px`, bottom: `-${halfPx}px` },
-        right: isLockedImage ? { display: 'none' } : { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", right: `-${halfPx}px`, top: "50%", transform: "translateY(-50%)" },
-        bottom: (isText || isLockedImage || isTypedSignature) ? { display: 'none' } : { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", bottom: `-${halfPx}px`, left: "50%", transform: "translateX(-50%)" },
-        bottomLeft: { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", left: `-${halfPx}px`, bottom: `-${halfPx}px` },
-        left: isLockedImage ? { display: 'none' } : { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", left: `-${halfPx}px`, top: "50%", transform: "translateY(-50%)" },
-        topLeft: { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", left: `-${halfPx}px`, top: `-${halfPx}px` },
-        top: (isText || isLockedImage || isTypedSignature) ? { display: 'none' } : { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", top: `-${halfPx}px`, left: "50%", transform: "translateX(-50%)" },
-        topRight: { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", right: `-${halfPx}px`, top: `-${halfPx}px` }
+        bottomRight: { ...baseResizeHandleStyle, right: `-${halfPx}px`, bottom: `-${halfPx}px` },
+        right: isLockedImage ? { display: 'none' } : { ...baseResizeHandleStyle, right: `-${halfPx}px`, top: "50%", transform: "translateY(-50%)" },
+        bottom: (isText || isLockedImage || isTypedSignature) ? { display: 'none' } : { ...baseResizeHandleStyle, bottom: `-${halfPx}px`, left: "50%", transform: "translateX(-50%)" },
+        bottomLeft: { ...baseResizeHandleStyle, left: `-${halfPx}px`, bottom: `-${halfPx}px` },
+        left: isLockedImage ? { display: 'none' } : { ...baseResizeHandleStyle, left: `-${halfPx}px`, top: "50%", transform: "translateY(-50%)" },
+        topLeft: { ...baseResizeHandleStyle, left: `-${halfPx}px`, top: `-${halfPx}px` },
+        top: (isText || isLockedImage || isTypedSignature) ? { display: 'none' } : { ...baseResizeHandleStyle, top: `-${halfPx}px`, left: "50%", transform: "translateX(-50%)" },
+        topRight: { ...baseResizeHandleStyle, right: `-${halfPx}px`, top: `-${halfPx}px` }
       }}
     >
       <div 
@@ -5681,9 +5690,9 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         {/* Interactive Rotation Handle - Positioned on Top */}
         {isSelected && !isEditing && !el.locked && !isPanMode && (
           <div
-            className="absolute left-1/2 flex flex-col items-center pointer-events-auto z-[70] cursor-grab active:cursor-grabbing select-none"
+            className="absolute left-1/2 flex flex-col items-center pointer-events-auto z-30 cursor-grab active:cursor-grabbing select-none"
             style={{
-              top: 0,
+              top: hasTopEdgeHandle ? -halfPx + Math.floor(borderPx / 2) : 0,
               transform: `translate(-50%, -100%) scale(${1 / s})`,
               transformOrigin: "bottom center"
             }}

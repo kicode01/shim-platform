@@ -2379,7 +2379,7 @@ const duplicateElement = (id?: string) => {
                                   <div>
                                     <label className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Text Content</label>
                                     <textarea
-                                      className="input-field py-2 text-sm"
+                                      className="input-field py-2 text-sm resize-y min-h-[76px]"
                                       value={selectedElement.text}
                                       onChange={(e) => updateSelectedElement({ text: e.target.value })}
                                       rows={3}
@@ -4109,7 +4109,7 @@ const duplicateElement = (id?: string) => {
                               rows={3}
                               value={selectedElement.text || ""}
                               onChange={(e) => updateSelectedElement({ text: e.target.value })}
-                              className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-zinc-400"
+                              className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-zinc-400 resize-none min-h-[76px]"
                             />
                           </div>
                         )}

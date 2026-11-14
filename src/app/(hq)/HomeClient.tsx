@@ -9,14 +9,21 @@ import {
   Users, 
   Upload, 
   CheckCircle,
+  LifeBuoy,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import LiveSpecimenCarousel from "@/components/LiveSpecimenCarousel";
+import SupportModal, { SupportEventOption } from "@/components/SupportModal";
 import { getWorkspaceHref } from "@/lib/domain";
 
-export default function HomeClient() {
+export default function HomeClient({
+  events = [],
+}: {
+  events?: SupportEventOption[];
+}) {
   const { data: session } = useSession();
   const [host, setHost] = useState("");
+  const [supportOpen, setSupportOpen] = useState(false);
 
   useEffect(() => {
     setHost(window.location.hostname);
@@ -157,6 +164,24 @@ export default function HomeClient() {
           </motion.div>
         </section>
       </main>
+
+      {/* Floating Help & Support Action Button */}
+      <button
+        id="landingHelpBtn"
+        type="button"
+        onClick={() => setSupportOpen(true)}
+        aria-label="Open Help and Support Form"
+        className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-zinc-100 hover:bg-white text-zinc-900 px-4 py-2.5 text-sm font-semibold shadow-2xl border border-white/25 transition-all active:scale-95"
+      >
+        <LifeBuoy size={16} className="shrink-0" />
+        <span>Help</span>
+      </button>
+
+      <SupportModal
+        isOpen={supportOpen}
+        onClose={() => setSupportOpen(false)}
+        events={events}
+      />
     </div>
   );
 }

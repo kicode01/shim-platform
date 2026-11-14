@@ -9,7 +9,8 @@ import {
   Calendar,
   BookOpen,
   History,
-  Users
+  Users,
+  LifeBuoy
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -23,6 +24,7 @@ export default function Sidebar() {
     { href: "/dashboard/generate", label: "Issue", shortLabel: "Issue", icon: FileSpreadsheet },
     { href: "/dashboard/users", label: "Users", shortLabel: "Users", icon: Users },
     { href: "/dashboard/audit", label: "Audit", shortLabel: "Audit", icon: History },
+    { href: "/dashboard/support", label: "Support", shortLabel: "Support", icon: LifeBuoy },
   ];
 
   const isTemplateStudio = /^\/dashboard\/templates\/[^/]+$/.test(pathname);

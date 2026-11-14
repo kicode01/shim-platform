@@ -1688,6 +1688,61 @@ export default function TemplateEditor({
   };
 
   const selectedElement = design.canvasElements?.find(el => el.id === selectedElementId);
+  const isSelectedImageAspectLocked = selectedElement ? resolveImageAspectLocked(selectedElement) : false;
+
+  const handleSelectedMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const target = selectedElement;
+    if (!target) return;
+    readImageFileAsDataUrl(e, async (src) => {
+      if (target.type === "image") {
+        const dims = await measureImageDimensions(src);
+        updateElement(target.id, buildImageUploadUpdates(target, src, dims, design.orientation));
+      } else {
+        updateElement(target.id, { src });
+      }
+    });
+  };
+
+  const handleClearSelectedMedia = () => {
+    if (!selectedElement) return;
+    updateElement(selectedElement.id, {
+      src: undefined,
+      naturalAspectRatio: undefined,
+      lockAspectRatio: undefined,
+      objectFit: undefined,
+    });
+  };
+
+  const handleSelectedImageFitChange = async (nextFit: "contain" | "cover") => {
+    const target = selectedElement;
+    if (!target || target.type !== "image") return;
+    if (nextFit === "cover") {
+      updateElement(target.id, { objectFit: "cover", lockAspectRatio: false });
+      return;
+    }
+    const naturalRatio = await ensureImageAspectRatio(target);
+    updateElement(target.id, {
+      objectFit: "contain",
+      lockAspectRatio: true,
+      ...(naturalRatio
+        ? {
+            naturalAspectRatio: naturalRatio,
+            ...computeFittedImageBounds(target, naturalRatio, design.orientation),
+          }
+        : {}),
+    });
+  };
+
+  const handleResetSelectedImageRatio = async () => {
+    const target = selectedElement;
+    if (!target || target.type !== "image" || !target.src) return;
+    const naturalRatio = await ensureImageAspectRatio(target);
+    if (!naturalRatio) return;
+    updateElement(target.id, {
+      naturalAspectRatio: naturalRatio,
+      ...computeFittedImageBounds(target, naturalRatio, design.orientation),
+    });
+  };
 
   useEffect(() => {
     if (selectedElement) {
@@ -2557,12 +2612,74 @@ const duplicateElement = (id?: string) => {
                                 <label className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">{selectedElement.type === "badge" ? "Custom Seal Graphic" : "Image Asset"}</label>
                                 <label className="btn-secondary w-full justify-center cursor-pointer text-sm py-3 border-dashed bg-zinc-50 hover:bg-zinc-100">
                                   <ImageIcon size={16} className="mr-2 text-zinc-500" /> Upload File
-                                  <input type="file" accept="image/png, image/jpeg, image/svg+xml" onChange={(e) => {
-                                    readImageFileAsDataUrl(e, (src) => updateSelectedElement({ src }));
-                                  }} className="hidden" />
+                                  <input type="file" accept="image/png, image/jpeg, image/svg+xml" onChange={handleSelectedMediaUpload} className="hidden" />
                                 </label>
                                 {selectedElement.src && (
-                                  <button onClick={() => updateSelectedElement({ src: undefined })} className="text-[10px] font-medium text-red-500 w-full text-center hover:text-red-700 transition-colors mt-2">Remove File</button>
+                                  <button onClick={handleClearSelectedMedia} className="text-[10px] font-medium text-red-500 w-full text-center hover:text-red-700 transition-colors mt-2">Remove File</button>
+                                )}
+
+                                {selectedElement.type === "image" && (
+                                  <div className="pt-4 border-t border-zinc-100 mt-4 space-y-4">
+                                    <div>
+                                      <label className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Image Fit</label>
+                                      <div className="grid grid-cols-2 gap-1.5 bg-zinc-100 p-1 rounded-lg">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleSelectedImageFitChange("contain")}
+                                          className={`py-1.5 px-2 rounded-md text-xs font-semibold transition-all ${
+                                            selectedElement.objectFit !== "cover"
+                                              ? "bg-white text-zinc-900 shadow-xs"
+                                              : "text-zinc-500 hover:text-zinc-800"
+                                          }`}
+                                        >
+                                          Fit (Whole)
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleSelectedImageFitChange("cover")}
+                                          className={`py-1.5 px-2 rounded-md text-xs font-semibold transition-all ${
+                                            selectedElement.objectFit === "cover"
+                                              ? "bg-white text-zinc-900 shadow-xs"
+                                              : "text-zinc-500 hover:text-zinc-800"
+                                          }`}
+                                        >
+                                          Fill (Crop)
+                                        </button>
+                                      </div>
+                                      <p className="text-[11px] text-zinc-400 mt-1.5">
+                                        {selectedElement.objectFit === "cover"
+                                          ? "Fills the frame cleanly; drag any edge handle to crop."
+                                          : "Fits the whole image inside the frame without cropping."}
+                                      </p>
+                                    </div>
+
+                                    {selectedElement.src && (
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => updateSelectedElement({ lockAspectRatio: !isSelectedImageAspectLocked })}
+                                          className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold border transition-colors flex items-center justify-center gap-1.5 ${
+                                            isSelectedImageAspectLocked
+                                              ? "bg-zinc-900 text-white border-zinc-900"
+                                              : "bg-zinc-50 text-zinc-700 border-zinc-200 hover:bg-zinc-100"
+                                          }`}
+                                          title="Keep aspect ratio locked when resizing"
+                                        >
+                                          {isSelectedImageAspectLocked ? <Lock size={12} /> : <Unlock size={12} />}
+                                          <span>{isSelectedImageAspectLocked ? "Ratio Locked" : "Free Resize"}</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={handleResetSelectedImageRatio}
+                                          className="py-1.5 px-2.5 rounded-lg text-xs font-semibold bg-zinc-50 text-zinc-700 border border-zinc-200 hover:bg-zinc-100 transition-colors flex items-center justify-center gap-1"
+                                          title="Resize frame to match the image's original aspect ratio"
+                                        >
+                                          <RefreshCw size={12} />
+                                          <span>Match Ratio</span>
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
                                 )}
 
                                 {selectedElement.type === "badge" && (
@@ -2959,7 +3076,24 @@ const duplicateElement = (id?: string) => {
                             </div>
 
                             <div className="space-y-4">
-                              <h5 className="text-[11px] font-bold uppercase tracking-widest text-zinc-800 border-b border-zinc-200 pb-1">Dimensions</h5>
+                              <div className="flex items-center justify-between border-b border-zinc-200 pb-1">
+                                <h5 className="text-[11px] font-bold uppercase tracking-widest text-zinc-800">Dimensions</h5>
+                                {selectedElement.type === "image" && selectedElement.src && (
+                                  <button
+                                    type="button"
+                                    onClick={() => updateSelectedElement({ lockAspectRatio: !isSelectedImageAspectLocked })}
+                                    className={`px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 transition-colors ${
+                                      isSelectedImageAspectLocked
+                                        ? "bg-zinc-900 text-white"
+                                        : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                                    }`}
+                                    title={isSelectedImageAspectLocked ? "Unlock Width & Height ratio" : "Lock Width & Height ratio"}
+                                  >
+                                    {isSelectedImageAspectLocked ? <Lock size={10} /> : <Unlock size={10} />}
+                                    <span>{isSelectedImageAspectLocked ? "Locked" : "Free"}</span>
+                                  </button>
+                                )}
+                              </div>
                               <div className="grid grid-cols-2 gap-4">
                                 <div className="col-span-2">
                                   <label className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Width</label>
@@ -2971,15 +3105,30 @@ const duplicateElement = (id?: string) => {
                                         className="input-field h-9 pl-7 pr-2 w-full text-sm font-mono" 
                                         placeholder="Auto" 
                                         value={selectedElement.width || ""} 
-                                        onChange={(e) => updateSelectedElement({ width: e.target.value === '' ? undefined : Number(e.target.value) })} 
+                                        onChange={(e) => {
+                                          if (e.target.value === '') {
+                                            updateSelectedElement({ width: undefined });
+                                            return;
+                                          }
+                                          const newW = Number(e.target.value);
+                                          if (!Number.isFinite(newW) || newW <= 0) return;
+                                          if (isSelectedImageAspectLocked) {
+                                            const ratio = selectedElement.naturalAspectRatio || ((selectedElement.width || 1) / (selectedElement.height || 1));
+                                            updateSelectedElement({ width: newW, height: Math.max(10, Math.round(newW / ratio)) });
+                                          } else {
+                                            updateSelectedElement({ width: newW });
+                                          }
+                                        }} 
                                       />
                                     </div>
-                                    <button 
-                                      onClick={() => updateSelectedElement({ width: undefined })}
-                                      className={`px-4 rounded-lg text-xs font-bold uppercase tracking-wide transition-colors ${!selectedElement.width ? 'bg-zinc-200 text-zinc-950 border-zinc-300' : 'bg-zinc-50 text-zinc-600 border border-zinc-200 hover:bg-zinc-100'}`}
-                                    >
-                                      Auto
-                                    </button>
+                                    {selectedElement.type !== "image" && (
+                                      <button 
+                                        onClick={() => updateSelectedElement({ width: undefined })}
+                                        className={`px-4 rounded-lg text-xs font-bold uppercase tracking-wide transition-colors ${!selectedElement.width ? 'bg-zinc-200 text-zinc-950 border-zinc-300' : 'bg-zinc-50 text-zinc-600 border border-zinc-200 hover:bg-zinc-100'}`}
+                                      >
+                                        Auto
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
                                 
@@ -2993,7 +3142,20 @@ const duplicateElement = (id?: string) => {
                                         className="input-field h-9 pl-7 pr-2 w-full text-sm font-mono" 
                                         placeholder="Auto" 
                                         value={selectedElement.height || ""} 
-                                        onChange={(e) => updateSelectedElement({ height: e.target.value === '' ? undefined : Number(e.target.value) })} 
+                                        onChange={(e) => {
+                                          if (e.target.value === '') {
+                                            updateSelectedElement({ height: undefined });
+                                            return;
+                                          }
+                                          const newH = Number(e.target.value);
+                                          if (!Number.isFinite(newH) || newH <= 0) return;
+                                          if (isSelectedImageAspectLocked) {
+                                            const ratio = selectedElement.naturalAspectRatio || ((selectedElement.width || 1) / (selectedElement.height || 1));
+                                            updateSelectedElement({ height: newH, width: Math.max(10, Math.round(newH * ratio)) });
+                                          } else {
+                                            updateSelectedElement({ height: newH });
+                                          }
+                                        }} 
                                       />
                                     </div>
                                   </div>
@@ -4299,24 +4461,68 @@ const duplicateElement = (id?: string) => {
                               <input
                                 type="file"
                                 accept="image/*"
-                                onChange={(e) => {
-                                  const f = e.target.files?.[0];
-                                  if (f) {
-                                    const r = new FileReader();
-                                    r.onload = ev => updateSelectedElement({ src: ev.target?.result as string });
-                                    r.readAsDataURL(f);
-                                  }
-                                }}
+                                onChange={handleSelectedMediaUpload}
                                 className="hidden"
                               />
                             </label>
                             {selectedElement.src && (
                               <button
-                                onClick={() => updateSelectedElement({ src: undefined })}
+                                onClick={handleClearSelectedMedia}
                                 className="w-full py-2 text-xs font-semibold text-red-400 bg-red-950/30 rounded-lg border border-red-900/50"
                               >
                                 Remove Custom Graphic
                               </button>
+                            )}
+                            {selectedElement.type === "image" && (
+                              <div className="space-y-2.5 pt-2 border-t border-zinc-800">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">Image Fit</span>
+                                  <div className="flex gap-1 bg-zinc-900 p-1 rounded-lg border border-zinc-800">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSelectedImageFitChange("contain")}
+                                      className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors ${
+                                        selectedElement.objectFit !== "cover" ? "bg-white text-zinc-950" : "text-zinc-400"
+                                      }`}
+                                    >
+                                      Fit
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSelectedImageFitChange("cover")}
+                                      className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors ${
+                                        selectedElement.objectFit === "cover" ? "bg-white text-zinc-950" : "text-zinc-400"
+                                      }`}
+                                    >
+                                      Fill (Crop)
+                                    </button>
+                                  </div>
+                                </div>
+                                {selectedElement.src && (
+                                  <div className="flex gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => updateSelectedElement({ lockAspectRatio: !isSelectedImageAspectLocked })}
+                                      className={`flex-1 py-2 px-2.5 rounded-lg text-xs font-semibold border flex items-center justify-center gap-1.5 ${
+                                        isSelectedImageAspectLocked
+                                          ? "bg-white text-zinc-950 border-white"
+                                          : "bg-zinc-900 text-zinc-300 border-zinc-700"
+                                      }`}
+                                    >
+                                      {isSelectedImageAspectLocked ? <Lock size={12} /> : <Unlock size={12} />}
+                                      <span>{isSelectedImageAspectLocked ? "Ratio Locked" : "Free Resize"}</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={handleResetSelectedImageRatio}
+                                      className="py-2 px-3 rounded-lg text-xs font-semibold bg-zinc-900 text-zinc-200 border border-zinc-700 flex items-center gap-1.5"
+                                    >
+                                      <RefreshCw size={12} />
+                                      <span>Match Ratio</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             )}
                             {selectedElement.type === "badge" && (
                               <div className="flex items-center justify-between py-2 border-t border-zinc-800">
@@ -4714,6 +4920,99 @@ function readImageFileAsDataUrl(e: React.ChangeEvent<HTMLInputElement>, onLoad: 
   reader.readAsDataURL(file);
 }
 
+/** Measures the intrinsic pixel dimensions of a Data URL or image source. */
+function measureImageDimensions(src: string): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    img.onload = () => {
+      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+        resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      } else {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+/** Resolves whether an uploaded image locks aspect ratio during canvas and numeric resizing. */
+function resolveImageAspectLocked(el: Pick<CanvasElement, "type" | "src" | "objectFit" | "lockAspectRatio">): boolean {
+  if (el.type !== "image" || !el.src) return false;
+  return el.lockAspectRatio ?? (el.objectFit !== "cover");
+}
+
+/** Computes canvas-space (x, y, width, height) matching `naturalAspectRatio` around the element center. */
+function computeFittedImageBounds(
+  el: Pick<CanvasElement, "x" | "y" | "width" | "height">,
+  naturalAspectRatio: number,
+  orientation: "portrait" | "landscape" | undefined
+): Pick<CanvasElement, "x" | "y" | "width" | "height"> {
+  const isPortrait = orientation === "portrait";
+  const canvasW = isPortrait ? 2480 : 3508;
+  const canvasH = isPortrait ? 3508 : 2480;
+  const curW = Math.max(40, el.width || 368);
+  const curH = Math.max(40, el.height || 368);
+  const targetSpan = Math.max(curW, curH);
+
+  let fitW = naturalAspectRatio >= 1 ? targetSpan : targetSpan * naturalAspectRatio;
+  let fitH = naturalAspectRatio >= 1 ? targetSpan / naturalAspectRatio : targetSpan;
+
+  const minDim = 40;
+  if (fitW < minDim) {
+    fitW = minDim;
+    fitH = minDim / naturalAspectRatio;
+  } else if (fitH < minDim) {
+    fitH = minDim;
+    fitW = minDim * naturalAspectRatio;
+  }
+
+  const scaleDown = Math.min(1, canvasW / fitW, canvasH / fitH);
+  fitW = Math.max(20, Math.round(fitW * scaleDown));
+  fitH = Math.max(20, Math.round(fitH * scaleDown));
+
+  const centerX = el.x + curW / 2;
+  const centerY = el.y + curH / 2;
+  const fitX = Math.max(0, Math.min(canvasW - fitW, Math.round(centerX - fitW / 2)));
+  const fitY = Math.max(0, Math.min(canvasH - fitH, Math.round(centerY - fitH / 2)));
+
+  return { x: fitX, y: fitY, width: fitW, height: fitH };
+}
+
+/** Builds CanvasElement updates when an image file is uploaded to an image (or badge) element. */
+function buildImageUploadUpdates(
+  el: CanvasElement,
+  src: string,
+  dims: { width: number; height: number } | null,
+  orientation: "portrait" | "landscape" | undefined
+): Partial<CanvasElement> {
+  if (!dims || el.type !== "image") {
+    return { src };
+  }
+  const naturalAspectRatio = dims.width / dims.height;
+  // Preserve custom cropped dimensions when user explicitly opted into Fill/Crop mode
+  if (el.objectFit === "cover") {
+    return { src, naturalAspectRatio };
+  }
+  return {
+    src,
+    naturalAspectRatio,
+    objectFit: el.objectFit ?? "contain",
+    lockAspectRatio: el.lockAspectRatio ?? true,
+    ...computeFittedImageBounds(el, naturalAspectRatio, orientation),
+  };
+}
+
+/** Resolves a positive natural aspect ratio, measuring `el.src` on the fly for legacy templates. */
+async function ensureImageAspectRatio(el: Pick<CanvasElement, "src" | "naturalAspectRatio">): Promise<number | null> {
+  if (el.naturalAspectRatio && el.naturalAspectRatio > 0) {
+    return el.naturalAspectRatio;
+  }
+  if (!el.src) return null;
+  const dims = await measureImageDimensions(el.src);
+  return dims ? dims.width / dims.height : null;
+}
+
 function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElementId, updateSelectedElement, updateElement, setActiveGuides, currentOrientation, scale, dummyQrCode, isPanMode }: any) {
   const [isEditing, setIsEditing] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
@@ -4879,7 +5178,8 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
     }
   };
 
-  const isProportional = el.type === 'qrCode' || el.type === 'image' || el.type === 'badge';
+  const isLockedImage = resolveImageAspectLocked(el);
+  const isProportional = el.type === 'qrCode' || el.type === 'badge' || isLockedImage;
   const textLines = (displayText || el.text || ' ').split('\n').length;
   const textMinH = Math.max(24, Math.round((el.fontSize || 16) * (el.lineSpacing || 1.2) * textLines));
 
@@ -4981,7 +5281,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         let updates: any = { x: safeX, y: safeY };
 
         const isCorner = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'].includes(direction);
-        if (isCorner && !isProportional && el.type !== 'shape') {
+        if (isCorner && !isProportional && (isText || el.type === 'signature')) {
           const startW = dragStartData.current.width || 1;
           const defaultFontSize = el.type === 'signature' ? 120 : 16;
           const startFs = dragStartData.current.fontSize || defaultFontSize;
@@ -5015,7 +5315,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         let updates: any = { x: safeX, y: safeY };
 
         const isCorner = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'].includes(direction);
-        if (isCorner && !isProportional && el.type !== 'shape') {
+        if (isCorner && !isProportional && (isText || el.type === 'signature')) {
           const startW = dragStartData.current.width || 1;
           const defaultFontSize = el.type === 'signature' ? 120 : 16;
           const startFs = dragStartData.current.fontSize || defaultFontSize;
@@ -5082,18 +5382,20 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
                 ? false 
                 : isText
                   ? { left: true, right: true, topLeft: true, topRight: true, bottomLeft: true, bottomRight: true, top: false, bottom: false }
-                  : true)
+                  : isLockedImage
+                    ? { topLeft: true, topRight: true, bottomLeft: true, bottomRight: true, top: false, bottom: false, left: false, right: false }
+                    : true)
             : false
       }
       lockAspectRatio={isProportional}
       resizeHandleStyles={{
         bottomRight: { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", right: `-${halfPx}px`, bottom: `-${halfPx}px` },
-        right: { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", right: `-${halfPx}px`, top: "50%", transform: "translateY(-50%)" },
-        bottom: isText ? { display: 'none' } : { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", bottom: `-${halfPx}px`, left: "50%", transform: "translateX(-50%)" },
+        right: isLockedImage ? { display: 'none' } : { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", right: `-${halfPx}px`, top: "50%", transform: "translateY(-50%)" },
+        bottom: (isText || isLockedImage) ? { display: 'none' } : { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", bottom: `-${halfPx}px`, left: "50%", transform: "translateX(-50%)" },
         bottomLeft: { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", left: `-${halfPx}px`, bottom: `-${halfPx}px` },
-        left: { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", left: `-${halfPx}px`, top: "50%", transform: "translateY(-50%)" },
+        left: isLockedImage ? { display: 'none' } : { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", left: `-${halfPx}px`, top: "50%", transform: "translateY(-50%)" },
         topLeft: { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", left: `-${halfPx}px`, top: `-${halfPx}px` },
-        top: isText ? { display: 'none' } : { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", top: `-${halfPx}px`, left: "50%", transform: "translateX(-50%)" },
+        top: (isText || isLockedImage) ? { display: 'none' } : { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", top: `-${halfPx}px`, left: "50%", transform: "translateX(-50%)" },
         topRight: { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", right: `-${halfPx}px`, top: `-${halfPx}px` }
       }}
     >
@@ -5118,7 +5420,10 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
             onClick={(e) => e.stopPropagation()}
             onDoubleClick={(e) => e.stopPropagation()}
             onChange={(e) => {
-              readImageFileAsDataUrl(e, (src) => updateElement(el.id, { src }));
+              readImageFileAsDataUrl(e, async (src) => {
+                const dims = await measureImageDimensions(src);
+                updateElement(el.id, buildImageUploadUpdates(el, src, dims, currentOrientation));
+              });
             }}
             className="hidden"
           />
@@ -5183,8 +5488,23 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         ) : el.type === 'image' || el.type === 'badge' ? (
           <div className="w-full h-full pointer-events-none flex items-center justify-center">
             {el.src ? (
-              <div style={{ position: "relative", width: "100%", height: "100%" }}>
-                <img src={el.src} alt="" className="w-full h-full object-contain" style={{ filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.1)) drop-shadow(0 10px 15px rgba(0,0,0,0.1))" }} />
+              <div
+                style={{
+                  position: "relative",
+                  width: "100%",
+                  height: "100%",
+                  overflow: el.type === 'image' && el.objectFit === 'cover' ? "hidden" : undefined
+                }}
+              >
+                <img
+                  src={el.src}
+                  alt=""
+                  className="w-full h-full"
+                  style={{
+                    objectFit: el.type === 'image' && el.objectFit === 'cover' ? 'cover' : 'contain',
+                    filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.1)) drop-shadow(0 10px 15px rgba(0,0,0,0.1))"
+                  }}
+                />
                 {el.type === 'badge' && el.enableShine !== false && (
                   <div className="animate-badge-shine" style={{
                     position: "absolute",

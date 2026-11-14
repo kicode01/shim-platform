@@ -591,6 +591,12 @@ export interface CanvasElement {
   rotation?: number;
   /** Holographic animated metallic shine effect (for badge elements) */
   enableShine?: boolean;
+  /** Image display fit inside frame ('contain' fits whole image; 'cover' fills & crops frame). */
+  objectFit?: "contain" | "cover";
+  /** Whether canvas resize handles lock the element's aspect ratio. */
+  lockAspectRatio?: boolean;
+  /** Natural width / height ratio of the uploaded image (used to restore proportions). */
+  naturalAspectRatio?: number;
 }
 
 export interface CertificateDesignConfig {
@@ -1014,12 +1020,13 @@ export default function CertificateView({
             }
             if (el.type === "image" || el.type === "badge") {
               const isBadge = el.type === "badge";
+              const imageObjectFit = !isBadge && el.objectFit === "cover" ? "cover" : "contain";
               const showBadgeShine = !printMode && isBadge && el.enableShine !== false;
               return (
                 <div key={el.id} style={{ position: "absolute", zIndex: 1, left: el.x, top: el.y, width: el.width, height: el.height, transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined, transformOrigin: "center center" }}>
                   {el.src ? (
-                    <div style={{ position: "relative", width: "100%", height: "100%" }}>
-                      <img crossOrigin="anonymous" src={el.src} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.1)) drop-shadow(0 10px 15px rgba(0,0,0,0.1))" }} />
+                    <div style={{ position: "relative", width: "100%", height: "100%", overflow: imageObjectFit === "cover" ? "hidden" : undefined }}>
+                      <img crossOrigin="anonymous" src={el.src} alt="" style={{ width: "100%", height: "100%", objectFit: imageObjectFit, filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.1)) drop-shadow(0 10px 15px rgba(0,0,0,0.1))" }} />
                       {showBadgeShine && (
                         <div className="animate-badge-shine" style={{
                           position: "absolute",

@@ -89,6 +89,61 @@ export default function Navbar() {
     );
   };
 
+  const renderLogoutButton = (variant: "landing" | "dashboard" | "portal", animateIcon = false) => {
+    const confirmClasses = variant === "portal"
+      ? "px-2.5 sm:px-0 sm:w-[80px] h-8 border border-red-600 bg-red-600 text-white hover:bg-red-700 shadow-sm rounded-xl"
+      : "px-2.5 sm:px-0 sm:w-[80px] h-8 rounded-xl bg-red-600 text-white font-semibold";
+    const idleClasses = {
+      landing: "w-8 h-8 rounded-xl text-zinc-400 hover:text-red-400 hover:bg-red-500/10",
+      dashboard: "w-8 h-8 rounded-xl text-zinc-400 hover:text-red-600 hover:bg-red-50",
+      portal: "w-8 h-8 border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-600 shadow-sm rounded-xl",
+    }[variant];
+
+    return (
+      <button
+        type="button"
+        onClick={handleLogoutClick}
+        className={`mob-icon-btn shrink-0 flex items-center justify-center transition-all overflow-hidden ${
+          confirmLogout ? confirmClasses : idleClasses
+        }`}
+        title="Sign Out"
+      >
+        {animateIcon ? (
+          <AnimatePresence mode="wait">
+            {confirmLogout ? (
+              <motion.span
+                key={`confirm-${variant}`}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.15 }}
+                className="text-[11px] sm:text-xs font-semibold tracking-wide whitespace-nowrap"
+              >
+                Confirm
+              </motion.span>
+            ) : (
+              <motion.div
+                key={`icon-${variant}`}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.15 }}
+              >
+                <LogOut size={16} strokeWidth={2} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        ) : confirmLogout ? (
+          <span className="text-[11px] sm:text-xs font-semibold tracking-wide whitespace-nowrap">
+            Confirm
+          </span>
+        ) : (
+          <LogOut size={16} strokeWidth={2} />
+        )}
+      </button>
+    );
+  };
+
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
     setIsMounted(true);
@@ -139,7 +194,7 @@ export default function Navbar() {
           ? 'mob-nav-landing bg-[#0a0a0a] border-b border-zinc-700'
           : 'bg-white border-b border-zinc-200'
       }`}>
-        <div className="mob-nav-inner w-full px-4 sm:px-6 h-full flex justify-between items-center">
+        <div className="mob-nav-inner w-full px-4 sm:px-6 h-full flex justify-between items-center gap-2">
           
           {/* Left area begins - Logo. Every surface sits flush to the page edge,
               same as the attendee bar. (The landing page previously used a
@@ -324,22 +379,7 @@ export default function Navbar() {
                       <div className="mob-divider h-5 w-px bg-zinc-700 shrink-0 hidden sm:block"></div>
                       {session?.user ? (
                         <>
-                          <button
-                            type="button"
-                            onClick={handleLogoutClick}
-                            className={`mob-icon-btn shrink-0 flex items-center justify-center transition-all overflow-hidden ${
-                              confirmLogout
-                                ? "w-[80px] h-8 rounded-xl bg-red-600 text-white font-semibold text-xs tracking-wide"
-                                : "w-8 h-8 rounded-xl text-zinc-400 hover:text-red-400 hover:bg-red-500/10"
-                            }`}
-                            title="Sign Out"
-                          >
-                            {confirmLogout ? (
-                              <span className="text-xs font-medium whitespace-nowrap">Confirm</span>
-                            ) : (
-                              <LogOut size={16} strokeWidth={2} />
-                            )}
-                          </button>
+                          {renderLogoutButton("landing", false)}
                           {renderWorkspaceLink(
                             "mob-cta bg-zinc-100 hover:bg-white text-zinc-700 transition-colors text-sm font-medium rounded-xl px-4 py-2 flex items-center gap-2 whitespace-nowrap shadow-sm",
                             true
@@ -392,40 +432,7 @@ export default function Navbar() {
                   </div>
 
                   {/* Logout */}
-                  <button
-                    onClick={handleLogoutClick}
-                    className={`mob-icon-btn shrink-0 flex items-center justify-center transition-all overflow-hidden ${
-                      confirmLogout 
-                        ? "w-[80px] h-8 rounded-xl bg-red-600 text-white font-semibold text-xs tracking-wide" 
-                        : "w-8 h-8 rounded-xl text-zinc-400 hover:text-red-600 hover:bg-red-50"
-                    }`}
-                    title="Sign Out"
-                  >
-                    <AnimatePresence mode="wait">
-                      {confirmLogout ? (
-                        <motion.span 
-                          key="confirm"
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.8 }}
-                          transition={{ duration: 0.15 }}
-                          className="text-xs font-medium whitespace-nowrap"
-                        >
-                          Confirm
-                        </motion.span>
-                      ) : (
-                        <motion.div 
-                          key="icon"
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.8 }}
-                          transition={{ duration: 0.15 }}
-                        >
-                          <LogOut size={16} strokeWidth={2} />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </button>
+                  {renderLogoutButton("dashboard", true)}
                 </motion.div>
               )}
 
@@ -449,40 +456,7 @@ export default function Navbar() {
                   </div>
 
                   {/* Logout — light */}
-                  <button
-                    onClick={handleLogoutClick}
-                    className={`mob-icon-btn shrink-0 flex items-center justify-center border transition-all rounded-xl overflow-hidden ${
-                      confirmLogout
-                        ? "w-[80px] h-8 border-red-600 bg-red-600 text-white hover:bg-red-700 shadow-sm"
-                        : "w-8 h-8 border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-600 shadow-sm"
-                    }`}
-                    title="Sign Out"
-                  >
-                    <AnimatePresence mode="wait">
-                      {confirmLogout ? (
-                        <motion.span
-                          key="confirm-portal"
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.8 }}
-                          transition={{ duration: 0.15 }}
-                          className="text-xs font-medium whitespace-nowrap"
-                        >
-                          Confirm
-                        </motion.span>
-                      ) : (
-                        <motion.div
-                          key="icon-portal"
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.8 }}
-                          transition={{ duration: 0.15 }}
-                        >
-                          <LogOut size={16} strokeWidth={2} />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </button>
+                  {renderLogoutButton("portal", true)}
                 </motion.div>
               )}
 
@@ -500,7 +474,7 @@ export default function Navbar() {
                       "mob-cta flex items-center justify-center bg-zinc-700 border border-zinc-700 text-zinc-100 hover:text-white hover:bg-zinc-600 transition-colors rounded-xl px-4 py-2 shadow-sm text-sm font-medium whitespace-nowrap"
                     )
                   ) : (
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-1.5 sm:gap-6">
                       <Link href="/" className="mob-cta text-sm font-medium text-zinc-500 hover:text-zinc-700 transition-colors whitespace-nowrap">
                         Home
                       </Link>

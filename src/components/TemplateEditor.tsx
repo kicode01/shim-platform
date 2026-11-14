@@ -2430,8 +2430,8 @@ const duplicateElement = (id?: string) => {
       {googleFontsUrl && <link href={googleFontsUrl} rel="stylesheet" />}
 
       {/* Canva Mobile Top Bar */}
-      <div className="lg:hidden h-13 min-h-[52px] bg-[#18181b] text-white border-b border-zinc-800 px-3 flex items-center justify-between shrink-0 z-30">
-        <div className="flex items-center gap-1.5 min-w-0">
+      <div className="lg:hidden h-13 min-h-[52px] bg-[#18181b] text-white border-b border-zinc-800 px-2.5 sm:px-3 flex items-center justify-between gap-2 shrink-0 z-30">
+        <div className="flex-1 min-w-0 flex items-center gap-1">
           <Link
             href="/dashboard/templates"
             className="w-8 h-8 rounded-xl flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 active:scale-95 transition-all shrink-0"
@@ -2439,7 +2439,7 @@ const duplicateElement = (id?: string) => {
           >
             <ArrowLeft size={18} />
           </Link>
-          <div className="min-w-0 flex items-center gap-1">
+          <div className="flex-1 min-w-0 flex items-center">
             <input
               type="text"
               value={name}
@@ -2452,12 +2452,12 @@ const duplicateElement = (id?: string) => {
                 }
               }}
               placeholder="Template name..."
-              className="bg-transparent text-sm font-semibold text-white focus:outline-none focus:border-b border-zinc-400 px-1 py-0.5 truncate max-w-[130px] xs:max-w-[170px]"
+              className="w-full min-w-0 max-w-[200px] bg-transparent text-sm font-semibold text-white focus:outline-none focus:border-b border-zinc-400 px-1 py-0.5 truncate"
             />
           </div>
         </div>
 
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
           <button
             onClick={handleUndo}
             disabled={historyIndex <= 0}
@@ -2484,7 +2484,7 @@ const duplicateElement = (id?: string) => {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="bg-white hover:bg-zinc-200 active:scale-95 text-zinc-950 font-semibold text-xs px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xs transition-all ml-1"
+            className="bg-white hover:bg-zinc-200 active:scale-95 text-zinc-950 font-semibold text-xs px-3 sm:px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xs transition-all ml-1 shrink-0"
           >
             {saving ? (
               <Loader2 size={13} className="animate-spin text-zinc-950" />

@@ -1156,29 +1156,68 @@ input[type="number"] {
 /* END MOBILE-ONLY LAYER (max-width: 1023.98px) */
 
 /* ============================================================================
+   SMALL-PHONE TIER (max-width: 419.98px)
+   ----------------------------------------------------------------------------
+   Keeps header navigation controls comfortably inside 360px–414px screens
+   (including signed-in landing and Confirm logout states) while maintaining
+   the 1:1 mark/wordmark/suffix ratio and readable tap targets.
+   ========================================================================== */
+@media (max-width: 419.98px) {
+  .mob-nav-inner { padding-left: 10px; padding-right: 10px; }
+  .mob-nav-right { gap: 5px; }
+  .mob-lockup-row { gap: 7px; }
+  .mob-nav-landing .mob-logo { width: 26px !important; height: 26px !important; }
+  .mob-nav-landing .mob-wordmark { font-size: 20px !important; }
+  .mob-logo { width: 17px !important; height: 17px !important; }
+  .mob-wordmark,
+  .mob-suffix { font-size: 17px !important; }
+  .mob-cta {
+    min-height: 36px !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    font-size: 12px !important;
+    gap: 4px !important;
+  }
+  .mob-avatar { width: 36px !important; height: 36px !important; }
+  .mob-icon-btn { min-width: 36px !important; min-height: 36px !important; }
+  header a,
+  header button { min-height: 36px; }
+}
+
+/* ============================================================================
    NARROW-PHONE TIER (max-width: 359.98px)
    ----------------------------------------------------------------------------
-   At 320px the lockup and the right-hand actions together are wider than the
-   bar, and because the nav is `justify-between` the logo collided with the
-   VERIFY button (measured: the right group's edge landed at 317px in a 320px
-   viewport, eating the 12px gutter).
-
-   Trim the CHROME, never the lockup: shrinking the wordmark or the mode suffix
-   would break the 1:1 size relationship they have on desktop, which is exactly
-   what makes "shim.validate" read as one word.
+   At 320px the lockup and the right-hand actions (especially with Confirm
+   logout expanded) need tighter proportions across both lockup and chrome.
+   Scale `.mob-logo`, `.mob-wordmark`, and `.mob-suffix` together to preserve
+   the 1:1 lockup ratio, while trimming chrome spacing below 360px.
 
    A separate top-level query rather than a nested one, so the cascade order
-   against the block above is unambiguous. It cannot match at >=360px, so
-   desktop and normal phones are untouched.
+   against the blocks above is unambiguous. Cannot match at >=360px.
    ========================================================================== */
 @media (max-width: 359.98px) {
   .mob-nav-inner { padding-left: 8px; padding-right: 8px; }
   .mob-nav-right { gap: 4px; }
-  /* Drop the whole row to 36px together — trimming only some controls would
+  .mob-lockup-row { gap: 5px; }
+  .mob-nav-landing .mob-logo { width: 22px !important; height: 22px !important; }
+  .mob-nav-landing .mob-wordmark { font-size: 18px !important; }
+  .mob-logo { width: 15px !important; height: 15px !important; }
+  .mob-wordmark,
+  .mob-suffix { font-size: 15px !important; }
+  /* Drop the whole row to 34px together — trimming only some controls would
      reintroduce the mixed-height row this tier exists to avoid. */
-  .mob-cta { min-height: 36px !important; padding-left: 8px !important; padding-right: 8px !important; }
-  .mob-avatar { width: 36px !important; height: 36px !important; }
-  .mob-icon-btn { min-width: 36px !important; min-height: 36px !important; }
+  .mob-cta {
+    min-height: 34px !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    font-size: 11.5px !important;
+    gap: 3px !important;
+  }
+  .mob-cta svg { width: 12px !important; height: 12px !important; }
+  .mob-avatar { width: 34px !important; height: 34px !important; }
+  .mob-icon-btn { min-width: 34px !important; min-height: 34px !important; }
+  header a,
+  header button { min-height: 34px; }
 }
 
 /* Prevent Next.js dev overlay indicator from obstructing mobile studio toolbars */

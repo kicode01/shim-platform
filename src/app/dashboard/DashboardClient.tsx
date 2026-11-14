@@ -128,7 +128,7 @@ export default function DashboardClient({
   const currentValid = currentCerts.filter(c => c.status === "valid").length;
   const currentRevoked = currentCerts.filter(c => c.status === "revoked").length;
   const currentClaimed = currentCerts.filter(c => c.isClaimed).length;
-  const currentValidationRate = currentCerts.length > 0 ? Math.round((currentValid / currentCerts.length) * 100) : 100;
+  const currentValidationRate = currentCerts.length > 0 ? Math.round((currentValid / currentCerts.length) * 100) : 0;
 
   // Aggregate previous period for trends
   const prevCerts = allCertificates.filter(c => {
@@ -143,7 +143,7 @@ export default function DashboardClient({
   const prevValid = prevCerts.filter(c => c.status === "valid").length;
   const prevRevoked = prevCerts.filter(c => c.status === "revoked").length;
   const prevClaimed = prevCerts.filter(c => c.isClaimed).length;
-  const prevValidationRate = prevCerts.length > 0 ? Math.round((prevValid / prevCerts.length) * 100) : 100;
+  const prevValidationRate = prevCerts.length > 0 ? Math.round((prevValid / prevCerts.length) * 100) : 0;
 
   // Build final stats object
   const currentStats = timeframe === "all" ? initialStats : {

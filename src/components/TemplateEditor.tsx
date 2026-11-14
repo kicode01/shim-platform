@@ -1952,6 +1952,19 @@ const duplicateElement = (id?: string) => {
   });
   const touchDidPanRef = useRef(false);
   const touchDidPanTimerRef = useRef<number | null>(null);
+  const touchGuardRef = useRef<{
+    sessionId: number;
+    multiTouchSessionId: number;
+    isMultiTouch: boolean;
+    inCanvasTouchSession: boolean;
+    cancelActiveInteractions: Set<() => void>;
+  }>({
+    sessionId: 0,
+    multiTouchSessionId: -1,
+    isMultiTouch: false,
+    inCanvasTouchSession: false,
+    cancelActiveInteractions: new Set(),
+  });
 
   const isNonPanInteractiveTarget = (target: HTMLElement | null) =>
     Boolean(target?.closest("button, input, textarea, select, a, [data-no-pan]"));
@@ -2038,11 +2051,62 @@ const duplicateElement = (id?: string) => {
       }
     };
 
+    const isCanvasTouchEvent = (e: TouchEvent) => {
+      const container = containerRef.current;
+      if (!container) return false;
+      if (touchGuardRef.current.inCanvasTouchSession || touchPanRef.current.active) return true;
+      if (e.target instanceof Node && container.contains(e.target)) return true;
+      for (let i = 0; i < e.touches.length; i++) {
+        const target = e.touches[i].target;
+        if (target instanceof Node && container.contains(target)) return true;
+      }
+      return false;
+    };
+
+    const activateMultiTouchGuard = () => {
+      touchGuardRef.current.isMultiTouch = true;
+      touchGuardRef.current.multiTouchSessionId = touchGuardRef.current.sessionId;
+      touchGuardRef.current.cancelActiveInteractions.forEach((cancel) => cancel());
+    };
+
+    const handleWindowTouchStartCapture = (e: TouchEvent) => {
+      if (!isCanvasTouchEvent(e)) return;
+      touchGuardRef.current.inCanvasTouchSession = true;
+      if (e.touches.length === e.changedTouches.length && !touchGuardRef.current.isMultiTouch) {
+        touchGuardRef.current.sessionId += 1;
+      }
+      if (e.touches.length >= 2) {
+        activateMultiTouchGuard();
+      }
+    };
+
+    const handleWindowTouchMoveCapture = (e: TouchEvent) => {
+      if (!isCanvasTouchEvent(e)) return;
+      if (e.touches.length >= 2) {
+        activateMultiTouchGuard();
+      }
+    };
+
+    const handleWindowTouchEndBubble = (e: TouchEvent) => {
+      if (e.touches.length === 0) {
+        touchGuardRef.current.isMultiTouch = false;
+        touchGuardRef.current.inCanvasTouchSession = false;
+      }
+    };
+
     window.addEventListener("mousemove", handleGlobalMouseMove);
     window.addEventListener("mouseup", handleGlobalMouseUp);
+    window.addEventListener("touchstart", handleWindowTouchStartCapture, { capture: true, passive: true });
+    window.addEventListener("touchmove", handleWindowTouchMoveCapture, { capture: true, passive: true });
+    window.addEventListener("touchend", handleWindowTouchEndBubble);
+    window.addEventListener("touchcancel", handleWindowTouchEndBubble);
     return () => {
       window.removeEventListener("mousemove", handleGlobalMouseMove);
       window.removeEventListener("mouseup", handleGlobalMouseUp);
+      window.removeEventListener("touchstart", handleWindowTouchStartCapture, { capture: true });
+      window.removeEventListener("touchmove", handleWindowTouchMoveCapture, { capture: true });
+      window.removeEventListener("touchend", handleWindowTouchEndBubble);
+      window.removeEventListener("touchcancel", handleWindowTouchEndBubble);
       if (touchDidPanTimerRef.current !== null) {
         window.clearTimeout(touchDidPanTimerRef.current);
       }
@@ -3857,6 +3921,8 @@ const duplicateElement = (id?: string) => {
                     scale={scale * userZoom}
                     isPanMode={isPanMode}
                     dummyQrCode={dummyQrCode}
+                    touchGuardRef={touchGuardRef}
+                    touchDidPanRef={touchDidPanRef}
                   />
                 );
               })}
@@ -5672,15 +5738,74 @@ async function ensureImageAspectRatio(el: Pick<CanvasElement, "src" | "naturalAs
   return dims ? dims.width / dims.height : null;
 }
 
-function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElementId, updateSelectedElement, updateElement, setActiveGuides, currentOrientation, scale, dummyQrCode, isPanMode }: any) {
+function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElementId, updateSelectedElement, updateElement, setActiveGuides, currentOrientation, scale, dummyQrCode, isPanMode, touchGuardRef, touchDidPanRef }: any) {
   const [isEditing, setIsEditing] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
   const [isScalingRotated, setIsScalingRotated] = useState(false);
+  const rndRef = useRef<any>(null);
   const elementRef = useRef<HTMLDivElement>(null);
   const imageFileInputRef = useRef<HTMLInputElement>(null);
   const dragStartData = useRef({ width: 0, fontSize: 0 });
   const isDraggingRef = useRef(false);
   const dragStartPos = useRef({ x: 0, y: 0 });
+  const dragSessionIdRef = useRef(-1);
+  const dragAbortedRef = useRef(false);
+  const resizeSessionIdRef = useRef(-1);
+  const resizeAbortedRef = useRef(false);
+  const resizeMutatedRef = useRef(false);
+  const resizeStartSnapshotRef = useRef<Partial<CanvasElement> | null>(null);
+  const activeAbortRef = useRef<(() => void) | null>(null);
+  const latestUpdateElementRef = useRef(updateElement);
+  latestUpdateElementRef.current = updateElement;
+
+  useEffect(() => {
+    const registry = touchGuardRef?.current?.cancelActiveInteractions;
+    if (!registry) return;
+    const abortIfActive = () => {
+      activeAbortRef.current?.();
+    };
+    registry.add(abortIfActive);
+    return () => {
+      registry.delete(abortIfActive);
+    };
+  }, [touchGuardRef]);
+
+  const isMultiTouchEvent = (e?: any) => {
+    const touches = e?.touches || e?.nativeEvent?.touches;
+    return Boolean(touches && touches.length >= 2);
+  };
+
+  const isSessionAborted = (sessionId: number, e?: any) =>
+    Boolean(
+      touchGuardRef?.current?.isMultiTouch ||
+        (sessionId >= 0 && touchGuardRef?.current?.multiTouchSessionId === sessionId) ||
+        isMultiTouchEvent(e)
+    );
+
+  const captureResizeSnapshot = (): Partial<CanvasElement> => ({
+    x: el.x,
+    y: el.y,
+    width: el.width,
+    ...(el.height !== undefined ? { height: el.height } : {}),
+    ...(el.fontSize !== undefined ? { fontSize: el.fontSize } : {}),
+  });
+
+  const snapDraggableToStart = () => {
+    const rnd = rndRef.current;
+    if (rnd?.draggable?.state) {
+      const offset = rnd.offsetFromParent || { left: 0, top: 0 };
+      const targetX = dragStartPos.current.x - offset.left;
+      const targetY = dragStartPos.current.y - offset.top;
+      if (rnd.draggable.state.x !== targetX || rnd.draggable.state.y !== targetY) {
+        rnd.draggable.setState({
+          x: targetX,
+          y: targetY,
+          slackX: 0,
+          slackY: 0,
+        });
+      }
+    }
+  };
 
   const s = Math.max(0.01, scale || 0.15);
   const handlePx = Math.max(14, Math.round(14 / s));
@@ -5693,6 +5818,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
   const handleCornerResizeStart = (e: React.PointerEvent) => {
     e.stopPropagation();
     e.preventDefault();
+    if (!e.isPrimary || touchGuardRef?.current?.isMultiTouch) return;
     try {
       (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     } catch {
@@ -5716,6 +5842,10 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
     const centerX = el.x + startW / 2;
     const centerY = el.y + startH / 2;
     const startFs = el.fontSize || (el.type === 'signature' ? 120 : 16);
+    const startSnapshot = captureResizeSnapshot();
+    const pointerSessionId = touchGuardRef?.current?.sessionId ?? -1;
+    let aborted = false;
+    let mutated = false;
 
     const buildScaledUpdates = (clientX: number, clientY: number): Partial<CanvasElement> => {
       const currentDist = Math.hypot(clientX - screenCenterX, clientY - screenCenterY);
@@ -5739,18 +5869,45 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
       return updates;
     };
 
-    const onPointerMove = (moveEvent: PointerEvent) => {
-      updateElement(el.id, buildScaledUpdates(moveEvent.clientX, moveEvent.clientY), false);
-    };
-
-    const onPointerUp = (upEvent: PointerEvent) => {
+    const cleanup = () => {
+      activeAbortRef.current = null;
       setIsScalingRotated(false);
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("pointercancel", onPointerUp);
-      updateElement(el.id, buildScaledUpdates(upEvent.clientX, upEvent.clientY), true);
     };
 
+    const abortScale = () => {
+      if (aborted) return;
+      aborted = true;
+      cleanup();
+      if (mutated) {
+        latestUpdateElementRef.current(el.id, startSnapshot, false);
+        mutated = false;
+      }
+    };
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      if (aborted || moveEvent.pointerId !== e.pointerId) return;
+      if (isSessionAborted(pointerSessionId)) {
+        abortScale();
+        return;
+      }
+      mutated = true;
+      latestUpdateElementRef.current(el.id, buildScaledUpdates(moveEvent.clientX, moveEvent.clientY), false);
+    };
+
+    const onPointerUp = (upEvent: PointerEvent) => {
+      if (upEvent.pointerId !== e.pointerId) return;
+      if (aborted || isSessionAborted(pointerSessionId)) {
+        abortScale();
+        return;
+      }
+      cleanup();
+      latestUpdateElementRef.current(el.id, buildScaledUpdates(upEvent.clientX, upEvent.clientY), true);
+    };
+
+    activeAbortRef.current = abortScale;
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
     window.addEventListener("pointercancel", onPointerUp);
@@ -5759,6 +5916,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
   const handleRotateStart = (e: React.PointerEvent) => {
     e.stopPropagation();
     e.preventDefault();
+    if (!e.isPrimary || touchGuardRef?.current?.isMultiTouch) return;
     try {
       (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     } catch {
@@ -5772,6 +5930,10 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
     const centerY = rect.top + rect.height / 2;
 
     setIsRotating(true);
+    const startRotation = el.rotation || 0;
+    const pointerSessionId = touchGuardRef?.current?.sessionId ?? -1;
+    let aborted = false;
+    let mutated = false;
 
     const computeDeg = (clientX: number, clientY: number) => {
       const dx = clientX - centerX;
@@ -5792,20 +5954,47 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
       return Math.round(deg);
     };
 
-    const onPointerMove = (moveEvent: PointerEvent) => {
-      const deg = computeDeg(moveEvent.clientX, moveEvent.clientY);
-      updateElement(el.id, { rotation: deg }, false);
-    };
-
-    const onPointerUp = (upEvent: PointerEvent) => {
+    const cleanup = () => {
+      activeAbortRef.current = null;
       setIsRotating(false);
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("pointercancel", onPointerUp);
-      const finalDeg = computeDeg(upEvent.clientX, upEvent.clientY);
-      updateElement(el.id, { rotation: finalDeg }, true);
     };
 
+    const abortRotate = () => {
+      if (aborted) return;
+      aborted = true;
+      cleanup();
+      if (mutated) {
+        latestUpdateElementRef.current(el.id, { rotation: startRotation }, false);
+        mutated = false;
+      }
+    };
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      if (aborted || moveEvent.pointerId !== e.pointerId) return;
+      if (isSessionAborted(pointerSessionId)) {
+        abortRotate();
+        return;
+      }
+      mutated = true;
+      const deg = computeDeg(moveEvent.clientX, moveEvent.clientY);
+      latestUpdateElementRef.current(el.id, { rotation: deg }, false);
+    };
+
+    const onPointerUp = (upEvent: PointerEvent) => {
+      if (upEvent.pointerId !== e.pointerId) return;
+      if (aborted || isSessionAborted(pointerSessionId)) {
+        abortRotate();
+        return;
+      }
+      cleanup();
+      const finalDeg = computeDeg(upEvent.clientX, upEvent.clientY);
+      latestUpdateElementRef.current(el.id, { rotation: finalDeg }, true);
+    };
+
+    activeAbortRef.current = abortRotate;
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
     window.addEventListener("pointercancel", onPointerUp);
@@ -5873,6 +6062,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
 
   return (
     <Rnd
+      ref={rndRef}
       id={`rnd-${el.id}`}
       size={{ 
         width: el.width || 'auto', 
@@ -5881,13 +6071,29 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
       minWidth={(isText || isTypedSignature) ? 40 : 10}
       minHeight={isText ? textMinH : (isDividerShape ? 2 : 10)}
       position={{ x: Number.isFinite(el.x) ? el.x : 0, y: Number.isFinite(el.y) ? el.y : 0 }}
-      onDragStart={() => {
-        if (el.locked) return;
+      onDragStart={(e) => {
+        if (el.locked || isSessionAborted(touchGuardRef?.current?.sessionId ?? -1, e)) {
+          return false;
+        }
         if (!isSelected) setSelectedElementId(el.id);
         isDraggingRef.current = false;
+        dragAbortedRef.current = false;
+        dragSessionIdRef.current = touchGuardRef?.current?.sessionId ?? -1;
         dragStartPos.current = { x: Number.isFinite(el.x) ? el.x : 0, y: Number.isFinite(el.y) ? el.y : 0 };
+        activeAbortRef.current = () => {
+          if (!dragAbortedRef.current) {
+            dragAbortedRef.current = true;
+            isDraggingRef.current = false;
+            setActiveGuides({ vertical: null, horizontal: null });
+          }
+          snapDraggableToStart();
+        };
       }}
       onDrag={(e, data) => {
+        if (dragAbortedRef.current || isSessionAborted(dragSessionIdRef.current, e)) {
+          activeAbortRef.current?.();
+          return false;
+        }
         isDraggingRef.current = true;
         const canvasWidth = currentOrientation === 'landscape' ? 3508 : 2480;
         const canvasHeight = currentOrientation === 'landscape' ? 2480 : 3508;
@@ -5904,13 +6110,23 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         });
       }}
       onDragStop={(e, data) => {
+        activeAbortRef.current = null;
         setActiveGuides({ vertical: null, horizontal: null });
+
+        if (dragAbortedRef.current || isSessionAborted(dragSessionIdRef.current, e)) {
+          isDraggingRef.current = false;
+          dragAbortedRef.current = false;
+          dragSessionIdRef.current = -1;
+          return;
+        }
 
         // If the interaction was a click or tap (no actual drag movement), preserve existing position
         if (!isDraggingRef.current) {
+          dragSessionIdRef.current = -1;
           return;
         }
         isDraggingRef.current = false;
+        dragSessionIdRef.current = -1;
 
         let finalX = data.x;
         let finalY = data.y;
@@ -5950,15 +6166,58 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         updateElement(el.id, { x: Math.round(finalX), y: Math.round(finalY) });
       }}
       onResizeStart={(e, dir, ref) => {
+        if (el.locked || isSessionAborted(touchGuardRef?.current?.sessionId ?? -1, e)) {
+          return false;
+        }
         if (!isSelected) setSelectedElementId(el.id);
         const defaultFontSize = el.type === 'signature' ? 120 : 16;
         dragStartData.current = { width: ref.offsetWidth, fontSize: el.fontSize || defaultFontSize };
+        resizeSessionIdRef.current = touchGuardRef?.current?.sessionId ?? -1;
+        resizeAbortedRef.current = false;
+        resizeMutatedRef.current = false;
+        resizeStartSnapshotRef.current = captureResizeSnapshot();
+        activeAbortRef.current = () => {
+          resizeAbortedRef.current = true;
+          activeAbortRef.current = null;
+          if (rndRef.current?.resizable?.state?.isResizing) {
+            try {
+              rndRef.current.resizable.onMouseUp(new Event('touchend'));
+            } catch {
+              /* ignore */
+            }
+          }
+          if (resizeMutatedRef.current && resizeStartSnapshotRef.current) {
+            latestUpdateElementRef.current(el.id, resizeStartSnapshotRef.current, false);
+            resizeMutatedRef.current = false;
+          }
+        };
       }}
       onResize={(e, direction, ref, delta, position) => {
+        if (resizeAbortedRef.current || isSessionAborted(resizeSessionIdRef.current, e)) {
+          activeAbortRef.current?.();
+          return;
+        }
         const updates = computeResizeUpdates(direction, ref, position);
-        if (updates) updateElement(el.id, updates, false);
+        if (updates) {
+          resizeMutatedRef.current = true;
+          updateElement(el.id, updates, false);
+        }
       }}
       onResizeStop={(e, direction, ref, delta, position) => {
+        activeAbortRef.current = null;
+        if (resizeAbortedRef.current || isSessionAborted(resizeSessionIdRef.current, e)) {
+          if (resizeMutatedRef.current && resizeStartSnapshotRef.current) {
+            latestUpdateElementRef.current(el.id, resizeStartSnapshotRef.current, false);
+          }
+          resizeAbortedRef.current = false;
+          resizeMutatedRef.current = false;
+          resizeSessionIdRef.current = -1;
+          resizeStartSnapshotRef.current = null;
+          return;
+        }
+        resizeMutatedRef.current = false;
+        resizeSessionIdRef.current = -1;
+        resizeStartSnapshotRef.current = null;
         const updates = computeResizeUpdates(direction, ref, position);
         if (updates) updateElement(el.id, updates, true);
       }}
@@ -5967,6 +6226,17 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
       disableDragging={isEditing || isPanMode || isRotating || isScalingRotated || el.locked}
       onClick={(e: any) => {
         e.stopPropagation();
+        if (touchDidPanRef?.current) {
+          touchDidPanRef.current = false;
+          return;
+        }
+        if (
+          touchGuardRef?.current &&
+          touchGuardRef.current.multiTouchSessionId >= 0 &&
+          touchGuardRef.current.multiTouchSessionId === touchGuardRef.current.sessionId
+        ) {
+          return;
+        }
         if (el.locked) return;
         setSelectedElementId(el.id);
       }}

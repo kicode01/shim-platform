@@ -802,7 +802,7 @@ export default function ValidateSearchClient() {
                   <input
                     type="text"
                     placeholder="Enter Certificate ID (e.g. cmtzoowrv...) or paste verification link"
-                    className="flex-1 bg-transparent text-zinc-100 placeholder-zinc-500 text-xs sm:text-sm font-mono focus:outline-none"
+                    className="flex-1 min-w-0 bg-transparent text-zinc-100 placeholder-zinc-500 text-xs sm:text-sm font-mono focus:outline-none"
                     value={searchId}
                     onChange={(e) => setSearchId(e.target.value)}
                     required

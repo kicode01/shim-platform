@@ -47,6 +47,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Issuer account not found. Please log in again." }, { status: 401 });
     }
 
+    const recipientEmails = Array.from(
+      new Set(
+        recipients
+          .map((r: any) => (typeof r?.email === "string" ? r.email.trim().toLowerCase() : ""))
+          .filter(Boolean)
+      )
+    );
+    const userRoleByEmail = new Map<string, string>();
+    if (recipientEmails.length > 0) {
+      const matchedUsers = await prisma.user.findMany({
+        where: {
+          OR: recipientEmails.map((em) => ({ email: { equals: em, mode: "insensitive" as const } })),
+        },
+        select: { email: true, certificateRole: true },
+      });
+      for (const u of matchedUsers) {
+        if (u.email && u.certificateRole) {
+          userRoleByEmail.set(u.email.trim().toLowerCase(), u.certificateRole);
+        }
+      }
+    }
+
     const certificates = [];
     for (const recipient of recipients) {
       if (!recipient.name || !recipient.name.trim()) continue;
@@ -91,11 +113,18 @@ export async function POST(req: Request) {
         ? parseValidityDateInput(rawRowValidity)
         : parsedDefaultValidity;
 
+      const trimmedEmail = recipient.email ? recipient.email.trim() : null;
+      const resolvedRowRole =
+        (recipient.role && recipient.role.trim()) ||
+        (trimmedEmail ? userRoleByEmail.get(trimmedEmail.toLowerCase()) : undefined) ||
+        defaultRole ||
+        "Participant";
+
       const cert = await prisma.certificate.create({
         data: {
           recipientName: recipient.name.trim(),
-          recipientEmail: recipient.email ? recipient.email.trim() : null,
-          role: recipient.role ? recipient.role.trim() : (defaultRole || "Participant"),
+          recipientEmail: trimmedEmail,
+          role: resolvedRowRole,
           eventId: resolvedEventId,
           templateId,
           issuerId,

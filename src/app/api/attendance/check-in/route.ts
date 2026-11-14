@@ -49,6 +49,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Member has no associated email" }, { status: 400 });
     }
 
+    const effectiveRole = member.certificateRole || event.defaultRole;
+
     // 3. Create or Update Attendance Record
     const attendance = await prisma.attendance.upsert({
       where: {
@@ -59,13 +61,14 @@ export async function POST(request: Request) {
       },
       update: {
         checkedInAt: new Date(),
+        role: effectiveRole,
       },
       create: {
         eventId: eventId,
         name: member.name || "Unknown Member",
         email: member.email,
         checkedInAt: new Date(),
-        role: event.defaultRole,
+        role: effectiveRole,
       }
     });
 

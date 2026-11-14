@@ -8,7 +8,8 @@ import {
   FileSpreadsheet, 
   Calendar,
   BookOpen,
-  History
+  History,
+  Users
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -20,6 +21,7 @@ export default function Sidebar() {
     { href: "/dashboard/events", label: "Events", shortLabel: "Events", icon: Calendar },
     { href: "/dashboard/templates", label: "Templates", shortLabel: "Studio", icon: Stamp },
     { href: "/dashboard/generate", label: "Issue", shortLabel: "Issue", icon: FileSpreadsheet },
+    { href: "/dashboard/users", label: "Users", shortLabel: "Users", icon: Users },
     { href: "/dashboard/audit", label: "Audit", shortLabel: "Audit", icon: History },
   ];
 

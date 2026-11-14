@@ -59,13 +59,32 @@ export default async function EventDetailsPage({ params }: { params: Promise<{ i
     defaultTemplateId: event.defaultTemplateId,
   };
 
+  const attendanceEmails = Array.from(
+    new Set(event.attendances.map((a) => a.email.trim().toLowerCase()).filter(Boolean))
+  );
+  const matchingUsers = attendanceEmails.length > 0
+    ? await prisma.user.findMany({
+        where: {
+          OR: attendanceEmails.map((em) => ({ email: { equals: em, mode: "insensitive" as const } })),
+        },
+        select: { email: true, certificateRole: true },
+      })
+    : [];
+  const userRoleMap = new Map<string, string>();
+  for (const u of matchingUsers) {
+    if (u.email && u.certificateRole) {
+      userRoleMap.set(u.email.trim().toLowerCase(), u.certificateRole);
+    }
+  }
+
   const serializedAttendances = event.attendances.map(a => {
     const cert = certificateMap.get(a.email);
+    const assignedRole = userRoleMap.get(a.email.trim().toLowerCase());
     return {
       id: a.id,
       name: a.name,
       email: a.email,
-      role: a.role,
+      role: !cert && assignedRole ? assignedRole : a.role,
       checkedInAt: a.checkedInAt.toISOString(),
       hasCertificate: !!cert,
       certificateId: cert?.id,

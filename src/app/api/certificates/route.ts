@@ -152,11 +152,25 @@ export async function POST(req: Request) {
       resolvedEventId = fallbackEvent.id;
     }
 
+    let resolvedRole = role?.trim() || "";
+    if (!resolvedRole && recipientEmail?.trim()) {
+      const matchedUser = await prisma.user.findFirst({
+        where: { email: { equals: recipientEmail.trim(), mode: "insensitive" } },
+        select: { certificateRole: true }
+      });
+      if (matchedUser?.certificateRole) {
+        resolvedRole = matchedUser.certificateRole;
+      }
+    }
+    if (!resolvedRole) {
+      resolvedRole = template.name || "Participant";
+    }
+
     const certificate = await prisma.certificate.create({
       data: {
         recipientName: recipientName.trim(),
         recipientEmail: recipientEmail?.trim() || null,
-        role: role?.trim() || template.name || "Participant",
+        role: resolvedRole,
         eventId: resolvedEventId,
         templateId: template.id,
         issuerId,

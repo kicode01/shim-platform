@@ -39,11 +39,19 @@ function GenerateCertificatesContent() {
   const [mobileViewTab, setMobileViewTab] = useState<"form" | "preview">("form");
   
   const [events, setEvents] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   useEffect(() => {
     fetch("/api/events")
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setEvents(data);
+      })
+      .catch(err => console.error(err));
+
+    fetch("/api/users")
+      .then(res => res.ok ? res.json() : [])
+      .then(data => {
+        if (Array.isArray(data)) setUsers(data);
       })
       .catch(err => console.error(err));
   }, []);
@@ -52,9 +60,11 @@ function GenerateCertificatesContent() {
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
 
   // Single Issue state
+  const [selectedMemberId, setSelectedMemberId] = useState("");
   const [singleName, setSingleName] = useState("");
   const [singleEmail, setSingleEmail] = useState("");
   const [singleRole, setSingleRole] = useState("");
+  const [roleEditedManually, setRoleEditedManually] = useState(false);
   const [singleEventId, setSingleEventId] = useState("");
   const [singleValidityDate, setSingleValidityDate] = useState("");
   const [bulkEventId, setBulkEventId] = useState("");
@@ -195,6 +205,10 @@ function GenerateCertificatesContent() {
     if (file) processFile(file);
   };
 
+  const matchedSingleUser = singleEmail.trim()
+    ? users.find(u => u.email?.toLowerCase() === singleEmail.trim().toLowerCase())
+    : null;
+
   // Handle Single Issue
   const handleSingleIssue = async (e: React.FormEvent | null, shouldDownload: boolean = true) => {
     if (e) e.preventDefault();
@@ -213,7 +227,7 @@ function GenerateCertificatesContent() {
         body: JSON.stringify({
           recipientName: singleName.trim(),
           recipientEmail: singleEmail.trim(),
-          role: singleRole.trim() || selectedTemplate.name,
+          role: singleRole.trim() || matchedSingleUser?.certificateRole || selectedTemplate.name,
           eventId: singleEventId.trim(),
           templateId: selectedTemplate.id,
           validityDate: singleValidityDate || null,
@@ -373,7 +387,7 @@ function GenerateCertificatesContent() {
 
     if (mode === "single") {
       previewName = singleName || previewName;
-      previewRole = singleRole || previewRole;
+      previewRole = singleRole || matchedSingleUser?.certificateRole || previewRole;
       const selectedEvent = events.find(e => e.id === singleEventId);
       previewEvent = selectedEvent ? selectedEvent.name : singleEventId;
     } else if (mode === "bulk" && csvData.length > 0) {
@@ -582,9 +596,11 @@ function GenerateCertificatesContent() {
                     <button 
                       type="button"
                       onClick={() => {
+                        setSelectedMemberId("");
                         setSingleName("");
                         setSingleEmail("");
                         setSingleRole("");
+                        setRoleEditedManually(false);
                         setSingleEventId("");
                         setSingleValidityDate("");
                         setSingleSuccess(null);
@@ -669,6 +685,35 @@ function GenerateCertificatesContent() {
                   )}
 
                   <form onSubmit={(e) => handleSingleIssue(e, true)} className="flex flex-col gap-5">
+                    {users.length > 0 && (
+                      <div>
+                        <label className="text-sm font-medium text-zinc-700 mb-1.5 block">Registered Member (Optional)</label>
+                        <Select
+                          value={selectedMemberId}
+                          onChange={(val) => {
+                            setSelectedMemberId(val);
+                            const found = users.find(u => u.id === val);
+                            if (found) {
+                              setSingleName(found.name || "");
+                              setSingleEmail(found.email || "");
+                              setSingleRole(found.certificateRole || "Participant");
+                              setRoleEditedManually(false);
+                            }
+                          }}
+                          options={[
+                            { value: "", label: "-- Manual Entry --" },
+                            ...users.map(u => ({
+                              value: u.id,
+                              label: `${u.name || u.email || "User"} (${u.certificateRole || "Participant"})`
+                            }))
+                          ]}
+                          placeholder="-- Manual Entry --"
+                          className="w-full"
+                          dropdownClassName="w-full"
+                        />
+                      </div>
+                    )}
+
                     <div>
                       <label className="text-sm font-medium text-zinc-700 mb-1.5 block">Full Name *</label>
                       <input 
@@ -687,7 +732,15 @@ function GenerateCertificatesContent() {
                         type="email" 
                         className="w-full px-4 py-2.5 bg-white border border-zinc-300 rounded-md text-sm font-medium text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-700 focus:border-transparent placeholder:text-zinc-400 shadow-sm" 
                         value={singleEmail}
-                        onChange={e => setSingleEmail(e.target.value)}
+                        onChange={e => {
+                          const nextEmail = e.target.value;
+                          setSingleEmail(nextEmail);
+                          const match = users.find(u => u.email?.toLowerCase() === nextEmail.trim().toLowerCase());
+                          if (match && !roleEditedManually) {
+                            setSelectedMemberId(match.id);
+                            setSingleRole(match.certificateRole || "Participant");
+                          }
+                        }}
                         placeholder="jane@example.com"
                       />
                     </div>
@@ -698,9 +751,17 @@ function GenerateCertificatesContent() {
                         type="text" 
                         className="w-full px-4 py-2.5 bg-white border border-zinc-300 rounded-md text-sm font-medium text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-700 focus:border-transparent placeholder:text-zinc-400 shadow-sm" 
                         value={singleRole}
-                        onChange={e => setSingleRole(e.target.value)}
-                        placeholder={selectedTemplate?.name || "e.g. Keynote Speaker"}
+                        onChange={e => {
+                          setSingleRole(e.target.value);
+                          setRoleEditedManually(Boolean(e.target.value.trim()));
+                        }}
+                        placeholder={matchedSingleUser?.certificateRole || selectedTemplate?.name || "e.g. Keynote Speaker"}
                       />
+                      {matchedSingleUser && (
+                        <p className="text-xs text-emerald-700 mt-1 font-medium">
+                          Synced from member profile role: {matchedSingleUser.certificateRole || "Participant"}
+                        </p>
+                      )}
                     </div>
 
                     <div>

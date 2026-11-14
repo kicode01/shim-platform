@@ -862,10 +862,12 @@ input[type="number"] {
   }
   .mob-tabbar nav > a {
     flex: 1;
+    min-width: 0;
+    overflow: hidden;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 0.35rem 0.15rem;
+    padding: 0.35rem 0.1rem;
     border-radius: 0.5rem;
     /* `space-y-1` on the nav sets margin-top on every item but the first; in a
        row that would nudge them all downwards. */

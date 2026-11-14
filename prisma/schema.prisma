@@ -12,9 +12,10 @@ model User {
   name          String?
   email         String?      @unique
   emailVerified DateTime?
-  image         String?
-  role          String       @default("organizer") // "admin", "organizer", or "member"
-  membershipId  String?      @unique
+  image           String?
+  role            String       @default("organizer") // "admin", "organizer", or "member"
+  certificateRole String       @default("Participant") // "Organizer", "Speaker", "Participant", "Others"
+  membershipId    String?      @unique
   accounts      Account[]
   sessions      Session[]
   events        Event[]

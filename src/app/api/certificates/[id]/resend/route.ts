@@ -27,7 +27,7 @@ export async function POST(
       include: { event: true },
     });
 
-    if (!certificate) {
+    if (!certificate || certificate.deletedAt !== null) {
       return NextResponse.json({ error: "Certificate not found" }, { status: 404 });
     }
 

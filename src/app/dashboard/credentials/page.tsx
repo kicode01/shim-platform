@@ -24,20 +24,28 @@ export default async function CredentialsPage() {
   const userRole = (session.user as any).role;
   const userId = (session.user as any).id;
 
-  // Load server-side initial certificates
-  const certificates = await prisma.certificate.findMany({
-    where: userRole === "admin" ? {} : { issuerId: userId },
-    take: 50,
-    orderBy: { issueDate: "desc" },
-    include: {
-      template: { select: { id: true, name: true } },
-      issuer: { select: { name: true, email: true } }
-    }
-  });
+  const scopeWhere = userRole === "admin" ? {} : { issuerId: userId };
+
+  // Load active certificates and archived/trash count in parallel
+  const [certificates, trashCount] = await Promise.all([
+    prisma.certificate.findMany({
+      where: { ...scopeWhere, deletedAt: null },
+      take: 50,
+      orderBy: { issueDate: "desc" },
+      include: {
+        template: { select: { id: true, name: true } },
+        issuer: { select: { name: true, email: true } }
+      }
+    }),
+    prisma.certificate.count({
+      where: { ...scopeWhere, deletedAt: { not: null } },
+    }),
+  ]);
 
   const serializedCertificates = certificates.map(c => ({
     ...c,
     issueDate: c.issueDate.toISOString(),
+    deletedAt: c.deletedAt ? c.deletedAt.toISOString() : null,
   }));
 
   return (
@@ -49,7 +57,7 @@ export default async function CredentialsPage() {
         </div>
       </div>
       
-      <CredentialsClient initialCertificates={serializedCertificates} />
+      <CredentialsClient initialCertificates={serializedCertificates} initialTrashCount={trashCount} />
     </div>
   );
 }

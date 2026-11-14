@@ -29,8 +29,14 @@ export async function GET(req: Request) {
       ];
     }
 
-    if (status && status !== "all") {
-      whereClause.status = status;
+    const isTrash = status === "trash";
+    if (isTrash) {
+      whereClause.deletedAt = { not: null };
+    } else {
+      whereClause.deletedAt = null;
+      if (status && status !== "all") {
+        whereClause.status = status;
+      }
     }
 
     const certificates = await prisma.certificate.findMany({
@@ -46,7 +52,7 @@ export async function GET(req: Request) {
           select: { id: true, name: true, email: true }
         }
       },
-      orderBy: { issueDate: "desc" }
+      orderBy: isTrash ? { deletedAt: "desc" } : { issueDate: "desc" }
     });
 
     return NextResponse.json(certificates);

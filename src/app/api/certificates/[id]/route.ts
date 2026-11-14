@@ -11,8 +11,8 @@ export async function GET(
   const { id } = await props.params;
 
   try {
-    let certificate = await prisma.certificate.findUnique({
-      where: { id },
+    let certificate = await prisma.certificate.findFirst({
+      where: { id, deletedAt: null },
       include: {
         template: true,
         event: true,
@@ -38,6 +38,7 @@ export async function GET(
       const suffix3 = cleanId.slice(-3);
       const candidates = await prisma.certificate.findMany({
         where: {
+          deletedAt: null,
           OR: [
             { id: { startsWith: prefix3 } },
             { id: { endsWith: suffix3 } }
@@ -151,7 +152,7 @@ export async function PATCH(
 
     const userRole = (session.user as any).role;
     const userId = (session.user as any).id;
-    const existing = await prisma.certificate.findUnique({ where: { id } });
+    const existing = await prisma.certificate.findFirst({ where: { id, deletedAt: null } });
     if (!existing || (userRole !== "admin" && existing.issuerId !== userId)) {
       return NextResponse.json({ message: "Certificate not found" }, { status: 404 });
     }
@@ -192,13 +193,22 @@ export async function DELETE(
   try {
     const userRole = (session.user as any).role;
     const userId = (session.user as any).id;
-    const existing = await prisma.certificate.findUnique({ where: { id } });
+    const existing = await prisma.certificate.findFirst({ where: { id, deletedAt: null } });
     if (!existing || (userRole !== "admin" && existing.issuerId !== userId)) {
       return NextResponse.json({ message: "Certificate not found" }, { status: 404 });
     }
 
-    await prisma.certificate.delete({
-      where: { id }
+    await prisma.certificate.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        action: "ARCHIVED",
+        certificateId: id,
+        ipAddress: req.headers.get("x-forwarded-for") || "unknown",
+      },
     });
 
     return NextResponse.json({ success: true });

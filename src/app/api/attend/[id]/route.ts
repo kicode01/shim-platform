@@ -87,10 +87,11 @@ export async function POST(
       });
     }
 
-    // Look for an existing certificate for this event/email to avoid duplicates
+    // Look for an existing active certificate for this event/email to avoid duplicates
     let certificate = await prisma.certificate.findFirst({
       where: {
         eventId,
+        deletedAt: null,
         recipientEmail: { equals: email, mode: "insensitive" },
       },
     });

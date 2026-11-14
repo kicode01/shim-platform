@@ -33,6 +33,7 @@ export async function linkCertificatesToUser(
     prisma.certificate.findMany({
       where: {
         walletId: null,
+        deletedAt: null,
         OR: [
           ...(normalized ? [{ recipientEmail: { equals: normalized, mode: "insensitive" as const } }] : []),
           ...(extraIds.length ? [{ id: { in: extraIds } }] : []),

@@ -96,7 +96,10 @@ export default async function PortalPage() {
   ];
 
   const certificates = await prisma.certificate.findMany({
-    where: orConditions.length > 0 ? { OR: orConditions } : { id: "__impossible__" },
+    where: {
+      deletedAt: null,
+      ...(orConditions.length > 0 ? { OR: orConditions } : { id: "__impossible__" }),
+    },
     include: {
       event: true,
       template: true,

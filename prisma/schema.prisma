@@ -118,6 +118,7 @@ model Certificate {
 
   isClaimed      Boolean   @default(false)
   claimedAt      DateTime?
+  deletedAt      DateTime?
 
   walletId       String?
   wallet         Wallet?   @relation(fields: [walletId], references: [id], onDelete: SetNull)
@@ -125,6 +126,7 @@ model Certificate {
   auditLogs      AuditLog[]
 
   @@index([id])
+  @@index([deletedAt])
 }
 
 model AuditLog {

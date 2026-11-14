@@ -17,7 +17,7 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
       include: {
         _count: {
-          select: { certificates: true }
+          select: { certificates: { where: { deletedAt: null } } }
         }
       }
     });

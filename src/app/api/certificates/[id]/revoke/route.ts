@@ -23,7 +23,7 @@ export async function PUT(
       }
     });
 
-    if (!certificate) {
+    if (!certificate || certificate.deletedAt !== null) {
       return NextResponse.json({ error: "Certificate not found" }, { status: 404 });
     }
 

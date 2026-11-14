@@ -12,7 +12,7 @@ export async function GET() {
   try {
     const userRole = (session.user as any).role;
     const userId = (session.user as any).id;
-    const issuerFilter = userRole === "admin" ? {} : { issuerId: userId };
+    const issuerFilter = userRole === "admin" ? { deletedAt: null } : { issuerId: userId, deletedAt: null };
     const templateFilter = userRole === "admin" ? {} : { userId };
     const auditFilter = userRole === "admin" ? { action: "VERIFIED" } : { action: "VERIFIED", certificate: { issuerId: userId } };
 

@@ -26,7 +26,7 @@ export default async function EventsPage() {
       where: userRole === "admin" ? {} : { organizerId: userId },
       include: {
         _count: {
-          select: { certificates: true }
+          select: { certificates: { where: { deletedAt: null } } }
         }
       },
       orderBy: { createdAt: "desc" }

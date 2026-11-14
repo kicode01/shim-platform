@@ -24,6 +24,7 @@ export default async function EventDetailsPage({ params }: { params: Promise<{ i
         orderBy: { checkedInAt: 'desc' }
       },
       certificates: {
+        where: { deletedAt: null },
         select: { id: true, status: true, recipientEmail: true }
       }
     }

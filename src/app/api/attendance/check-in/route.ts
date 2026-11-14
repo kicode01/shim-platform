@@ -77,6 +77,7 @@ export async function POST(request: Request) {
       let certificate = await prisma.certificate.findFirst({
         where: {
           eventId: event.id,
+          deletedAt: null,
           recipientEmail: { equals: member.email, mode: "insensitive" },
         }
       });

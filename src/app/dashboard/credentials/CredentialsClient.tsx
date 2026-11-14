@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Ban,
   Trash2,
+  RotateCcw,
   X,
   Loader2,
   BookOpen,
@@ -23,6 +24,7 @@ interface CertificateItem {
   recipientEmail?: string | null;
   role?: string | null;
   issueDate: string;
+  deletedAt?: string | null;
   status: string;
   template?: { id: string; name: string };
   issuer?: { name?: string | null; email?: string | null };
@@ -67,10 +69,13 @@ const HoverMarquee = ({ text, className }: { text: string; className?: string })
 
 export default function CredentialsClient({
   initialCertificates,
+  initialTrashCount = 0,
 }: {
   initialCertificates: CertificateItem[];
+  initialTrashCount?: number;
 }) {
   const [certificates, setCertificates] = useState<CertificateItem[]>(initialCertificates);
+  const [trashCount, setTrashCount] = useState(initialTrashCount);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -88,6 +93,9 @@ export default function CredentialsClient({
       if (res.ok) {
         const data = await res.json();
         setCertificates(data);
+        if (status === "trash" && !search.trim()) {
+          setTrashCount(data.length);
+        }
       }
     } catch (e) {
       console.error("Error refreshing ledger:", e);
@@ -113,6 +121,31 @@ export default function CredentialsClient({
   const showToast = (message: string, type: 'error' | 'success' = 'error') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
+  };
+
+  const renderStatusBadge = (cert: CertificateItem) => {
+    if (cert.deletedAt) {
+      return (
+        <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] leading-none font-bold tracking-wider uppercase text-amber-700 bg-amber-50 border border-amber-200/70 shrink-0">
+          <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+          <span className="-translate-y-[1px]">TRASHED</span>
+        </div>
+      );
+    }
+    if (cert.status === "valid") {
+      return (
+        <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] leading-none font-bold tracking-wider uppercase text-zinc-600 bg-zinc-100 border border-zinc-200/50 shrink-0">
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] shrink-0" />
+          <span className="-translate-y-[1px]">VALID</span>
+        </div>
+      );
+    }
+    return (
+      <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] leading-none font-bold tracking-wider uppercase text-zinc-400 bg-zinc-50 border border-zinc-200/50 shrink-0">
+        <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+        <span className="-translate-y-[1px]">REVOKED</span>
+      </div>
+    );
   };
 
   const handleToggleStatus = async (id: string, currentStatus: string) => {
@@ -148,7 +181,9 @@ export default function CredentialsClient({
 
       if (res.ok) {
         setCertificates(prev => prev.filter(c => c.id !== id));
+        setTrashCount(prev => prev + 1);
         setConfirmDeleteId(null);
+        showToast("Moved to trash. You can restore it anytime.", "success");
       } else {
         const data = await res.json();
         showToast(data.message || "Failed to delete credential.", "error");
@@ -156,6 +191,29 @@ export default function CredentialsClient({
     } catch (e) {
       console.error(e);
       showToast("Error deleting credential record.", "error");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleRestoreCertificate = async (id: string) => {
+    setUpdatingId(id);
+    try {
+      const res = await fetch(`/api/certificates/${id}/restore`, {
+        method: "POST"
+      });
+
+      if (res.ok) {
+        setCertificates(prev => prev.filter(c => c.id !== id));
+        setTrashCount(prev => Math.max(0, prev - 1));
+        showToast("Credential restored to active list.", "success");
+      } else {
+        const data = await res.json().catch(() => null);
+        showToast(data?.error || "Failed to restore credential.", "error");
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Error restoring credential.", "error");
     } finally {
       setUpdatingId(null);
     }
@@ -194,19 +252,26 @@ export default function CredentialsClient({
           <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
             {/* Filter */}
             <div className="mob-filter-row flex bg-zinc-100 rounded-2xl p-1 w-full sm:w-auto">
-              {["all", "valid", "revoked"].map((filter) => {
+              {["all", "valid", "revoked", "trash"].map((filter) => {
                 const isActive = statusFilter === filter;
                 return (
                   <button 
                     key={filter}
-                    className={`relative px-4 py-1.5 text-sm font-medium capitalize rounded-xl transition-colors duration-200 z-10 ${
+                    className={`relative px-4 py-1.5 text-sm font-medium capitalize rounded-xl transition-colors duration-200 z-10 flex items-center justify-center gap-1.5 ${
                       isActive 
                         ? "bg-white text-zinc-800 shadow-sm" 
                         : "text-zinc-500 hover:text-zinc-800 hover:bg-zinc-200/50"
                     }`}
                     onClick={() => setStatusFilter(filter)}
                   >
-                    {filter}
+                    <span>{filter}</span>
+                    {filter === "trash" && trashCount > 0 && (
+                      <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full leading-none ${
+                        isActive ? "bg-zinc-100 text-zinc-700" : "bg-zinc-200/80 text-zinc-600"
+                      }`}>
+                        {trashCount}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -241,11 +306,17 @@ export default function CredentialsClient({
               <div className="w-16 h-16 bg-zinc-50 border border-zinc-200 rounded-xl flex items-center justify-center mb-6">
                 <BookOpen size={24} className="text-zinc-400" />
               </div>
-              <h3 className="text-xl font-bold text-zinc-700 mb-2">No credentials found</h3>
+              <h3 className="text-xl font-bold text-zinc-700 mb-2">
+                {statusFilter === "trash" ? "Trash is empty" : "No credentials found"}
+              </h3>
               <p className="text-zinc-500 font-medium max-w-sm mb-8">
-                {searchTerm || statusFilter !== "all" 
-                  ? "Try adjusting your search or filter settings." 
-                  : "You haven't issued any credentials yet. Issue your first certificate to get started."}
+                {statusFilter === "trash"
+                  ? searchTerm
+                    ? "No trashed credentials match your search."
+                    : "Soft-deleted credentials appear here so you can restore them anytime."
+                  : searchTerm || statusFilter !== "all" 
+                    ? "Try adjusting your search or filter settings." 
+                    : "You haven't issued any credentials yet. Issue your first certificate to get started."}
               </p>
             </div>
           ) : (
@@ -285,24 +356,26 @@ export default function CredentialsClient({
                             <div className="font-semibold text-sm text-zinc-800 mb-0.5 truncate" title={cert.recipientName}>{cert.recipientName}</div>
                             <div className="text-[13px] text-zinc-500 truncate" title={cert.recipientEmail || "No email"}>{cert.recipientEmail || "No email"}</div>
                           </div>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                            <button onClick={() => handleCopyRef(cert.id)} className="w-7 h-7 rounded-md text-zinc-400 hover:text-zinc-800 hover:bg-zinc-200/50 transition-colors flex items-center justify-center" title="Copy cryptographic ref">
-                              {copiedId === cert.id ? <Check size={14} strokeWidth={2.5} /> : <Copy size={14} />}
-                            </button>
-                            <Link href={`/validate?id=${cert.id}`} target="_blank" className="w-7 h-7 rounded-md text-zinc-400 hover:text-zinc-800 hover:bg-zinc-200/50 transition-colors flex items-center justify-center" title="Open public view">
-                              <ExternalLink size={14} />
-                            </Link>
-                            {cert.recipientEmail && (
-                              <button
-                                onClick={() => handleResendEmail(cert.id)}
-                                disabled={resendingId === cert.id}
-                                className="w-7 h-7 rounded-md text-zinc-400 hover:text-zinc-800 hover:bg-zinc-200/50 transition-colors flex items-center justify-center disabled:opacity-50"
-                                title="Resend certificate email"
-                              >
-                                {resendingId === cert.id ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                          {!cert.deletedAt && (
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                              <button onClick={() => handleCopyRef(cert.id)} className="w-7 h-7 rounded-md text-zinc-400 hover:text-zinc-800 hover:bg-zinc-200/50 transition-colors flex items-center justify-center" title="Copy cryptographic ref">
+                                {copiedId === cert.id ? <Check size={14} strokeWidth={2.5} /> : <Copy size={14} />}
                               </button>
-                            )}
-                          </div>
+                              <Link href={`/validate?id=${cert.id}`} target="_blank" className="w-7 h-7 rounded-md text-zinc-400 hover:text-zinc-800 hover:bg-zinc-200/50 transition-colors flex items-center justify-center" title="Open public view">
+                                <ExternalLink size={14} />
+                              </Link>
+                              {cert.recipientEmail && (
+                                <button
+                                  onClick={() => handleResendEmail(cert.id)}
+                                  disabled={resendingId === cert.id}
+                                  className="w-7 h-7 rounded-md text-zinc-400 hover:text-zinc-800 hover:bg-zinc-200/50 transition-colors flex items-center justify-center disabled:opacity-50"
+                                  title="Resend certificate email"
+                                >
+                                  {resendingId === cert.id ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="w-[30%] px-4 py-3 align-middle text-center">
@@ -319,34 +392,39 @@ export default function CredentialsClient({
                         <div suppressHydrationWarning className="text-[13px] font-medium text-zinc-600">
                           {new Date(cert.issueDate).toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "UTC" })}
                         </div>
+                        {cert.deletedAt && (
+                          <div suppressHydrationWarning className="text-[11px] text-zinc-400 mt-0.5">
+                            Trashed {new Date(cert.deletedAt).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", timeZone: "UTC" })}
+                          </div>
+                        )}
                       </td>
                       <td className="w-[16%] px-4 py-3">
                         <div className="flex items-center justify-center h-full">
-                          {cert.status === "valid" ? (
-                            <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] leading-none font-bold tracking-wider uppercase text-zinc-600 bg-zinc-100 border border-zinc-200/50">
-                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] shrink-0" />
-                              <span className="-translate-y-[1px]">VALID</span>
-                            </div>
-                          ) : (
-                            <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] leading-none font-bold tracking-wider uppercase text-zinc-400 bg-zinc-50 border border-zinc-200/50">
-                              <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
-                              <span className="-translate-y-[1px]">REVOKED</span>
-                            </div>
-                          )}
+                          {renderStatusBadge(cert)}
                         </div>
                       </td>
                       <td className="w-[18%] px-4 py-3 text-right">
                         <div className="flex items-center justify-end h-full">
                           <div className="inline-flex items-center gap-1">
-                            {confirmDeleteId === cert.id ? (
+                            {cert.deletedAt ? (
+                              <button
+                                onClick={() => handleRestoreCertificate(cert.id)}
+                                disabled={updatingId === cert.id}
+                                className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 transition-colors disabled:opacity-50"
+                                title="Restore from Trash"
+                              >
+                                {updatingId === cert.id ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                                <span>Restore</span>
+                              </button>
+                            ) : confirmDeleteId === cert.id ? (
                               <div className="flex items-center gap-1 bg-red-50 p-1 rounded-md border border-red-100">
                                 <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 px-2 shrink-0">
-                                  Sure?
+                                  Trash?
                                 </span>
                                 <button
                                   onClick={() => handleDeleteCertificate(cert.id)}
                                   className="w-7 h-7 bg-red-600 rounded text-white hover:bg-red-700 transition-colors flex items-center justify-center shrink-0 shadow-sm"
-                                  title="Confirm Delete"
+                                  title="Confirm Move to Trash"
                                 >
                                   {updatingId === cert.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} strokeWidth={2.5} />}
                                 </button>
@@ -404,7 +482,7 @@ export default function CredentialsClient({
                                   }}
                                   disabled={updatingId === cert.id}
                                   className="w-8 h-8 rounded-md text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center shrink-0"
-                                  title="Delete permanently"
+                                  title="Move to Trash"
                                 >
                                   {updatingId === cert.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                                 </button>
@@ -435,17 +513,7 @@ export default function CredentialsClient({
                           <div className="font-semibold text-sm text-zinc-800 truncate" title={cert.recipientName}>{cert.recipientName}</div>
                           <div className="text-[13px] text-zinc-500 truncate" title={cert.recipientEmail || "No email"}>{cert.recipientEmail || "No email"}</div>
                         </div>
-                        {cert.status === "valid" ? (
-                          <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] leading-none font-bold tracking-wider uppercase text-zinc-600 bg-zinc-100 border border-zinc-200/50 shrink-0">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                            <span className="-translate-y-[1px]">VALID</span>
-                          </div>
-                        ) : (
-                          <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] leading-none font-bold tracking-wider uppercase text-zinc-400 bg-zinc-50 border border-zinc-200/50 shrink-0">
-                            <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
-                            <span className="-translate-y-[1px]">REVOKED</span>
-                          </div>
-                        )}
+                        <div className="shrink-0">{renderStatusBadge(cert)}</div>
                       </div>
 
                       <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[13px] min-w-0">
@@ -455,85 +523,107 @@ export default function CredentialsClient({
                       </div>
                       <div suppressHydrationWarning className="mt-0.5 text-[12px] text-zinc-400">
                         {new Date(cert.issueDate).toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "UTC" })}
+                        {cert.deletedAt && (
+                          <span className="ml-2 text-zinc-400">
+                            · Trashed {new Date(cert.deletedAt).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", timeZone: "UTC" })}
+                          </span>
+                        )}
                       </div>
 
                       <div className="mt-3 flex items-center gap-2 flex-wrap">
-                        <button onClick={() => handleCopyRef(cert.id)} className="mob-card-action w-11 h-11 rounded-md text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 transition-colors flex items-center justify-center shrink-0" title="Copy cryptographic ref">
-                          {copiedId === cert.id ? <Check size={16} strokeWidth={2.5} /> : <Copy size={16} />}
-                        </button>
-                        <Link href={`/validate?id=${cert.id}`} target="_blank" className="mob-card-action w-11 h-11 rounded-md text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 transition-colors flex items-center justify-center shrink-0" title="Open public view">
-                          <ExternalLink size={16} />
-                        </Link>
-                        {cert.recipientEmail && (
-                          <button
-                            onClick={() => handleResendEmail(cert.id)}
-                            disabled={resendingId === cert.id}
-                            className="mob-card-action w-11 h-11 rounded-md text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 transition-colors flex items-center justify-center shrink-0 disabled:opacity-50"
-                            title="Resend certificate email"
-                          >
-                            {resendingId === cert.id ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                          </button>
-                        )}
-                        <div className="flex-1 min-w-[8px]" />
-                        {confirmDeleteId === cert.id ? (
-                          <div className="flex items-center gap-2">
+                        {cert.deletedAt ? (
+                          <>
+                            <div className="flex-1 min-w-[8px]" />
                             <button
-                              onClick={() => handleDeleteCertificate(cert.id)}
-                              className="mob-card-action h-11 px-3 rounded-md bg-red-600 text-white text-xs font-semibold flex items-center justify-center shrink-0"
+                              onClick={() => handleRestoreCertificate(cert.id)}
+                              disabled={updatingId === cert.id}
+                              className="mob-card-action inline-flex items-center justify-center gap-1.5 h-11 px-4 rounded-md text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 transition-colors shrink-0 disabled:opacity-50"
+                              title="Restore from Trash"
                             >
-                              {updatingId === cert.id ? <Loader2 size={16} className="animate-spin" /> : "Delete"}
+                              {updatingId === cert.id ? <Loader2 size={16} className="animate-spin" /> : <RotateCcw size={16} />}
+                              <span>Restore</span>
                             </button>
-                            <button
-                              onClick={() => setConfirmDeleteId(null)}
-                              className="mob-card-action h-11 px-3 rounded-md border border-zinc-200 text-zinc-600 text-xs font-medium flex items-center justify-center shrink-0"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : confirmRevokeId === cert.id ? (
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleToggleStatus(cert.id, cert.status)}
-                              className="mob-card-action h-11 px-3 rounded-md bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold flex items-center justify-center shrink-0"
-                            >
-                              {updatingId === cert.id ? <Loader2 size={16} className="animate-spin" /> : "Revoke"}
-                            </button>
-                            <button
-                              onClick={() => setConfirmRevokeId(null)}
-                              className="mob-card-action h-11 px-3 rounded-md border border-zinc-200 text-zinc-600 text-xs font-medium flex items-center justify-center shrink-0"
-                            >
-                              Cancel
-                            </button>
-                          </div>
+                          </>
                         ) : (
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => {
-                                if (cert.status === "valid") {
-                                  setConfirmRevokeId(cert.id);
-                                  setConfirmDeleteId(null);
-                                } else {
-                                  handleToggleStatus(cert.id, cert.status);
-                                }
-                              }}
-                              disabled={updatingId === cert.id}
-                              className="mob-card-action h-11 px-3 rounded-md bg-zinc-100 text-zinc-700 hover:bg-zinc-200 text-xs font-medium flex items-center justify-center shrink-0"
-                              title={cert.status === "valid" ? "Revoke Credential" : "Restore Credential"}
-                            >
-                              {updatingId === cert.id ? <Loader2 size={16} className="animate-spin" /> : cert.status === "valid" ? "Revoke" : "Restore"}
+                          <>
+                            <button onClick={() => handleCopyRef(cert.id)} className="mob-card-action w-11 h-11 rounded-md text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 transition-colors flex items-center justify-center shrink-0" title="Copy cryptographic ref">
+                              {copiedId === cert.id ? <Check size={16} strokeWidth={2.5} /> : <Copy size={16} />}
                             </button>
-                            <button
-                              onClick={() => {
-                                setConfirmDeleteId(cert.id);
-                                setConfirmRevokeId(null);
-                              }}
-                              disabled={updatingId === cert.id}
-                              className="mob-card-action w-11 h-11 rounded-md text-zinc-600 hover:text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center shrink-0"
-                              title="Delete permanently"
-                            >
-                              {updatingId === cert.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                            </button>
-                          </div>
+                            <Link href={`/validate?id=${cert.id}`} target="_blank" className="mob-card-action w-11 h-11 rounded-md text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 transition-colors flex items-center justify-center shrink-0" title="Open public view">
+                              <ExternalLink size={16} />
+                            </Link>
+                            {cert.recipientEmail && (
+                              <button
+                                onClick={() => handleResendEmail(cert.id)}
+                                disabled={resendingId === cert.id}
+                                className="mob-card-action w-11 h-11 rounded-md text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 transition-colors flex items-center justify-center shrink-0 disabled:opacity-50"
+                                title="Resend certificate email"
+                              >
+                                {resendingId === cert.id ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                              </button>
+                            )}
+                            <div className="flex-1 min-w-[8px]" />
+                            {confirmDeleteId === cert.id ? (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleDeleteCertificate(cert.id)}
+                                  className="mob-card-action h-11 px-3 rounded-md bg-red-600 text-white text-xs font-semibold flex items-center justify-center shrink-0"
+                                >
+                                  {updatingId === cert.id ? <Loader2 size={16} className="animate-spin" /> : "Trash"}
+                                </button>
+                                <button
+                                  onClick={() => setConfirmDeleteId(null)}
+                                  className="mob-card-action h-11 px-3 rounded-md border border-zinc-200 text-zinc-600 text-xs font-medium flex items-center justify-center shrink-0"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : confirmRevokeId === cert.id ? (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleToggleStatus(cert.id, cert.status)}
+                                  className="mob-card-action h-11 px-3 rounded-md bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold flex items-center justify-center shrink-0"
+                                >
+                                  {updatingId === cert.id ? <Loader2 size={16} className="animate-spin" /> : "Revoke"}
+                                </button>
+                                <button
+                                  onClick={() => setConfirmRevokeId(null)}
+                                  className="mob-card-action h-11 px-3 rounded-md border border-zinc-200 text-zinc-600 text-xs font-medium flex items-center justify-center shrink-0"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => {
+                                    if (cert.status === "valid") {
+                                      setConfirmRevokeId(cert.id);
+                                      setConfirmDeleteId(null);
+                                    } else {
+                                      handleToggleStatus(cert.id, cert.status);
+                                    }
+                                  }}
+                                  disabled={updatingId === cert.id}
+                                  className="mob-card-action h-11 px-3 rounded-md bg-zinc-100 text-zinc-700 hover:bg-zinc-200 text-xs font-medium flex items-center justify-center shrink-0"
+                                  title={cert.status === "valid" ? "Revoke Credential" : "Restore Credential"}
+                                >
+                                  {updatingId === cert.id ? <Loader2 size={16} className="animate-spin" /> : cert.status === "valid" ? "Revoke" : "Restore"}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setConfirmDeleteId(cert.id);
+                                    setConfirmRevokeId(null);
+                                  }}
+                                  disabled={updatingId === cert.id}
+                                  className="mob-card-action w-11 h-11 rounded-md text-zinc-600 hover:text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center shrink-0"
+                                  title="Move to Trash"
+                                >
+                                  {updatingId === cert.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                                </button>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>

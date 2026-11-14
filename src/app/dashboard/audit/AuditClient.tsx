@@ -58,6 +58,7 @@ export default function AuditClient({ initialLogs }: { initialLogs: AuditLogType
       case "CLAIMED": return "Claimed certificate";
       case "REVOKED": return "Revoked certificate";
       case "RESTORED": return "Restored certificate";
+      case "ARCHIVED": return "Moved certificate to trash";
       default: return action;
     }
   };
@@ -69,6 +70,7 @@ export default function AuditClient({ initialLogs }: { initialLogs: AuditLogType
       case "CLAIMED": return ipAddress ? `Attendee (${ipAddress})` : "Attendee";
       case "REVOKED": return "Admin";
       case "RESTORED": return "Admin";
+      case "ARCHIVED": return "Admin";
       default: return "System";
     }
   };

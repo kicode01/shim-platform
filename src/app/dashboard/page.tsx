@@ -34,7 +34,7 @@ export default async function DashboardPage() {
   // Load server-side initial stats and events
   const userRole = (session.user as any).role;
   const userId = session.user.id;
-  const issuerFilter = userRole === "admin" ? {} : { issuerId: userId };
+  const issuerFilter = userRole === "admin" ? { deletedAt: null } : { issuerId: userId, deletedAt: null };
   const templateFilter = userRole === "admin" ? {} : { userId };
   const organizerFilter = userRole === "admin" ? {} : { organizerId: userId };
   const auditFilter = userRole === "admin" ? { action: "VERIFIED" } : { action: "VERIFIED", certificate: { issuerId: userId } };
@@ -69,7 +69,7 @@ export default async function DashboardPage() {
         orderBy: { createdAt: "desc" },
         include: {
           _count: {
-            select: { attendances: true, certificates: true }
+            select: { attendances: true, certificates: { where: { deletedAt: null } } }
           }
         }
       }),

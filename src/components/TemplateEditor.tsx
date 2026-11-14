@@ -1626,9 +1626,9 @@ export default function TemplateEditor({
       elX = Math.round((canvasWidth - elWidth) / 2);
       elY = Math.round(canvasHeight * 0.5);
     } else if (type === 'signature') {
-      elWidth = 600;
-      elHeight = 220;
-      elX = Math.round((canvasWidth - 600) / 2);
+      elWidth = undefined;
+      elHeight = undefined;
+      elX = Math.round((canvasWidth - 950) / 2);
       elY = Math.round(canvasHeight * 0.75);
     } else {
       // Text elements (staticText, dynamicText)
@@ -2597,7 +2597,11 @@ const duplicateElement = (id?: string) => {
                                   <label className="btn-secondary w-full justify-center cursor-pointer text-xs py-2 border-dashed">
                                     <ImageIcon size={14} className="mr-1.5 text-zinc-500" /> Upload Image instead
                                     <input type="file" accept="image/png, image/jpeg, image/svg+xml" onChange={(e) => {
-                                      readImageFileAsDataUrl(e, (src) => updateSelectedElement({ src }));
+                                      readImageFileAsDataUrl(e, (src) => updateSelectedElement({
+                                        src,
+                                        width: selectedElement.width ?? 600,
+                                        height: selectedElement.height ?? 220,
+                                      }));
                                     }} className="hidden" />
                                   </label>
                                   {selectedElement.src && (
@@ -2733,7 +2737,7 @@ const duplicateElement = (id?: string) => {
                               </div>
                               <div>
                                 <label className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Size (pt)</label>
-                                <FontSizeSelector value={selectedElement.fontSize || 16} onChange={(val) => updateSelectedElement({ fontSize: val })} />
+                                <FontSizeSelector value={selectedElement.fontSize || 120} onChange={(val) => updateSelectedElement({ fontSize: val })} />
                               </div>
                               <div>
                                 <label className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Ink Color</label>
@@ -3132,7 +3136,7 @@ const duplicateElement = (id?: string) => {
                                   </div>
                                 </div>
                                 
-                                {!(selectedElement.type.includes("Text") || selectedElement.type === "signature") && (
+                                {!(selectedElement.type.includes("Text") || (selectedElement.type === "signature" && !selectedElement.src)) && (
                                   <div className="col-span-2">
                                     <label className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Height</label>
                                     <div className="relative flex-1">
@@ -5028,6 +5032,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
   const borderPx = Math.max(2, Math.round(2 / s));
   const halfPx = Math.round(handlePx / 2);
   const isText = el.type === 'staticText' || el.type === 'dynamicText';
+  const isTypedSignature = el.type === 'signature' && !el.src;
   const isRotated = Boolean(el.rotation && el.rotation % 360 !== 0);
 
   const handleCornerResizeStart = (e: React.PointerEvent) => {
@@ -5053,32 +5058,34 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
     const canvasHeight = currentOrientation === 'landscape' ? 2480 : 3508;
     const startW = el.width || node.offsetWidth || 200;
     const startH = el.height || node.offsetHeight || 200;
-    const startX = el.x;
-    const startY = el.y;
-    const centerX = startX + startW / 2;
-    const centerY = startY + startH / 2;
-    const startFs = el.fontSize || 16;
+    const centerX = el.x + startW / 2;
+    const centerY = el.y + startH / 2;
+    const startFs = el.fontSize || (el.type === 'signature' ? 120 : 16);
 
-    const onPointerMove = (moveEvent: PointerEvent) => {
-      const currentDist = Math.hypot(moveEvent.clientX - screenCenterX, moveEvent.clientY - screenCenterY);
+    const buildScaledUpdates = (clientX: number, clientY: number): Partial<CanvasElement> => {
+      const currentDist = Math.hypot(clientX - screenCenterX, clientY - screenCenterY);
       const scaleFactor = Math.max(0.05, currentDist / startDist);
       const newW = Math.max(20, Math.min(canvasWidth, Math.round(startW * scaleFactor)));
       const newH = Math.max(10, Math.min(canvasHeight, Math.round(startH * scaleFactor)));
       const newX = Math.round(centerX - newW / 2);
       const newY = Math.round(centerY - newH / 2);
 
-      const updates: any = {
+      const updates: Partial<CanvasElement> = {
         x: Math.max(0, Math.min(canvasWidth - newW, newX)),
         y: Math.max(0, Math.min(canvasHeight - newH, newY)),
         width: newW,
       };
-      if (!isText && (el.height !== undefined || el.type === 'shape' || isProportional)) {
+      if (!isText && !isTypedSignature && (el.height !== undefined || el.type === 'shape' || isProportional)) {
         updates.height = newH;
       }
       if (el.type === 'staticText' || el.type === 'dynamicText' || el.type === 'signature') {
         updates.fontSize = Math.max(8, Math.round(startFs * scaleFactor));
       }
-      updateElement(el.id, updates, false);
+      return updates;
+    };
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      updateElement(el.id, buildScaledUpdates(moveEvent.clientX, moveEvent.clientY), false);
     };
 
     const onPointerUp = (upEvent: PointerEvent) => {
@@ -5086,26 +5093,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("pointercancel", onPointerUp);
-
-      const currentDist = Math.hypot(upEvent.clientX - screenCenterX, upEvent.clientY - screenCenterY);
-      const scaleFactor = Math.max(0.05, currentDist / startDist);
-      const newW = Math.max(20, Math.min(canvasWidth, Math.round(startW * scaleFactor)));
-      const newH = Math.max(10, Math.min(canvasHeight, Math.round(startH * scaleFactor)));
-      const newX = Math.round(centerX - newW / 2);
-      const newY = Math.round(centerY - newH / 2);
-
-      const updates: any = {
-        x: Math.max(0, Math.min(canvasWidth - newW, newX)),
-        y: Math.max(0, Math.min(canvasHeight - newH, newY)),
-        width: newW,
-      };
-      if (!isText && (el.height !== undefined || el.type === 'shape' || isProportional)) {
-        updates.height = newH;
-      }
-      if (el.type === 'staticText' || el.type === 'dynamicText' || el.type === 'signature') {
-        updates.fontSize = Math.max(8, Math.round(startFs * scaleFactor));
-      }
-      updateElement(el.id, updates, true);
+      updateElement(el.id, buildScaledUpdates(upEvent.clientX, upEvent.clientY), true);
     };
 
     window.addEventListener("pointermove", onPointerMove);
@@ -5183,14 +5171,49 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
   const textLines = (displayText || el.text || ' ').split('\n').length;
   const textMinH = Math.max(24, Math.round((el.fontSize || 16) * (el.lineSpacing || 1.2) * textLines));
 
+  const computeResizeUpdates = (direction: string, ref: HTMLElement, position: { x: number; y: number }): Partial<CanvasElement> | null => {
+    if ((isText || isTypedSignature) && ref) {
+      ref.style.height = 'auto';
+    }
+    // `ref.style.width` and `position` are already in canvas-space units
+    // because react-rnd passes scale to re-resizable.
+    const newWidth = parseFloat(ref.style.width) || ref.offsetWidth;
+    const useExplicitHeight = !isText && !isTypedSignature && Boolean(el.height);
+    const newHeight = useExplicitHeight ? (parseFloat(ref.style.height) || ref.offsetHeight) : undefined;
+    if (isNaN(newWidth) || newWidth <= 0) return null;
+
+    const safeX = isNaN(position.x) ? el.x : Math.round(position.x);
+    const safeY = isNaN(position.y) ? el.y : Math.round(position.y);
+    const updates: Partial<CanvasElement> = { x: safeX, y: safeY };
+
+    const isCorner = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'].includes(direction);
+    if (isCorner && !isProportional && (isText || el.type === 'signature')) {
+      const startW = dragStartData.current.width || 1;
+      const defaultFontSize = el.type === 'signature' ? 120 : 16;
+      const startFs = dragStartData.current.fontSize || defaultFontSize;
+      const ratio = newWidth / startW;
+      updates.fontSize = Math.max(8, Math.round(startFs * ratio));
+    }
+
+    const canvasWidth = currentOrientation === 'landscape' ? 3508 : 2480;
+    const canvasHeight = currentOrientation === 'landscape' ? 2480 : 3508;
+
+    updates.width = Math.max(10, Math.min(canvasWidth - safeX, Math.round(newWidth)));
+    if (useExplicitHeight && newHeight !== undefined && !isNaN(newHeight)) {
+      updates.height = Math.max(10, Math.min(canvasHeight - safeY, Math.round(newHeight)));
+    }
+
+    return updates;
+  };
+
   return (
     <Rnd
       id={`rnd-${el.id}`}
       size={{ 
-        width: (el.type === 'signature' && !el.src) ? 'auto' : (el.width || 'auto'), 
-        height: (el.type === 'signature' && !el.src || isText) ? 'auto' : (el.height || 'auto') 
+        width: el.width || 'auto', 
+        height: (isTypedSignature || isText) ? 'auto' : (el.height || 'auto') 
       }}
-      minWidth={isText ? 40 : 10}
+      minWidth={(isText || isTypedSignature) ? 40 : 10}
       minHeight={isText ? textMinH : (el.type === 'shape' ? 2 : 10)}
       position={{ x: Number.isFinite(el.x) ? el.x : 0, y: Number.isFinite(el.y) ? el.y : 0 }}
       onDragStart={() => {
@@ -5267,74 +5290,12 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         dragStartData.current = { width: ref.offsetWidth, fontSize: el.fontSize || defaultFontSize };
       }}
       onResize={(e, direction, ref, delta, position) => {
-        if (isText && ref) {
-          ref.style.height = 'auto';
-        }
-        // `ref.style.width` and `position` are already in canvas-space units
-        // because react-rnd passes scale to re-resizable.
-        const newWidth = parseFloat(ref.style.width) || ref.offsetWidth;
-        const newHeight = (!isText && el.height) ? (parseFloat(ref.style.height) || ref.offsetHeight) : undefined;
-        if (isNaN(newWidth) || newWidth <= 0) return;
-
-        const safeX = isNaN(position.x) ? el.x : Math.round(position.x);
-        const safeY = isNaN(position.y) ? el.y : Math.round(position.y);
-        let updates: any = { x: safeX, y: safeY };
-
-        const isCorner = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'].includes(direction);
-        if (isCorner && !isProportional && (isText || el.type === 'signature')) {
-          const startW = dragStartData.current.width || 1;
-          const defaultFontSize = el.type === 'signature' ? 120 : 16;
-          const startFs = dragStartData.current.fontSize || defaultFontSize;
-          const ratio = newWidth / startW;
-          updates.fontSize = Math.max(8, Math.round(startFs * ratio));
-        }
-
-        const canvasWidth = currentOrientation === 'landscape' ? 3508 : 2480;
-        const canvasHeight = currentOrientation === 'landscape' ? 2480 : 3508;
-
-        const clampedWidth = Math.max(10, Math.min(canvasWidth - safeX, Math.round(newWidth)));
-        const clampedHeight = newHeight !== undefined ? Math.max(10, Math.min(canvasHeight - safeY, Math.round(newHeight))) : undefined;
-
-        updates.width = (el.type === 'signature' && !el.src) ? ref.offsetWidth : clampedWidth;
-        if (!isText && newHeight !== undefined && !isNaN(newHeight)) {
-          updates.height = (el.type === 'signature' && !el.src) ? ref.offsetHeight : clampedHeight;
-        }
-
-        updateElement(el.id, updates, false);
+        const updates = computeResizeUpdates(direction, ref, position);
+        if (updates) updateElement(el.id, updates, false);
       }}
       onResizeStop={(e, direction, ref, delta, position) => {
-        if (isText && ref) {
-          ref.style.height = 'auto';
-        }
-        const newWidth = parseFloat(ref.style.width) || ref.offsetWidth;
-        const newHeight = (!isText && el.height) ? (parseFloat(ref.style.height) || ref.offsetHeight) : undefined;
-        if (isNaN(newWidth) || newWidth <= 0) return;
-
-        const safeX = isNaN(position.x) ? el.x : Math.round(position.x);
-        const safeY = isNaN(position.y) ? el.y : Math.round(position.y);
-        let updates: any = { x: safeX, y: safeY };
-
-        const isCorner = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'].includes(direction);
-        if (isCorner && !isProportional && (isText || el.type === 'signature')) {
-          const startW = dragStartData.current.width || 1;
-          const defaultFontSize = el.type === 'signature' ? 120 : 16;
-          const startFs = dragStartData.current.fontSize || defaultFontSize;
-          const ratio = newWidth / startW;
-          updates.fontSize = Math.max(8, Math.round(startFs * ratio));
-        }
-
-        const canvasWidth = currentOrientation === 'landscape' ? 3508 : 2480;
-        const canvasHeight = currentOrientation === 'landscape' ? 2480 : 3508;
-
-        const clampedWidth = Math.max(10, Math.min(canvasWidth - safeX, Math.round(newWidth)));
-        const clampedHeight = newHeight !== undefined ? Math.max(10, Math.min(canvasHeight - safeY, Math.round(newHeight))) : undefined;
-
-        updates.width = (el.type === 'signature' && !el.src) ? ref.offsetWidth : clampedWidth;
-        if (!isText && newHeight !== undefined && !isNaN(newHeight)) {
-          updates.height = (el.type === 'signature' && !el.src) ? ref.offsetHeight : clampedHeight;
-        }
-
-        updateElement(el.id, updates, true);
+        const updates = computeResizeUpdates(direction, ref, position);
+        if (updates) updateElement(el.id, updates, true);
       }}
       scale={scale}
       bounds="parent"
@@ -5378,24 +5339,22 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         el.locked || isRotating || isRotated
           ? false 
           : isSelected && !isEditing 
-            ? (el.type === 'signature' && !el.src 
-                ? false 
-                : isText
-                  ? { left: true, right: true, topLeft: true, topRight: true, bottomLeft: true, bottomRight: true, top: false, bottom: false }
-                  : isLockedImage
-                    ? { topLeft: true, topRight: true, bottomLeft: true, bottomRight: true, top: false, bottom: false, left: false, right: false }
-                    : true)
+            ? (isText || isTypedSignature)
+              ? { left: true, right: true, topLeft: true, topRight: true, bottomLeft: true, bottomRight: true, top: false, bottom: false }
+              : isLockedImage
+                ? { topLeft: true, topRight: true, bottomLeft: true, bottomRight: true, top: false, bottom: false, left: false, right: false }
+                : true
             : false
       }
       lockAspectRatio={isProportional}
       resizeHandleStyles={{
         bottomRight: { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", right: `-${halfPx}px`, bottom: `-${halfPx}px` },
         right: isLockedImage ? { display: 'none' } : { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", right: `-${halfPx}px`, top: "50%", transform: "translateY(-50%)" },
-        bottom: (isText || isLockedImage) ? { display: 'none' } : { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", bottom: `-${halfPx}px`, left: "50%", transform: "translateX(-50%)" },
+        bottom: (isText || isLockedImage || isTypedSignature) ? { display: 'none' } : { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", bottom: `-${halfPx}px`, left: "50%", transform: "translateX(-50%)" },
         bottomLeft: { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", left: `-${halfPx}px`, bottom: `-${halfPx}px` },
         left: isLockedImage ? { display: 'none' } : { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", left: `-${halfPx}px`, top: "50%", transform: "translateY(-50%)" },
         topLeft: { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", left: `-${halfPx}px`, top: `-${halfPx}px` },
-        top: (isText || isLockedImage) ? { display: 'none' } : { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", top: `-${halfPx}px`, left: "50%", transform: "translateX(-50%)" },
+        top: (isText || isLockedImage || isTypedSignature) ? { display: 'none' } : { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", top: `-${halfPx}px`, left: "50%", transform: "translateX(-50%)" },
         topRight: { width: `${handlePx}px`, height: `${handlePx}px`, background: "white", border: `${borderPx}px solid #18181b`, borderRadius: "50%", right: `-${halfPx}px`, top: `-${halfPx}px` }
       }}
     >
@@ -5440,17 +5399,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
             }}
             value={el.text || ''}
             onChange={(e) => updateElement(el.id, { text: e.target.value })}
-            onBlur={() => {
-              setIsEditing(false);
-              if (el.type === 'signature' && !el.src) {
-                setTimeout(() => {
-                  const node = document.getElementById(`rnd-${el.id}`);
-                  if (node) {
-                    updateElement(el.id, { width: node.offsetWidth, height: node.offsetHeight });
-                  }
-                }, 50);
-              }
-            }}
+            onBlur={() => setIsEditing(false)}
             onKeyDown={(e) => { if (e.key === 'Escape') setIsEditing(false) }}
             onPointerDown={(e) => e.stopPropagation()}
           />
@@ -5598,7 +5547,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
             {!el.hideLine && (
               <div style={{ width: "100%", borderTop: `${el.lineThickness ?? 4}px solid ${el.lineColor || el.color || "#000000"}`, flexShrink: 0, marginBottom: `${el.linePadding ?? 10}px`, marginTop: `${el.linePadding ?? 10}px` }} />
             )}
-            <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", fontSize: `${(el.fontSize || 60) * (el.titleFontSize ?? 0.4)}px`, fontFamily: el.titleFontFamily || "var(--font-sans, sans-serif)", color: el.titleColor || el.color || "#000000", fontWeight: "bold", textTransform: "uppercase", letterSpacing: `${el.titleLetterSpacing ?? 4}px` }}>
+            <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", fontSize: `${(el.fontSize || 120) * (el.titleFontSize ?? 0.4)}px`, fontFamily: el.titleFontFamily || "var(--font-sans, sans-serif)", color: el.titleColor || el.color || "#000000", fontWeight: "bold", textTransform: "uppercase", letterSpacing: `${el.titleLetterSpacing ?? 4}px` }}>
               {el.signatoryTitle ?? (el.text?.split('|')[1] || "Title")}
             </div>
           </div>

@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Layers, Save, ArrowLeft, Stamp, Sliders, Code2, ShieldCheck, CheckCircle2, RotateCcw, RotateCw, Image as ImageIcon, Move, LayoutTemplate, Loader2, Sparkles, Shapes, Type, FileImage, MousePointer2, Minus, Plus, Trash2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, Database, QrCode, Undo, Redo, Hand, X, ArrowUp, ArrowDown, ChevronDown, ChevronUp, Lock, Unlock, Eye, Search, Copy, MoreHorizontal, Palette, Check, RefreshCw, Crosshair } from "lucide-react";
+import { Layers, Save, ArrowLeft, Stamp, Sliders, Code2, ShieldCheck, CheckCircle2, RotateCcw, RotateCw, Image as ImageIcon, Move, LayoutTemplate, Loader2, Sparkles, Shapes, Type, FileImage, MousePointer2, Minus, Plus, Trash2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, Database, QrCode, Undo, Redo, Hand, X, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Lock, Unlock, Eye, Search, Copy, MoreHorizontal, Palette, Check, RefreshCw, Crosshair } from "lucide-react";
 import { Rnd } from 'react-rnd';
 import CertificateView, { CertificateDesignConfig, CanvasElement, CanvasElementType } from "@/components/CertificateView";
 import { v4 as uuidv4 } from "uuid";
@@ -1166,6 +1166,88 @@ export default function TemplateEditor({
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [activeBgCategory, setActiveBgCategory] = useState<number>(0);
 
+  // Horizontal scroll support (mouse wheel, click-and-drag, edge arrows) for desktop BG category pills
+  const bgCategoryStripRef = useRef<HTMLDivElement>(null);
+  const bgCategoryDrag = useRef({ moved: false, startX: 0, startScrollLeft: 0 });
+  const bgCategoryCleanupRef = useRef<(() => void) | null>(null);
+  const [bgCategoryScroll, setBgCategoryScroll] = useState({ left: false, right: false });
+
+  const updateBgCategoryScroll = useCallback(() => {
+    const el = bgCategoryStripRef.current;
+    if (!el) return;
+    const left = el.scrollLeft > 2;
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
+    setBgCategoryScroll((prev) => (prev.left === left && prev.right === right ? prev : { left, right }));
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== "background") return;
+    const el = bgCategoryStripRef.current;
+    if (!el) return;
+
+    updateBgCategoryScroll();
+
+    // Non-passive listener so vertical mouse wheel translates cleanly to horizontal scroll
+    const handleWheel = (e: WheelEvent) => {
+      if (el.scrollWidth <= el.clientWidth) return;
+      if (Math.abs(e.deltaY) >= Math.abs(e.deltaX) && e.deltaY !== 0) {
+        e.preventDefault();
+        const factor = e.deltaMode === 1 ? 24 : 1;
+        el.scrollLeft += e.deltaY * factor;
+        updateBgCategoryScroll();
+      }
+    };
+
+    const observer = new ResizeObserver(updateBgCategoryScroll);
+    observer.observe(el);
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      observer.disconnect();
+      el.removeEventListener("wheel", handleWheel);
+    };
+  }, [activeTab, updateBgCategoryScroll]);
+
+  useEffect(() => {
+    return () => bgCategoryCleanupRef.current?.();
+  }, []);
+
+  const handleBgCategoryMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    const el = bgCategoryStripRef.current;
+    if (!el || el.scrollWidth <= el.clientWidth) return;
+
+    bgCategoryCleanupRef.current?.();
+    bgCategoryDrag.current = { moved: false, startX: e.clientX, startScrollLeft: el.scrollLeft };
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const dx = moveEvent.clientX - bgCategoryDrag.current.startX;
+      if (Math.abs(dx) > 4) {
+        bgCategoryDrag.current.moved = true;
+      }
+      if (bgCategoryDrag.current.moved) {
+        el.scrollLeft = bgCategoryDrag.current.startScrollLeft - dx;
+      }
+    };
+
+    const cleanup = () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", cleanup);
+      bgCategoryCleanupRef.current = null;
+      // Clear after the synchronous click phase so drag-release doesn't select a pill
+      requestAnimationFrame(() => {
+        bgCategoryDrag.current.moved = false;
+      });
+    };
+
+    bgCategoryCleanupRef.current = cleanup;
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", cleanup);
+  };
+
+  const scrollBgCategoriesBy = (delta: number) => {
+    bgCategoryStripRef.current?.scrollBy({ left: delta, behavior: "smooth" });
+  };
+
   // History state for Undo/Redo
   const [history, setHistory] = useState<CertificateDesignConfig[]>([parsedInitial]);
   const [historyIndex, setHistoryIndex] = useState(0);
@@ -2169,24 +2251,68 @@ const duplicateElement = (id?: string) => {
                       />
                     </div>
 
-                    <div className="pt-2">
-                      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                        {PRESET_CATEGORIES.map((category, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => setActiveBgCategory(idx)}
-                            className={`shrink-0 px-3 py-1.5 text-xs font-semibold whitespace-nowrap rounded-lg transition-colors border ${
-                              activeBgCategory === idx 
-                                ? 'bg-zinc-900 text-white border-zinc-900 shadow-sm' 
-                                : 'bg-white text-zinc-500 border-zinc-200 hover:bg-zinc-50 hover:text-zinc-800'
-                            }`}
-                          >
-                            <span className="flex items-center gap-1.5">
-                              {category.orientation === 'portrait' ? <span className="w-1.5 h-2.5 border border-current rounded-[1px] opacity-70"></span> : <span className="w-2.5 h-1.5 border border-current rounded-[1px] opacity-70"></span>}
-                              {category.name}
-                            </span>
-                          </button>
-                        ))}
+                    <div className="pt-2 pb-2">
+                      <div className="relative">
+                        {bgCategoryScroll.left && (
+                          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center bg-gradient-to-r from-white via-white/95 to-transparent pr-4">
+                            <button
+                              type="button"
+                              onClick={() => scrollBgCategoriesBy(-180)}
+                              aria-label="Scroll template categories left"
+                              title="Scroll left"
+                              className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 shadow-xs transition-colors hover:bg-zinc-50 hover:text-zinc-900"
+                            >
+                              <ChevronLeft size={14} />
+                            </button>
+                          </div>
+                        )}
+                        <div
+                          ref={bgCategoryStripRef}
+                          onScroll={updateBgCategoryScroll}
+                          onMouseDown={handleBgCategoryMouseDown}
+                          onDragStart={(e) => e.preventDefault()}
+                          onClickCapture={(e) => {
+                            if (bgCategoryDrag.current.moved) {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              bgCategoryDrag.current.moved = false;
+                            }
+                          }}
+                          className={`flex gap-2 overflow-x-auto scrollbar-hide select-none ${
+                            bgCategoryScroll.left || bgCategoryScroll.right ? "cursor-grab active:cursor-grabbing" : ""
+                          }`}
+                        >
+                          {PRESET_CATEGORIES.map((category, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setActiveBgCategory(idx)}
+                              className={`shrink-0 px-3 py-1.5 text-xs font-semibold whitespace-nowrap rounded-lg transition-colors border ${
+                                activeBgCategory === idx 
+                                  ? 'bg-zinc-900 text-white border-zinc-900 shadow-sm' 
+                                  : 'bg-white text-zinc-500 border-zinc-200 hover:bg-zinc-50 hover:text-zinc-800'
+                              }`}
+                            >
+                              <span className="flex items-center gap-1.5">
+                                {category.orientation === 'portrait' ? <span className="w-1.5 h-2.5 border border-current rounded-[1px] opacity-70"></span> : <span className="w-2.5 h-1.5 border border-current rounded-[1px] opacity-70"></span>}
+                                {category.name}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                        {bgCategoryScroll.right && (
+                          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 flex items-center bg-gradient-to-l from-white via-white/95 to-transparent pl-4">
+                            <button
+                              type="button"
+                              onClick={() => scrollBgCategoriesBy(180)}
+                              aria-label="Scroll template categories right"
+                              title="Scroll right"
+                              className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 shadow-xs transition-colors hover:bg-zinc-50 hover:text-zinc-900"
+                            >
+                              <ChevronRight size={14} />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -3484,7 +3484,7 @@ const duplicateElement = (id?: string) => {
                       <h4 className="text-xs font-semibold text-zinc-700 flex items-center gap-1.5">
                         <Layers size={14} className="text-zinc-500" /> Canvas Layers
                       </h4>
-                      <button onClick={() => setShowLayersPanel(false)} className="text-zinc-400 hover:text-zinc-600 transition-colors">
+                      <button onClick={() => setShowLayersPanel(false)} className="text-zinc-400 hover:text-zinc-600 transition-colors cursor-pointer">
                         <X size={14} />
                       </button>
                     </div>
@@ -3512,7 +3512,7 @@ const duplicateElement = (id?: string) => {
                               onDragOver={handleLayerDragOver}
                               onDrop={(e) => handleLayerDrop(e, el.id)}
                               onDragEnd={() => setDraggedLayerId(null)}
-                              className={`group flex items-center justify-between p-2 rounded-lg text-xs cursor-grab active:cursor-grabbing transition-colors ${isSelected ? 'bg-zinc-100 text-zinc-950 shadow-sm border border-zinc-200/50' : 'bg-transparent hover:bg-zinc-100 text-zinc-600 border border-transparent'} ${draggedLayerId === el.id ? 'opacity-40 border-dashed border-zinc-400' : ''}`}
+                              className={`group flex items-center justify-between p-2 rounded-lg text-xs cursor-grab-contrast transition-colors ${isSelected ? 'bg-zinc-100 text-zinc-950 shadow-sm border border-zinc-300/80 hover:border-zinc-400' : 'bg-transparent hover:bg-zinc-100 text-zinc-700 border border-transparent hover:border-zinc-300'} ${draggedLayerId === el.id ? 'opacity-40 border-dashed border-zinc-400' : ''}`}
                               onClick={() => setSelectedElementId(el.id)}
                             >
                               <div className="flex items-center gap-2 truncate">
@@ -3527,15 +3527,15 @@ const duplicateElement = (id?: string) => {
                                   e.stopPropagation(); 
                                   updateElement(el.id, { locked: !el.locked }); 
                                   if (!el.locked && selectedElementId === el.id) setSelectedElementId(null);
-                                }} className={`p-1 rounded transition-colors ${el.locked ? 'text-amber-500 hover:bg-amber-100' : 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-200/50 opacity-0 group-hover:opacity-100'}`} title={el.locked ? "Unlock layer" : "Lock layer"}>
+                                }} className={`p-1 rounded transition-colors cursor-pointer ${el.locked ? 'text-amber-500 hover:bg-amber-100' : 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-200/50 opacity-0 group-hover:opacity-100'}`} title={el.locked ? "Unlock layer" : "Lock layer"}>
                                   {el.locked ? <Lock size={12} /> : <Unlock size={12} />}
                                 </button>
                                 {isSelected && (
                                   <>
-                                    <button onClick={(e) => { e.stopPropagation(); moveLayerUp(); }} disabled={idx === design.canvasElements!.length - 1} className="p-1 hover:bg-zinc-300/50 rounded text-zinc-900 disabled:opacity-30 transition-colors" title="Bring Forward">
+                                    <button onClick={(e) => { e.stopPropagation(); moveLayerUp(); }} disabled={idx === design.canvasElements!.length - 1} className="p-1 hover:bg-zinc-300/50 rounded text-zinc-900 disabled:opacity-30 transition-colors cursor-pointer" title="Bring Forward">
                                       <ArrowUp size={12} />
                                     </button>
-                                    <button onClick={(e) => { e.stopPropagation(); moveLayerDown(); }} disabled={idx === 0} className="p-1 hover:bg-zinc-300/50 rounded text-zinc-900 disabled:opacity-30 transition-colors" title="Send Backward">
+                                    <button onClick={(e) => { e.stopPropagation(); moveLayerDown(); }} disabled={idx === 0} className="p-1 hover:bg-zinc-300/50 rounded text-zinc-900 disabled:opacity-30 transition-colors cursor-pointer" title="Send Backward">
                                       <ArrowDown size={12} />
                                     </button>
                                   </>

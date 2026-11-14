@@ -12,10 +12,18 @@ export async function POST(
     const body = await req.json();
     const name = typeof body.name === "string" ? body.name.trim() : "";
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    const role = typeof body.role === "string" ? body.role.trim() : "";
 
-    if (!name || !email) {
+    if (!name || !email || !role) {
       return NextResponse.json(
-        { error: "Name and email are required" },
+        { error: "Name, email, and role are required" },
+        { status: 400 }
+      );
+    }
+
+    if (role.length > 100) {
+      return NextResponse.json(
+        { error: "Role must be 100 characters or less" },
         { status: 400 }
       );
     }
@@ -41,13 +49,14 @@ export async function POST(
       },
       update: {
         name,
+        role,
         checkedInAt: new Date(),
       },
       create: {
         eventId,
         name,
         email,
-        role: event.defaultRole,
+        role,
       },
     });
 

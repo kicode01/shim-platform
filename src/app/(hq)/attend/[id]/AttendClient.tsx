@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle, Loader2, Mail, ArrowRight, QrCode } from "lucide-react";
+import { CheckCircle, Loader2, Mail, ArrowRight, ChevronDown } from "lucide-react";
 import Link from "next/link";
+
+const ATTENDEE_ROLE_OPTIONS = ["Speaker", "Participant", "Organizer", "Others"] as const;
 
 interface AttendClientProps {
   event: {
@@ -20,14 +22,26 @@ type Result =
 export default function AttendClient({ event }: AttendClientProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [selectedRole, setSelectedRole] = useState("");
+  const [customRole, setCustomRole] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const resolvedRole = selectedRole === "Others" ? customRole.trim() : selectedRole;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email) {
-      setError("Please fill in both fields.");
+    if (!name.trim() || !email.trim()) {
+      setError("Please fill in your name and email address.");
+      return;
+    }
+    if (!selectedRole) {
+      setError("Please select your role.");
+      return;
+    }
+    if (selectedRole === "Others" && !customRole.trim()) {
+      setError("Please enter your custom role.");
       return;
     }
 
@@ -38,7 +52,11 @@ export default function AttendClient({ event }: AttendClientProps) {
       const res = await fetch(`/api/attend/${event.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email }),
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          role: resolvedRole,
+        }),
       });
 
       const data = await res.json();
@@ -107,7 +125,9 @@ export default function AttendClient({ event }: AttendClientProps) {
                   <h2 className="text-3xl md:text-4xl font-black text-zinc-800 tracking-tight leading-none">
                     You're checked in
                   </h2>
-                  <p className="text-zinc-500 font-medium mt-1">Thanks for attending {event.name}.</p>
+                  <p className="text-zinc-500 font-medium mt-1">
+                    Thanks for attending {event.name} as <span className="text-zinc-700 font-semibold">{resolvedRole}</span>.
+                  </p>
                 </div>
               </div>
 
@@ -170,7 +190,9 @@ export default function AttendClient({ event }: AttendClientProps) {
                   <h2 className="text-3xl md:text-4xl font-black text-zinc-800 tracking-tight leading-none">
                     You're checked in
                   </h2>
-                  <p className="text-zinc-500 font-medium mt-1">Certificate issued for {name}.</p>
+                  <p className="text-zinc-500 font-medium mt-1">
+                    Certificate issued for {name} ({resolvedRole}).
+                  </p>
                 </div>
               </div>
 
@@ -275,6 +297,69 @@ export default function AttendClient({ event }: AttendClientProps) {
                     Email Address
                   </label>
                 </div>
+
+                <div className="relative pt-6">
+                  <label
+                    htmlFor="role"
+                    className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1"
+                  >
+                    Role *
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="role"
+                      required
+                      value={selectedRole}
+                      onChange={(e) => {
+                        const next = e.target.value;
+                        setSelectedRole(next);
+                        if (next !== "Others") {
+                          setCustomRole("");
+                        }
+                      }}
+                      disabled={isSubmitting}
+                      className={`w-full appearance-none bg-transparent border-b-2 border-zinc-200 focus:border-zinc-800 text-xl md:text-2xl py-3 pr-10 focus:outline-none transition-colors disabled:opacity-50 cursor-pointer ${
+                        selectedRole ? "text-zinc-800" : "text-zinc-400"
+                      }`}
+                    >
+                      <option value="" disabled>
+                        Select your role
+                      </option>
+                      {ATTENDEE_ROLE_OPTIONS.map((option) => (
+                        <option key={option} value={option} className="text-zinc-800 bg-white">
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown
+                      size={20}
+                      className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-zinc-400"
+                    />
+                  </div>
+                  <p className="text-xs text-zinc-400 mt-2 font-medium">Printed on your event certificate</p>
+                </div>
+
+                {selectedRole === "Others" && (
+                  <div className="relative group pt-6">
+                    <input
+                      id="customRole"
+                      type="text"
+                      required
+                      value={customRole}
+                      onChange={(e) => setCustomRole(e.target.value)}
+                      placeholder=" "
+                      className="peer w-full bg-transparent border-b-2 border-zinc-200 focus:border-zinc-800 text-zinc-800 text-xl md:text-2xl py-4 focus:outline-none transition-colors placeholder:text-transparent disabled:opacity-50"
+                      disabled={isSubmitting}
+                    />
+                    <label
+                      htmlFor="customRole"
+                      className="absolute left-0 top-10 text-zinc-400 text-xl md:text-2xl transition-all peer-focus:top-3 peer-focus:text-xs peer-focus:font-bold peer-focus:text-zinc-800 peer-focus:uppercase peer-focus:tracking-widest peer-valid:top-3 peer-valid:text-xs peer-valid:font-bold peer-valid:text-zinc-400 peer-valid:uppercase peer-valid:tracking-widest pointer-events-none"
+                    >
+                      Specify Your Role *
+                    </label>
+                    <p className="text-xs text-zinc-400 mt-2 font-medium">Enter your custom designation (e.g. Judge, Panelist)</p>
+                  </div>
+                )}
               </div>
 
               <div className="mt-auto pt-12">

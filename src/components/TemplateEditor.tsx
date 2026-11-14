@@ -179,6 +179,144 @@ function FontSizeSelector({ value, onChange }: { value: number, onChange: (val: 
   );
 }
 
+interface MobileCategoryPillItem {
+  id: string;
+  label: string;
+}
+
+/**
+ * Full-bleed horizontal category pill strip for mobile bottom sheets with
+ * edge gradient fades, chevron scroll buttons, and active-pill centering.
+ */
+function MobileCategoryPillStrip({
+  items,
+  activeId,
+  onSelect,
+  bleedClassName = "-mx-5",
+  trackPaddingClassName = "px-5",
+}: {
+  items: MobileCategoryPillItem[];
+  activeId: string;
+  onSelect: (id: string) => void;
+  bleedClassName?: string;
+  trackPaddingClassName?: string;
+}) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const pillRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const lastClickTargetRef = useRef<string | null>(null);
+  const hasCenteredInitialRef = useRef(false);
+  const [scrollState, setScrollState] = useState({ left: false, right: false });
+  const firstItemId = items[0]?.id;
+
+  const updateScrollState = useCallback(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    const left = el.scrollLeft > 2;
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
+    setScrollState((prev) => (prev.left === left && prev.right === right ? prev : { left, right }));
+  }, []);
+
+  const scrollPillIntoCenter = useCallback((id: string, behavior: ScrollBehavior) => {
+    const track = trackRef.current;
+    const btn = pillRefs.current[id];
+    if (!track || !btn) return;
+    const btnRect = btn.getBoundingClientRect();
+    const trackRect = track.getBoundingClientRect();
+    const btnCenter = btnRect.left - trackRect.left + track.scrollLeft + btnRect.width / 2;
+    const targetLeft = Math.max(0, btnCenter - track.clientWidth / 2);
+    track.scrollTo({ left: targetLeft, behavior });
+  }, []);
+
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+
+    updateScrollState();
+    const observer = new ResizeObserver(updateScrollState);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [items.length, updateScrollState]);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      if (!hasCenteredInitialRef.current) {
+        hasCenteredInitialRef.current = true;
+        if (firstItemId !== undefined && firstItemId !== activeId) {
+          scrollPillIntoCenter(activeId, "auto");
+        }
+      } else if (lastClickTargetRef.current === activeId) {
+        lastClickTargetRef.current = null;
+      } else {
+        scrollPillIntoCenter(activeId, "smooth");
+      }
+      updateScrollState();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeId, firstItemId, scrollPillIntoCenter, updateScrollState]);
+
+  return (
+    <div className={`relative ${bleedClassName}`}>
+      {scrollState.left && (
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-[#18181b] via-[#18181b]/90 to-transparent flex items-center justify-start pl-1.5 z-10">
+          <button
+            type="button"
+            onClick={() => trackRef.current?.scrollBy({ left: -180, behavior: "smooth" })}
+            aria-label="Scroll categories left"
+            className="pointer-events-auto w-7 h-7 rounded-full bg-zinc-800/95 border border-zinc-700/80 text-zinc-200 hover:text-white hover:bg-zinc-700 shadow-md flex items-center justify-center active:scale-95 transition-all"
+          >
+            <ChevronLeft size={14} />
+          </button>
+        </div>
+      )}
+
+      <div
+        ref={trackRef}
+        onScroll={updateScrollState}
+        className={`flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-0.5 ${trackPaddingClassName}`}
+      >
+        {items.map((item) => {
+          const active = item.id === activeId;
+          return (
+            <button
+              key={item.id}
+              ref={(node) => {
+                pillRefs.current[item.id] = node;
+              }}
+              type="button"
+              onClick={() => {
+                lastClickTargetRef.current = item.id;
+                onSelect(item.id);
+                scrollPillIntoCenter(item.id, "smooth");
+              }}
+              aria-pressed={active}
+              className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
+                active
+                  ? "bg-white text-zinc-950 border-white shadow-xs font-semibold"
+                  : "bg-zinc-800/90 border-zinc-700/60 text-zinc-300 hover:text-white hover:border-zinc-500"
+              }`}
+            >
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {scrollState.right && (
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-[#18181b] via-[#18181b]/90 to-transparent flex items-center justify-end pr-1.5 z-10">
+          <button
+            type="button"
+            onClick={() => trackRef.current?.scrollBy({ left: 180, behavior: "smooth" })}
+            aria-label="Scroll categories right"
+            className="pointer-events-auto w-7 h-7 rounded-full bg-zinc-800/95 border border-zinc-700/80 text-zinc-200 hover:text-white hover:bg-zinc-700 shadow-md flex items-center justify-center active:scale-95 transition-all"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const FONT_SUPPORTED_WEIGHTS: Record<string, string[]> = {
   "Playfair Display": [
     "400",
@@ -4631,21 +4769,13 @@ const duplicateElement = (id?: string) => {
 
                         {/* Preset Categories */}
                         <div className="space-y-3">
-                          <div className="flex items-center gap-2 overflow-x-auto pb-1.5 no-scrollbar">
-                            {PRESET_CATEGORIES.map((cat, idx) => (
-                              <button
-                                key={idx}
-                                onClick={() => setActiveBgCategory(idx)}
-                                className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
-                                  activeBgCategory === idx
-                                    ? "bg-white text-zinc-950 border-white shadow-xs font-semibold"
-                                    : "bg-zinc-800/90 border-zinc-700/60 text-zinc-300 hover:text-white hover:border-zinc-500"
-                                }`}
-                              >
-                                {cat.name}
-                              </button>
-                            ))}
-                          </div>
+                          <MobileCategoryPillStrip
+                            items={PRESET_CATEGORIES.map((cat, idx) => ({ id: String(idx), label: cat.name }))}
+                            activeId={String(activeBgCategory)}
+                            onSelect={(id) => setActiveBgCategory(Number(id))}
+                            bleedClassName="-mx-5"
+                            trackPaddingClassName="px-5"
+                          />
 
                           <div className="grid grid-cols-3 gap-2">
                             {PRESET_CATEGORIES[activeBgCategory]?.items.map((bg) => (
@@ -4666,7 +4796,9 @@ const duplicateElement = (id?: string) => {
                                   });
                                   setMobileOpenTab(null);
                                 }}
-                                className={`relative aspect-[4/3] rounded-lg overflow-hidden border-2 transition-all ${
+                                className={`relative ${
+                                  PRESET_CATEGORIES[activeBgCategory]?.orientation === "portrait" ? "aspect-[3/4]" : "aspect-[4/3]"
+                                } rounded-lg overflow-hidden border-2 transition-all ${
                                   design.backgroundImageUrl === bg.url ? "border-white ring-2 ring-white/50 scale-95" : "border-zinc-800 hover:border-zinc-600"
                                 }`}
                               >
@@ -5246,21 +5378,13 @@ const duplicateElement = (id?: string) => {
 
                     {mobileElementAction === "font" && (
                       <div className="space-y-3">
-                        <div className="flex items-center gap-2 overflow-x-auto pb-1.5 no-scrollbar">
-                          {["All", "Serif & Luxury", "Sans-Serif & Modern", "Display & Impact", "Handwriting & Signatures", "Monospace & Tech"].map(cat => (
-                            <button
-                              key={cat}
-                              onClick={() => setMobileFontCategory(cat)}
-                              className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
-                                mobileFontCategory === cat
-                                  ? "bg-white text-zinc-950 border-white shadow-xs font-semibold"
-                                  : "bg-zinc-800/90 border-zinc-700/60 text-zinc-300 hover:text-white hover:border-zinc-500"
-                              }`}
-                            >
-                              {cat}
-                            </button>
-                          ))}
-                        </div>
+                        <MobileCategoryPillStrip
+                          items={["All", ...GOOGLE_FONTS.map((g) => g.group)].map((cat) => ({ id: cat, label: cat }))}
+                          activeId={mobileFontCategory}
+                          onSelect={(id) => setMobileFontCategory(id)}
+                          bleedClassName="-mx-4"
+                          trackPaddingClassName="px-4"
+                        />
 
                         <div className="space-y-1.5 max-h-56 overflow-y-auto custom-scrollbar">
                           {selectedElement.type === "signature" ? (

@@ -1889,6 +1889,16 @@ const duplicateElement = (id?: string) => {
   const [showPanTooltip, setShowPanTooltip] = useState(false);
   const [showLayersPanel, setShowLayersPanel] = useState(false);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const panOffsetRef = useRef({ x: 0, y: 0 });
+
+  const updatePanOffset = (next: { x: number; y: number }) => {
+    panOffsetRef.current = next;
+    setPanOffset(next);
+  };
+
+  useEffect(() => {
+    panOffsetRef.current = panOffset;
+  }, [panOffset]);
 
   useEffect(() => {
     if (isPanMode) setShowPanTooltip(true);
@@ -1897,7 +1907,7 @@ const duplicateElement = (id?: string) => {
 
   useEffect(() => {
     if (userZoom <= 1) {
-      setPanOffset({ x: 0, y: 0 });
+      updatePanOffset({ x: 0, y: 0 });
       setIsPanMode(false);
     }
     if (containerRef.current) {
@@ -1917,6 +1927,30 @@ const duplicateElement = (id?: string) => {
   const isRightClickPanning = useRef(false);
   const [isRightPanningActive, setIsRightPanningActive] = useState(false);
   const dragStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+  const touchPanRef = useRef({
+    active: false,
+    touchCount: 0,
+    startX: 0,
+    startY: 0,
+    panX: 0,
+    panY: 0,
+    moved: false,
+  });
+  const touchDidPanRef = useRef(false);
+  const touchDidPanTimerRef = useRef<number | null>(null);
+
+  const isNonPanInteractiveTarget = (target: HTMLElement | null) =>
+    Boolean(target?.closest("button, input, textarea, select, a, [data-no-pan]"));
+
+  const getTouchPoint = (touches: React.TouchList) => {
+    if (touches.length >= 2) {
+      return {
+        x: (touches[0].clientX + touches[1].clientX) / 2,
+        y: (touches[0].clientY + touches[1].clientY) / 2,
+      };
+    }
+    return { x: touches[0].clientX, y: touches[0].clientY };
+  };
 
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
     // Right mouse button (button 2) triggers panning anywhere at any zoom level
@@ -1927,28 +1961,28 @@ const duplicateElement = (id?: string) => {
       dragStart.current = {
         x: e.clientX,
         y: e.clientY,
-        panX: panOffset.x,
-        panY: panOffset.y
+        panX: panOffsetRef.current.x,
+        panY: panOffsetRef.current.y
       };
       return;
     }
 
-    if (isPanMode && hasOverflow) {
+    if (isPanMode) {
       isDraggingCanvas.current = true;
       dragStart.current = {
         x: e.clientX,
         y: e.clientY,
-        panX: panOffset.x,
-        panY: panOffset.y
+        panX: panOffsetRef.current.x,
+        panY: panOffsetRef.current.y
       };
     }
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent) => {
-    if (isRightClickPanning.current || (isDraggingCanvas.current && isPanMode && hasOverflow)) {
+    if (isRightClickPanning.current || (isDraggingCanvas.current && isPanMode)) {
       const dx = e.clientX - dragStart.current.x;
       const dy = e.clientY - dragStart.current.y;
-      setPanOffset({
+      updatePanOffset({
         x: dragStart.current.panX + dx,
         y: dragStart.current.panY + dy
       });
@@ -1968,7 +2002,7 @@ const duplicateElement = (id?: string) => {
       if (isRightClickPanning.current) {
         const dx = e.clientX - dragStart.current.x;
         const dy = e.clientY - dragStart.current.y;
-        setPanOffset({
+        updatePanOffset({
           x: dragStart.current.panX + dx,
           y: dragStart.current.panY + dy
         });
@@ -1987,34 +2021,115 @@ const duplicateElement = (id?: string) => {
     return () => {
       window.removeEventListener("mousemove", handleGlobalMouseMove);
       window.removeEventListener("mouseup", handleGlobalMouseUp);
+      if (touchDidPanTimerRef.current !== null) {
+        window.clearTimeout(touchDidPanTimerRef.current);
+      }
     };
   }, []);
 
+  const anchorTouchPan = (touches: React.TouchList, moved: boolean = false) => {
+    const pt = getTouchPoint(touches);
+    touchPanRef.current = {
+      active: true,
+      touchCount: touches.length,
+      startX: pt.x,
+      startY: pt.y,
+      panX: panOffsetRef.current.x,
+      panY: panOffsetRef.current.y,
+      moved,
+    };
+  };
+
   const handleCanvasTouchStart = (e: React.TouchEvent) => {
-    if (isPanMode && hasOverflow && e.touches.length === 1) {
-      isDraggingCanvas.current = true;
-      dragStart.current = {
-        x: e.touches[0].clientX,
-        y: e.touches[0].clientY,
-        panX: panOffset.x,
-        panY: panOffset.y
-      };
+    if (!e.touches || e.touches.length === 0) return;
+    const target = e.target as HTMLElement | null;
+    if (isNonPanInteractiveTarget(target)) return;
+
+    if (touchDidPanTimerRef.current !== null) {
+      window.clearTimeout(touchDidPanTimerRef.current);
+      touchDidPanTimerRef.current = null;
+    }
+    touchDidPanRef.current = false;
+
+    if (e.touches.length >= 2) {
+      anchorTouchPan(e.touches);
+      return;
+    }
+
+    if (e.touches.length === 1) {
+      const touchedElement = Boolean(target?.closest('[id^="rnd-"]'));
+      if (isPanMode || !touchedElement) {
+        anchorTouchPan(e.touches);
+      }
     }
   };
 
   const handleCanvasTouchMove = (e: React.TouchEvent) => {
-    if (isDraggingCanvas.current && isPanMode && hasOverflow && e.touches.length === 1) {
-      const dx = e.touches[0].clientX - dragStart.current.x;
-      const dy = e.touches[0].clientY - dragStart.current.y;
-      setPanOffset({
-        x: dragStart.current.panX + dx,
-        y: dragStart.current.panY + dy
+    if (!e.touches || e.touches.length === 0) return;
+
+    if (e.touches.length >= 2 && (!touchPanRef.current.active || touchPanRef.current.touchCount !== e.touches.length)) {
+      anchorTouchPan(e.touches, touchPanRef.current.moved);
+      return;
+    }
+
+    if (!touchPanRef.current.active) return;
+
+    const pt = getTouchPoint(e.touches);
+    const dx = pt.x - touchPanRef.current.startX;
+    const dy = pt.y - touchPanRef.current.startY;
+    if (!touchPanRef.current.moved && Math.hypot(dx, dy) > 4) {
+      touchPanRef.current.moved = true;
+      touchDidPanRef.current = true;
+    }
+    if (touchPanRef.current.moved) {
+      updatePanOffset({
+        x: touchPanRef.current.panX + dx,
+        y: touchPanRef.current.panY + dy,
       });
     }
   };
 
-  const handleCanvasTouchEnd = () => {
-    isDraggingCanvas.current = false;
+  const handleCanvasTouchStartCapture = (e: React.TouchEvent) => {
+    if (!e.touches || e.touches.length < 2) return;
+    const target = e.target as HTMLElement | null;
+    if (isNonPanInteractiveTarget(target)) return;
+    // Prevent child Rnd elements from starting element drags on two-finger pan
+    if (target?.closest('[id^="rnd-"]')) {
+      e.stopPropagation();
+      handleCanvasTouchStart(e);
+    }
+  };
+
+  const handleCanvasTouchMoveCapture = (e: React.TouchEvent) => {
+    if (!e.touches || e.touches.length < 2) return;
+    const target = e.target as HTMLElement | null;
+    if (isNonPanInteractiveTarget(target)) return;
+    if (target?.closest('[id^="rnd-"]')) {
+      e.stopPropagation();
+      handleCanvasTouchMove(e);
+    }
+  };
+
+  const handleCanvasTouchEnd = (e: React.TouchEvent) => {
+    if (!e.touches) return;
+    if (e.touches.length === 0) {
+      touchPanRef.current.active = false;
+      touchPanRef.current.touchCount = 0;
+      if (touchDidPanRef.current) {
+        if (touchDidPanTimerRef.current !== null) {
+          window.clearTimeout(touchDidPanTimerRef.current);
+        }
+        touchDidPanTimerRef.current = window.setTimeout(() => {
+          touchDidPanRef.current = false;
+          touchDidPanTimerRef.current = null;
+        }, 120);
+      }
+      return;
+    }
+
+    if (touchPanRef.current.active) {
+      anchorTouchPan(e.touches, touchPanRef.current.moved);
+    }
   };
 
   useEffect(() => {
@@ -3582,7 +3697,7 @@ const duplicateElement = (id?: string) => {
           {/* Canvas Viewport */}
           <div
             ref={containerRef}
-            className={`flex-1 min-h-0 relative flex items-center justify-center bg-[#141416] lg:bg-zinc-200/50 overflow-hidden touch-none select-none ${isRightPanningActive ? 'cursor-grabbing' : isPanMode && hasOverflow ? 'cursor-grab active:cursor-grabbing' : ''}`}
+            className={`flex-1 min-h-0 relative flex items-center justify-center bg-[#141416] lg:bg-zinc-200/50 overflow-hidden touch-none select-none ${isRightPanningActive ? 'cursor-grabbing' : isPanMode ? 'cursor-grab active:cursor-grabbing' : ''}`}
             style={{ touchAction: 'none', overscrollBehavior: 'none' }}
             onContextMenu={(e) => e.preventDefault()}
             onMouseDownCapture={(e) => {
@@ -3591,13 +3706,17 @@ const duplicateElement = (id?: string) => {
               }
             }}
             onClick={(e) => { 
+              if (touchDidPanRef.current) {
+                touchDidPanRef.current = false;
+                return;
+              }
               if (e.target === e.currentTarget && !isPanMode && !isRightPanningActive) { 
                 setSelectedElementId(null); 
                 setMobileElementAction(null);
               } 
             }}
             onDoubleClick={() => {
-              if (hasOverflow) {
+              if (isPanMode || hasOverflow) {
                 setIsPanMode(!isPanMode);
               }
             }}
@@ -3605,11 +3724,14 @@ const duplicateElement = (id?: string) => {
             onMouseMove={handleCanvasMouseMove}
             onMouseUp={handleCanvasMouseUp}
             onMouseLeave={handleCanvasMouseUp}
+            onTouchStartCapture={handleCanvasTouchStartCapture}
+            onTouchMoveCapture={handleCanvasTouchMoveCapture}
             onTouchStart={handleCanvasTouchStart}
             onTouchMove={handleCanvasTouchMove}
             onTouchEnd={handleCanvasTouchEnd}
+            onTouchCancel={handleCanvasTouchEnd}
           >
-            {(isRightPanningActive || (isPanMode && hasOverflow)) && (
+            {(isRightPanningActive || isPanMode) && (
               <div className="absolute inset-0 z-[100] pointer-events-auto cursor-grabbing" />
             )}
 
@@ -3626,6 +3748,10 @@ const duplicateElement = (id?: string) => {
               }}
               onContextMenu={(e) => e.preventDefault()}
               onClick={(e) => { 
+                if (touchDidPanRef.current) {
+                  touchDidPanRef.current = false;
+                  return;
+                }
                 if (e.target === e.currentTarget && !isRightPanningActive) {
                   setSelectedElementId(null);
                   setMobileElementAction(null);
@@ -3713,18 +3839,18 @@ const duplicateElement = (id?: string) => {
             </div>
 
             {/* Mobile Floating Zoom Pill (Canva style) */}
-            <div className="lg:hidden absolute bottom-3 right-3 z-30 flex items-center gap-1 bg-zinc-900/90 backdrop-blur-md rounded-xl px-2.5 py-1.5 border border-zinc-700/60 shadow-lg text-white">
+            <div data-no-pan="true" className="lg:hidden absolute bottom-3 right-3 z-[110] flex items-center gap-1 bg-zinc-900/90 backdrop-blur-md rounded-xl px-2.5 py-1.5 border border-zinc-700/60 shadow-lg text-white">
               <button onClick={() => setShowCenterGuides(!showCenterGuides)} className={`p-1 rounded-lg transition-colors ${showCenterGuides ? 'text-indigo-400 bg-white/20' : 'text-zinc-400 hover:text-white'}`} title="Toggle Center Guides"><Crosshair size={13} /></button>
               <div className="w-px h-3 bg-zinc-700 mx-0.5" />
               <button onClick={() => setUserZoom(p => Math.max(0.5, Number((p - 0.25).toFixed(2))))} className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white active:scale-90 transition-all" title="Zoom Out"><Minus size={13} /></button>
-              <button onClick={() => setUserZoom(1)} className="text-[11px] font-semibold px-1.5 text-zinc-200 hover:text-white active:scale-95 transition-transform" title="Reset to 100% Fit">{Math.round(userZoom * 100)}%</button>
+              <button onClick={() => { setUserZoom(1); setPanOffset({ x: 0, y: 0 }); }} className="text-[11px] font-semibold px-1.5 text-zinc-200 hover:text-white active:scale-95 transition-transform" title="Reset to 100% Fit">{Math.round(userZoom * 100)}%</button>
               <button onClick={() => setUserZoom(p => Math.min(4, Number((p + 0.25).toFixed(2))))} className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white active:scale-90 transition-all" title="Zoom In"><Plus size={13} /></button>
               <div className="w-px h-3 bg-zinc-700 mx-0.5" />
               <button onClick={() => setIsPanMode(!isPanMode)} className={`p-1 rounded-lg transition-colors ${isPanMode ? 'text-white bg-white/20' : 'text-zinc-400 hover:text-white'}`} title="Toggle Pan"><Hand size={13} /></button>
             </div>
 
             {/* Desktop Zoom Controls */}
-            <div className="hidden lg:flex absolute bottom-4 right-4 z-[110] flex flex-col items-end">
+            <div data-no-pan="true" className="hidden lg:flex absolute bottom-4 right-4 z-[110] flex flex-col items-end">
               <AnimatePresence>
                 {showLayersPanel && (
                   <motion.div
@@ -3833,7 +3959,7 @@ const duplicateElement = (id?: string) => {
                 <button onClick={() => setUserZoom(p => Math.max(0.1, p - (0.1 / scale)))} className="p-1 hover:bg-zinc-100 rounded text-zinc-600 transition-colors" title="Zoom Out">
                   <Minus size={14} />
                 </button>
-                <button onClick={() => setUserZoom(1)} className="px-2 py-1 hover:bg-zinc-100 rounded text-zinc-600 transition-colors text-xs font-medium w-auto sm:w-[140px] text-center" title="Reset Zoom">
+                <button onClick={() => { setUserZoom(1); setPanOffset({ x: 0, y: 0 }); }} className="px-2 py-1 hover:bg-zinc-100 rounded text-zinc-600 transition-colors text-xs font-medium w-auto sm:w-[140px] text-center" title="Reset Zoom">
                   <span className="hidden sm:inline">{design.orientation === 'portrait' ? '2480 x 3508 ' : '3508 x 2480 '}</span>
                   <span>{Math.round(scale * userZoom * 100)}%</span>
                 </button>

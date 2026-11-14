@@ -6,9 +6,25 @@ import { Loader2 } from "lucide-react";
 
 export default function LogoutPage() {
   useEffect(() => {
-    // Calling signOut without redirect: false will automatically 
-    // clear the NextAuth cookie and redirect to the callbackUrl
-    signOut({ callbackUrl: "/login" });
+    let active = true;
+
+    async function performSignOut() {
+      try {
+        // Use redirect: false so NextAuth clears the current-origin cookie without
+        // redirecting to NEXTAUTH_URL when running locally on a different port.
+        await signOut({ redirect: false });
+      } finally {
+        if (active) {
+          window.location.replace("/login");
+        }
+      }
+    }
+
+    performSignOut();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   return (

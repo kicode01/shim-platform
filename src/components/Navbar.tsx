@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getWorkspaceHref, isLocalHost } from "@/lib/domain";
 import { 
   LayoutDashboard, 
   Stamp, 
@@ -42,6 +43,51 @@ export default function Navbar() {
 
   const [confirmLogout, setConfirmLogout] = useState(false);
   const logoutTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const userRole = (session?.user as any)?.role as string | undefined;
+  const workspaceHref = getWorkspaceHref(userRole, host);
+  const workspaceLabel = userRole === "member" ? "Portal" : "Dashboard";
+
+  const handleLogoutClick = async () => {
+    if (!confirmLogout) {
+      setConfirmLogout(true);
+      if (logoutTimeoutRef.current) clearTimeout(logoutTimeoutRef.current);
+      logoutTimeoutRef.current = setTimeout(() => setConfirmLogout(false), 3000);
+      return;
+    }
+
+    if (logoutTimeoutRef.current) clearTimeout(logoutTimeoutRef.current);
+    setConfirmLogout(false);
+    await signOut({ redirect: false });
+    const currentHost = window.location.hostname;
+    const isCrossSubdomain = currentHost.includes("shim-studio") || currentHost.includes("shim-wallet");
+    window.location.href = !isLocalHost(currentHost) && isCrossSubdomain
+      ? "https://shim-hq.vercel.app/logout"
+      : "/login";
+  };
+
+  const renderWorkspaceLink = (className: string, showArrow = false) => {
+    const content = (
+      <>
+        <span>{workspaceLabel}</span>
+        {showArrow && <ArrowRight size={14} className="shrink-0" />}
+      </>
+    );
+
+    if (workspaceHref.startsWith("/api/")) {
+      return (
+        <a href={workspaceHref} className={className}>
+          {content}
+        </a>
+      );
+    }
+
+    return (
+      <Link href={workspaceHref} className={className}>
+        {content}
+      </Link>
+    );
+  };
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
@@ -276,13 +322,40 @@ export default function Navbar() {
                         Verify
                       </Link>
                       <div className="mob-divider h-5 w-px bg-zinc-700 shrink-0 hidden sm:block"></div>
-                      <Link href="/login" className="text-sm font-medium mob-hide text-zinc-400 hover:text-zinc-100 transition-colors whitespace-nowrap inline-block">
-                        Sign In
-                      </Link>
-                      <Link href="/register" className="mob-cta bg-zinc-100 hover:bg-white text-zinc-700 transition-colors text-sm font-medium rounded-xl px-4 py-2 flex items-center gap-2 whitespace-nowrap shadow-sm">
-                        Get Started
-                        <ArrowRight size={14} className="shrink-0" />
-                      </Link>
+                      {session?.user ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={handleLogoutClick}
+                            className={`mob-icon-btn shrink-0 flex items-center justify-center transition-all overflow-hidden ${
+                              confirmLogout
+                                ? "w-[80px] h-8 rounded-xl bg-red-600 text-white font-semibold text-xs tracking-wide"
+                                : "w-8 h-8 rounded-xl text-zinc-400 hover:text-red-400 hover:bg-red-500/10"
+                            }`}
+                            title="Sign Out"
+                          >
+                            {confirmLogout ? (
+                              <span className="text-xs font-medium whitespace-nowrap">Confirm</span>
+                            ) : (
+                              <LogOut size={16} strokeWidth={2} />
+                            )}
+                          </button>
+                          {renderWorkspaceLink(
+                            "mob-cta bg-zinc-100 hover:bg-white text-zinc-700 transition-colors text-sm font-medium rounded-xl px-4 py-2 flex items-center gap-2 whitespace-nowrap shadow-sm",
+                            true
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <Link href="/login" className="text-sm font-medium mob-hide text-zinc-400 hover:text-zinc-100 transition-colors whitespace-nowrap inline-block">
+                            Sign In
+                          </Link>
+                          <Link href="/register" className="mob-cta bg-zinc-100 hover:bg-white text-zinc-700 transition-colors text-sm font-medium rounded-xl px-4 py-2 flex items-center gap-2 whitespace-nowrap shadow-sm">
+                            Get Started
+                            <ArrowRight size={14} className="shrink-0" />
+                          </Link>
+                        </>
+                      )}
                     </>
                   )}
                 </motion.div>
@@ -320,19 +393,7 @@ export default function Navbar() {
 
                   {/* Logout */}
                   <button
-                    onClick={async () => {
-                      if (!confirmLogout) {
-                        setConfirmLogout(true);
-                        if (logoutTimeoutRef.current) clearTimeout(logoutTimeoutRef.current);
-                        logoutTimeoutRef.current = setTimeout(() => setConfirmLogout(false), 3000);
-                      } else {
-                        if (logoutTimeoutRef.current) clearTimeout(logoutTimeoutRef.current);
-                        setConfirmLogout(false);
-                        await signOut({ redirect: false });
-                        const isLocal = window.location.hostname.includes("localhost");
-                        window.location.href = isLocal ? "/logout" : "https://shim-hq.vercel.app/logout";
-                      }
-                    }}
+                    onClick={handleLogoutClick}
                     className={`mob-icon-btn shrink-0 flex items-center justify-center transition-all overflow-hidden ${
                       confirmLogout 
                         ? "w-[80px] h-8 rounded-xl bg-red-600 text-white font-semibold text-xs tracking-wide" 
@@ -389,19 +450,7 @@ export default function Navbar() {
 
                   {/* Logout — light */}
                   <button
-                    onClick={async () => {
-                      if (!confirmLogout) {
-                        setConfirmLogout(true);
-                        if (logoutTimeoutRef.current) clearTimeout(logoutTimeoutRef.current);
-                        logoutTimeoutRef.current = setTimeout(() => setConfirmLogout(false), 3000);
-                      } else {
-                        if (logoutTimeoutRef.current) clearTimeout(logoutTimeoutRef.current);
-                        setConfirmLogout(false);
-                        await signOut({ redirect: false });
-                        const isLocal = window.location.hostname.includes("localhost");
-                        window.location.href = isLocal ? "/logout" : "https://shim-hq.vercel.app/logout";
-                      }
-                    }}
+                    onClick={handleLogoutClick}
                     className={`mob-icon-btn shrink-0 flex items-center justify-center border transition-all rounded-xl overflow-hidden ${
                       confirmLogout
                         ? "w-[80px] h-8 border-red-600 bg-red-600 text-white hover:bg-red-700 shadow-sm"
@@ -447,20 +496,8 @@ export default function Navbar() {
                   className="mob-nav-right flex items-center gap-4"
                 >
                   {session?.user ? (
-                    (session.user as any).role === "member" ? (
-                      <Link 
-                        href="/portal"
-                        className="mob-cta flex items-center justify-center bg-zinc-700 border border-zinc-700 text-zinc-100 hover:text-white hover:bg-zinc-600 transition-colors rounded-xl px-4 py-2 shadow-sm text-sm font-medium whitespace-nowrap"
-                      >
-                        <span>Portal</span>
-                      </Link>
-                    ) : (
-                      <Link 
-                        href="/dashboard"
-                        className="mob-cta flex items-center justify-center bg-zinc-700 border border-zinc-700 text-zinc-100 hover:text-white hover:bg-zinc-600 transition-colors rounded-xl px-4 py-2 shadow-sm text-sm font-medium whitespace-nowrap"
-                      >
-                        <span>Dashboard</span>
-                      </Link>
+                    renderWorkspaceLink(
+                      "mob-cta flex items-center justify-center bg-zinc-700 border border-zinc-700 text-zinc-100 hover:text-white hover:bg-zinc-600 transition-colors rounded-xl px-4 py-2 shadow-sm text-sm font-medium whitespace-nowrap"
                     )
                   ) : (
                     <div className="flex items-center gap-6">

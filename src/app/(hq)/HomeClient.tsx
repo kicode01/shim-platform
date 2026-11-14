@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { 
   ArrowRight, 
   Layout, 
@@ -10,8 +12,23 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import LiveSpecimenCarousel from "@/components/LiveSpecimenCarousel";
+import { getWorkspaceHref } from "@/lib/domain";
 
 export default function HomeClient() {
+  const { data: session } = useSession();
+  const [host, setHost] = useState("");
+
+  useEffect(() => {
+    setHost(window.location.hostname);
+  }, []);
+
+  const userRole = (session?.user as any)?.role as string | undefined;
+  const heroHref = session?.user ? getWorkspaceHref(userRole, host) : "/login";
+  const heroLabel = session?.user
+    ? (userRole === "member" ? "Open Wallet" : "Open Dashboard")
+    : "Get Started";
+  const heroBtnClass =
+    "bg-zinc-100 hover:bg-white text-zinc-800 font-medium rounded-md py-3 px-8 transition-colors flex items-center justify-center gap-2 w-fit group";
   return (
     <div className="flex-1 flex flex-col bg-white min-h-0">
       {/* Modern Hero Section.
@@ -44,10 +61,17 @@ export default function HomeClient() {
 
               {/* Action Bar - Multi-domain CTAs */}
               <div className="flex flex-col sm:flex-row gap-4 mt-4">
-                <Link href="/login" className="bg-zinc-100 hover:bg-white text-zinc-800 font-medium rounded-md py-3 px-8 transition-colors flex items-center justify-center gap-2 w-fit group">
-                  Get Started
-                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                </Link>
+                {heroHref.startsWith("/api/") ? (
+                  <a href={heroHref} className={heroBtnClass}>
+                    {heroLabel}
+                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                  </a>
+                ) : (
+                  <Link href={heroHref} className={heroBtnClass}>
+                    {heroLabel}
+                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                )}
               </div>
             </motion.div>
 

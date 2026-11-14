@@ -3,9 +3,10 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Layers, Save, ArrowLeft, Stamp, Sliders, Code2, ShieldCheck, CheckCircle2, RotateCcw, RotateCw, Image as ImageIcon, Move, LayoutTemplate, Loader2, Sparkles, Shapes, Type, FileImage, MousePointer2, Minus, Plus, Trash2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, Database, QrCode, Undo, Redo, Hand, X, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Lock, Unlock, Eye, Search, Copy, MoreHorizontal, Palette, Check, RefreshCw, Crosshair } from "lucide-react";
+import { Layers, Save, ArrowLeft, Stamp, Sliders, Code2, ShieldCheck, CheckCircle2, RotateCcw, RotateCw, Image as ImageIcon, Move, LayoutTemplate, Loader2, Sparkles, Shapes, Type, FileImage, MousePointer2, Minus, Plus, Trash2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, Database, QrCode, Undo, Redo, Hand, X, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Lock, Unlock, Eye, Search, Copy, MoreHorizontal, Palette, Check, RefreshCw, Crosshair, Circle, Square, Triangle } from "lucide-react";
 import { Rnd } from 'react-rnd';
 import CertificateView, { CertificateDesignConfig, CanvasElement, CanvasElementType } from "@/components/CertificateView";
+import { CanvasShape, ShapeVariant, getShapeLabel, resolveShapeVariant } from "@/components/CanvasShape";
 import { v4 as uuidv4 } from "uuid";
 import QRCode from "qrcode";
 import { QRCodeSVG } from "qrcode.react";
@@ -34,6 +35,51 @@ const ELEMENT_FRIENDLY_NAMES: Record<string, string> = {
   shape: "Divider",
   qrCode: "QR Code"
 };
+
+const SHAPE_OPTIONS: { value: ShapeVariant; label: string }[] = [
+  { value: "square", label: "Square" },
+  { value: "circle", label: "Circle" },
+  { value: "triangle", label: "Triangle" },
+  { value: "divider", label: "Divider" },
+];
+
+/** Returns a user-facing label for any canvas element, resolving basic shape variants. */
+function getElementFriendlyName(el: Pick<CanvasElement, "type" | "shapeType">): string {
+  if (el.type === "shape") return getShapeLabel(el.shapeType);
+  return ELEMENT_FRIENDLY_NAMES[el.type] || el.type;
+}
+
+/** Renders the icon representing a canvas element type or shape variant. */
+function renderElementIcon(el: Pick<CanvasElement, "type" | "shapeType">, size: number = 18) {
+  if (el.type === "staticText") return <Type size={size} />;
+  if (el.type === "dynamicText") return <Database size={size} />;
+  if (el.type === "signature") return <Stamp size={size} />;
+  if (el.type === "badge") return <ShieldCheck size={size} />;
+  if (el.type === "qrCode") return <QrCode size={size} />;
+  if (el.type === "shape") {
+    const variant = resolveShapeVariant(el.shapeType);
+    if (variant === "circle") return <Circle size={size} />;
+    if (variant === "square") return <Square size={size} />;
+    if (variant === "triangle") return <Triangle size={size} />;
+    return <Minus size={size} />;
+  }
+  return <ImageIcon size={size} />;
+}
+
+/** Computes element updates when switching a shape element between variants. */
+function buildShapeVariantUpdates(el: CanvasElement, nextVariant: ShapeVariant): Partial<CanvasElement> {
+  const prevVariant = resolveShapeVariant(el.shapeType);
+  const updates: Partial<CanvasElement> = { shapeType: nextVariant };
+  if (prevVariant === "divider" && nextVariant !== "divider") {
+    const rawW = el.width || 400;
+    const side = Math.max(120, Math.min(600, Math.round(rawW > 700 ? 400 : rawW)));
+    updates.width = side;
+    updates.height = nextVariant === "triangle" ? Math.round(side * 0.866) : side;
+  } else if (prevVariant !== "divider" && nextVariant === "divider") {
+    updates.height = 6;
+  }
+  return updates;
+}
 
 const PRESET_COLORS = [
   "#000000", "#1e293b", "#1e3a8a", "#b45309",
@@ -1598,7 +1644,7 @@ export default function TemplateEditor({
     reader.readAsDataURL(file);
   };
 
-  const addElement = (type: CanvasElementType, defaultText: string = "New Text") => {
+  const addElement = (type: CanvasElementType, defaultText: string = "New Text", shapeType?: ShapeVariant) => {
     const isPortrait = design.orientation === 'portrait';
     const canvasWidth = isPortrait ? 2480 : 3508;
     const canvasHeight = isPortrait ? 3508 : 2480;
@@ -1625,11 +1671,19 @@ export default function TemplateEditor({
       elX = Math.round((canvasWidth - 368) / 2);
       elY = Math.round(canvasHeight * 0.7);
     } else if (type === 'shape') {
-      // Elegant horizontal divider line: ~55% of canvas width, centered
-      elWidth = Math.round(canvasWidth * 0.55);
-      elHeight = 6;
-      elX = Math.round((canvasWidth - elWidth) / 2);
-      elY = Math.round(canvasHeight * 0.5);
+      const variant = resolveShapeVariant(shapeType);
+      if (variant === 'divider') {
+        // Horizontal divider line: ~55% of canvas width, centered
+        elWidth = Math.round(canvasWidth * 0.55);
+        elHeight = 6;
+        elX = Math.round((canvasWidth - elWidth) / 2);
+        elY = Math.round(canvasHeight * 0.5);
+      } else {
+        elWidth = 400;
+        elHeight = variant === 'triangle' ? 346 : 400;
+        elX = Math.round((canvasWidth - elWidth) / 2);
+        elY = Math.round((canvasHeight - elHeight) / 2);
+      }
     } else if (type === 'signature') {
       elWidth = undefined;
       elHeight = undefined;
@@ -1648,6 +1702,7 @@ export default function TemplateEditor({
       y: elY,
       width: elWidth,
       height: elHeight,
+      ...(type === 'shape' ? { shapeType: resolveShapeVariant(shapeType) } : {}),
       text: type.includes("Text") || type === 'signature' ? defaultText : undefined,
       fontSize: 120,
       fontFamily: "var(--font-sans, sans-serif)",
@@ -1668,6 +1723,21 @@ export default function TemplateEditor({
     );
     const updated = { ...design, canvasElements: updatedElements };
     applyDesignUpdate(updated);
+  };
+
+  /** Toggles between solid fill and transparent outline-only mode for the selected shape. */
+  const toggleShapeTransparentFill = () => {
+    if (!selectedElement || selectedElement.type !== "shape") return;
+    if (selectedElement.color === "transparent") {
+      updateSelectedElement({ color: "#000000" });
+      return;
+    }
+    const updates: Partial<CanvasElement> = { color: "transparent" };
+    if (!selectedElement.strokeWidth || selectedElement.strokeWidth <= 0) {
+      updates.strokeWidth = 8;
+      updates.strokeColor = selectedElement.strokeColor && selectedElement.strokeColor !== "transparent" ? selectedElement.strokeColor : "#000000";
+    }
+    updateSelectedElement(updates);
   };
 
   const updateElement = (id: string, updates: Partial<CanvasElement>, pushToHistory: boolean = true) => {
@@ -1694,6 +1764,7 @@ export default function TemplateEditor({
 
   const selectedElement = design.canvasElements?.find(el => el.id === selectedElementId);
   const isSelectedImageAspectLocked = selectedElement ? resolveImageAspectLocked(selectedElement) : false;
+  const isSelectedAspectLocked = selectedElement ? resolveElementAspectLocked(selectedElement) : false;
 
   const handleSelectedMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const target = selectedElement;
@@ -2253,13 +2324,30 @@ const duplicateElement = (id?: string) => {
                         <ImageIcon size={24} />
                         <span className="text-xs font-medium">Image</span>
                       </button>
-                      <button onClick={() => addElement("shape")} className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-zinc-200 hover:border-zinc-400 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900 transition-colors bg-white">
-                        <Minus size={24} />
-                        <span className="text-xs font-medium">Divider</span>
-                      </button>
-                      <button onClick={() => addElement("qrCode")} className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-zinc-200 hover:border-zinc-400 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900 transition-colors bg-white col-span-2">
+                      <button onClick={() => addElement("qrCode")} className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-zinc-200 hover:border-zinc-400 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900 transition-colors bg-white">
                         <QrCode size={24} />
                         <span className="text-xs font-medium">QR Code</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <h4 className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 px-1">Shapes</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button onClick={() => addElement("shape", undefined, "square")} className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-zinc-200 hover:border-zinc-400 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900 transition-colors bg-white">
+                        <Square size={22} />
+                        <span className="text-xs font-medium">Square</span>
+                      </button>
+                      <button onClick={() => addElement("shape", undefined, "circle")} className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-zinc-200 hover:border-zinc-400 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900 transition-colors bg-white">
+                        <Circle size={22} />
+                        <span className="text-xs font-medium">Circle</span>
+                      </button>
+                      <button onClick={() => addElement("shape", undefined, "triangle")} className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-zinc-200 hover:border-zinc-400 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900 transition-colors bg-white">
+                        <Triangle size={22} />
+                        <span className="text-xs font-medium">Triangle</span>
+                      </button>
+                      <button onClick={() => addElement("shape", undefined, "divider")} className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-zinc-200 hover:border-zinc-400 hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900 transition-colors bg-white">
+                        <Minus size={22} />
+                        <span className="text-xs font-medium">Divider</span>
                       </button>
                     </div>
                   </div>
@@ -2484,10 +2572,10 @@ const duplicateElement = (id?: string) => {
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-zinc-100 text-zinc-900 flex items-center justify-center border border-zinc-200">
-                              {selectedElement.type === "staticText" ? <Type size={18} /> : selectedElement.type === "dynamicText" ? <Database size={18} /> : selectedElement.type === "signature" ? <Stamp size={18} /> : selectedElement.type === "badge" ? <ShieldCheck size={18} /> : selectedElement.type === "shape" ? <Minus size={18} /> : selectedElement.type === "qrCode" ? <QrCode size={18} /> : <ImageIcon size={18} />}
+                              {renderElementIcon(selectedElement, 18)}
                             </div>
                             <div>
-                              <h4 className="text-base font-semibold text-zinc-900 capitalize leading-tight">{ELEMENT_FRIENDLY_NAMES[selectedElement.type] || selectedElement.type}</h4>
+                              <h4 className="text-base font-semibold text-zinc-900 capitalize leading-tight">{getElementFriendlyName(selectedElement)}</h4>
                               <p className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider mt-0.5">Element Settings</p>
                             </div>
                           </div>
@@ -2952,14 +3040,170 @@ const duplicateElement = (id?: string) => {
 
 
 
+                            {selectedElement.type === "shape" && (
+                              <div className="space-y-4">
+                                <h5 className="text-[11px] font-bold uppercase tracking-widest text-zinc-800 border-b border-zinc-200 pb-1">Shape Type</h5>
+                                <div className="grid grid-cols-4 gap-1.5">
+                                  {SHAPE_OPTIONS.map((opt) => {
+                                    const active = resolveShapeVariant(selectedElement.shapeType) === opt.value;
+                                    return (
+                                      <button
+                                        key={opt.value}
+                                        type="button"
+                                        onClick={() => updateSelectedElement(buildShapeVariantUpdates(selectedElement, opt.value))}
+                                        className={`py-2 px-1.5 rounded-lg border text-[11px] font-semibold flex flex-col items-center gap-1 transition-colors ${
+                                          active
+                                            ? "bg-zinc-900 text-white border-zinc-900"
+                                            : "bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400 hover:text-zinc-900"
+                                        }`}
+                                      >
+                                        {renderElementIcon({ type: "shape", shapeType: opt.value }, 15)}
+                                        <span>{opt.label}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+
 {/* Color Group */}
                             <div className="space-y-4">
-                              <h5 className="text-[11px] font-bold uppercase tracking-widest text-zinc-800 border-b border-zinc-200 pb-1">Colors</h5>
+                              <div className="flex items-center justify-between border-b border-zinc-200 pb-1">
+                                <h5 className="text-[11px] font-bold uppercase tracking-widest text-zinc-800">Colors</h5>
+                                {selectedElement.type === "shape" && (
+                                  <button
+                                    type="button"
+                                    onClick={toggleShapeTransparentFill}
+                                    className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors ${
+                                      selectedElement.color === "transparent"
+                                        ? "bg-zinc-900 text-white"
+                                        : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                                    }`}
+                                  >
+                                    {selectedElement.color === "transparent" ? "No Fill" : "Transparent"}
+                                  </button>
+                                )}
+                              </div>
                               <div>
                                 <label className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Primary Fill</label>
-                                <ColorSelector value={selectedElement.color || "#000000"} onChange={(val) => updateSelectedElement({ color: val })} />
+                                <ColorSelector
+                                  value={selectedElement.color && selectedElement.color !== "transparent" ? selectedElement.color : "#000000"}
+                                  onChange={(val) => updateSelectedElement({ color: val })}
+                                />
                               </div>
                             </div>
+
+                            {selectedElement.type === "shape" && (() => {
+                              const variant = resolveShapeVariant(selectedElement.shapeType);
+                              const strokeW = selectedElement.strokeWidth ?? 0;
+                              const radius = selectedElement.borderRadius ?? 0;
+                              const opacityPct = Math.round((selectedElement.opacity ?? 1) * 100);
+                              return (
+                                <>
+                                  <div className="space-y-4">
+                                    <h5 className="text-[11px] font-bold uppercase tracking-widest text-zinc-800 border-b border-zinc-200 pb-1">Outline &amp; Appearance</h5>
+                                    <div>
+                                      <label className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Border Thickness (px)</label>
+                                      <div className="flex items-center gap-3">
+                                        <input
+                                          type="range"
+                                          min="0"
+                                          max="40"
+                                          step="1"
+                                          className="flex-1 h-1 bg-zinc-200 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-zinc-300 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-sm"
+                                          value={strokeW}
+                                          onChange={(e) => {
+                                            const nextW = Number(e.target.value);
+                                            const updates: Partial<CanvasElement> = { strokeWidth: nextW };
+                                            if (nextW > 0 && (!selectedElement.strokeColor || selectedElement.strokeColor === "transparent")) {
+                                              updates.strokeColor = "#000000";
+                                            }
+                                            updateSelectedElement(updates);
+                                          }}
+                                        />
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          max="40"
+                                          className="input-field h-8 w-14 text-center text-xs font-mono"
+                                          value={strokeW}
+                                          onChange={(e) => {
+                                            const nextW = Math.max(0, Math.min(40, Number(e.target.value) || 0));
+                                            const updates: Partial<CanvasElement> = { strokeWidth: nextW };
+                                            if (nextW > 0 && (!selectedElement.strokeColor || selectedElement.strokeColor === "transparent")) {
+                                              updates.strokeColor = "#000000";
+                                            }
+                                            updateSelectedElement(updates);
+                                          }}
+                                        />
+                                      </div>
+                                    </div>
+
+                                    {strokeW > 0 && (
+                                      <div>
+                                        <label className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Border Color</label>
+                                        <ColorSelector
+                                          value={selectedElement.strokeColor && selectedElement.strokeColor !== "transparent" ? selectedElement.strokeColor : "#000000"}
+                                          onChange={(val) => updateSelectedElement({ strokeColor: val })}
+                                        />
+                                      </div>
+                                    )}
+
+                                    {(variant === "square" || variant === "divider") && (
+                                      <div>
+                                        <label className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Corner Radius (px)</label>
+                                        <div className="flex items-center gap-3">
+                                          <input
+                                            type="range"
+                                            min="0"
+                                            max="200"
+                                            step="2"
+                                            className="flex-1 h-1 bg-zinc-200 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-zinc-300 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-sm"
+                                            value={radius}
+                                            onChange={(e) => updateSelectedElement({ borderRadius: Number(e.target.value) })}
+                                          />
+                                          <input
+                                            type="number"
+                                            min="0"
+                                            max="200"
+                                            className="input-field h-8 w-14 text-center text-xs font-mono"
+                                            value={radius}
+                                            onChange={(e) => updateSelectedElement({ borderRadius: Math.max(0, Math.min(200, Number(e.target.value) || 0)) })}
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    <div>
+                                      <label className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Opacity (%)</label>
+                                      <div className="flex items-center gap-3">
+                                        <input
+                                          type="range"
+                                          min="10"
+                                          max="100"
+                                          step="5"
+                                          className="flex-1 h-1 bg-zinc-200 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-zinc-300 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-sm"
+                                          value={opacityPct}
+                                          onChange={(e) => updateSelectedElement({ opacity: Number(e.target.value) / 100 })}
+                                        />
+                                        <input
+                                          type="number"
+                                          min="10"
+                                          max="100"
+                                          step="5"
+                                          className="input-field h-8 w-14 text-center text-xs font-mono"
+                                          value={opacityPct}
+                                          onChange={(e) => {
+                                            const pct = Math.max(10, Math.min(100, Number(e.target.value) || 100));
+                                            updateSelectedElement({ opacity: pct / 100 });
+                                          }}
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                </>
+                              );
+                            })()}
 
                             {/* Spacing & Details */}
                             {selectedElement.type.includes("Text") && (
@@ -3088,19 +3332,19 @@ const duplicateElement = (id?: string) => {
                             <div className="space-y-4">
                               <div className="flex items-center justify-between border-b border-zinc-200 pb-1">
                                 <h5 className="text-[11px] font-bold uppercase tracking-widest text-zinc-800">Dimensions</h5>
-                                {selectedElement.type === "image" && selectedElement.src && (
+                                {((selectedElement.type === "image" && selectedElement.src) || (selectedElement.type === "shape" && resolveShapeVariant(selectedElement.shapeType) !== "divider")) && (
                                   <button
                                     type="button"
-                                    onClick={() => updateSelectedElement({ lockAspectRatio: !isSelectedImageAspectLocked })}
+                                    onClick={() => updateSelectedElement({ lockAspectRatio: !isSelectedAspectLocked })}
                                     className={`px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 transition-colors ${
-                                      isSelectedImageAspectLocked
+                                      isSelectedAspectLocked
                                         ? "bg-zinc-900 text-white"
                                         : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
                                     }`}
-                                    title={isSelectedImageAspectLocked ? "Unlock Width & Height ratio" : "Lock Width & Height ratio"}
+                                    title={isSelectedAspectLocked ? "Unlock Width & Height ratio" : "Lock Width & Height ratio"}
                                   >
-                                    {isSelectedImageAspectLocked ? <Lock size={10} /> : <Unlock size={10} />}
-                                    <span>{isSelectedImageAspectLocked ? "Locked" : "Free"}</span>
+                                    {isSelectedAspectLocked ? <Lock size={10} /> : <Unlock size={10} />}
+                                    <span>{isSelectedAspectLocked ? "Locked" : "Free"}</span>
                                   </button>
                                 )}
                               </div>
@@ -3122,7 +3366,7 @@ const duplicateElement = (id?: string) => {
                                           }
                                           const newW = Number(e.target.value);
                                           if (!Number.isFinite(newW) || newW <= 0) return;
-                                          if (isSelectedImageAspectLocked) {
+                                          if (isSelectedAspectLocked) {
                                             const ratio = selectedElement.naturalAspectRatio || ((selectedElement.width || 1) / (selectedElement.height || 1));
                                             updateSelectedElement({ width: newW, height: Math.max(10, Math.round(newW / ratio)) });
                                           } else {
@@ -3131,7 +3375,7 @@ const duplicateElement = (id?: string) => {
                                         }} 
                                       />
                                     </div>
-                                    {selectedElement.type !== "image" && (
+                                    {selectedElement.type !== "image" && selectedElement.type !== "shape" && (
                                       <button 
                                         onClick={() => updateSelectedElement({ width: undefined })}
                                         className={`px-4 rounded-lg text-xs font-bold uppercase tracking-wide transition-colors ${!selectedElement.width ? 'bg-zinc-200 text-zinc-950 border-zinc-300' : 'bg-zinc-50 text-zinc-600 border border-zinc-200 hover:bg-zinc-100'}`}
@@ -3159,7 +3403,7 @@ const duplicateElement = (id?: string) => {
                                           }
                                           const newH = Number(e.target.value);
                                           if (!Number.isFinite(newH) || newH <= 0) return;
-                                          if (isSelectedImageAspectLocked) {
+                                          if (isSelectedAspectLocked) {
                                             const ratio = selectedElement.naturalAspectRatio || ((selectedElement.width || 1) / (selectedElement.height || 1));
                                             updateSelectedElement({ height: newH, width: Math.max(10, Math.round(newH * ratio)) });
                                           } else {
@@ -3513,6 +3757,7 @@ const duplicateElement = (id?: string) => {
                           else if (label === 'image') label = 'Image';
                           else if (label === 'qrCode') label = 'QR Code';
                           else if (label === 'signature') label = 'Signature';
+                          else if (label === 'shape') label = getShapeLabel(el.shapeType);
 
                           return (
                             <div
@@ -3613,19 +3858,19 @@ const duplicateElement = (id?: string) => {
                 >
                   {/* Type Badge - cohesive squircle monochrome */}
                   <span className="h-9 px-3 rounded-xl bg-zinc-800/80 border border-zinc-700 text-zinc-300 text-[11px] font-bold uppercase tracking-wider shrink-0 flex items-center justify-center select-none">
-                    {ELEMENT_FRIENDLY_NAMES[selectedElement.type] || selectedElement.type}
+                    {getElementFriendlyName(selectedElement)}
                   </span>
 
-                  {/* Edit Content */}
-                  {(selectedElement.type === "staticText" || selectedElement.type === "dynamicText" || selectedElement.type === "signature" || selectedElement.type === "image" || selectedElement.type === "badge") && (
+                  {/* Edit Content / Shape Properties */}
+                  {(selectedElement.type === "staticText" || selectedElement.type === "dynamicText" || selectedElement.type === "signature" || selectedElement.type === "image" || selectedElement.type === "badge" || selectedElement.type === "shape") && (
                     <button
                       onClick={() => setMobileElementAction(mobileElementAction === "edit" ? null : "edit")}
                       className={`h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-all ${
                         mobileElementAction === "edit" ? "bg-white text-zinc-950 font-bold shadow-xs" : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
                       }`}
                     >
-                      <Type size={14} />
-                      <span>Edit</span>
+                      {selectedElement.type === "shape" ? <Shapes size={14} /> : <Type size={14} />}
+                      <span>{selectedElement.type === "shape" ? "Shape" : "Edit"}</span>
                     </button>
                   )}
 
@@ -3930,14 +4175,25 @@ const duplicateElement = (id?: string) => {
 
                     {/* TAB: ELEMENTS (Unified Monochrome, Deduplicated) */}
                     {mobileOpenTab === "elements" && (() => {
-                      const allElements = [
-                        { id: 'text', type: 'staticText' as const, def: 'CERTIFICATE OF RECOGNITION', title: 'Text', desc: 'Headings & Labels', icon: <Type size={19} />, colSpan: 1 },
-                        { id: 'data', type: 'dynamicText' as const, def: 'recipientName', title: 'Data Field', desc: 'Name, Date, Role', icon: <Database size={18} />, colSpan: 1 },
-                        { id: 'sig', type: 'signature' as const, def: 'Authorized Signatory|Executive Director', title: 'Signature', desc: 'Signatory & Line', icon: <Stamp size={18} />, colSpan: 1 },
-                        { id: 'badge', type: 'badge' as const, def: undefined, title: 'Badge', desc: 'Rosette or Seal', icon: <ShieldCheck size={19} />, colSpan: 1 },
-                        { id: 'divider', type: 'shape' as const, def: undefined, title: 'Divider', desc: 'Horizontal Line', icon: <Minus size={20} strokeWidth={2.5} />, colSpan: 1 },
-                        { id: 'qr', type: 'qrCode' as const, def: undefined, title: 'QR Code', desc: 'Verification Scan', icon: <QrCode size={19} />, colSpan: 1 },
-                        { id: 'image', type: 'image' as const, def: undefined, title: 'Image', desc: 'Logo, Crest, or Organization Emblem', icon: <ImageIcon size={19} />, colSpan: 2 },
+                      const allElements: {
+                        id: string;
+                        type: CanvasElementType;
+                        shapeType?: ShapeVariant;
+                        def: string | undefined;
+                        title: string;
+                        desc: string;
+                        icon: React.ReactNode;
+                      }[] = [
+                        { id: 'text', type: 'staticText', def: 'CERTIFICATE OF RECOGNITION', title: 'Text', desc: 'Headings & Labels', icon: <Type size={19} /> },
+                        { id: 'data', type: 'dynamicText', def: 'recipientName', title: 'Data Field', desc: 'Name, Date, Role', icon: <Database size={18} /> },
+                        { id: 'sig', type: 'signature', def: 'Authorized Signatory|Executive Director', title: 'Signature', desc: 'Signatory & Line', icon: <Stamp size={18} /> },
+                        { id: 'badge', type: 'badge', def: undefined, title: 'Badge', desc: 'Rosette or Seal', icon: <ShieldCheck size={19} /> },
+                        { id: 'square', type: 'shape', shapeType: 'square', def: undefined, title: 'Square', desc: 'Rectangle or Box', icon: <Square size={18} /> },
+                        { id: 'circle', type: 'shape', shapeType: 'circle', def: undefined, title: 'Circle', desc: 'Oval or Seal Frame', icon: <Circle size={18} /> },
+                        { id: 'triangle', type: 'shape', shapeType: 'triangle', def: undefined, title: 'Triangle', desc: 'Geometric Accent', icon: <Triangle size={18} /> },
+                        { id: 'divider', type: 'shape', shapeType: 'divider', def: undefined, title: 'Divider', desc: 'Horizontal Line', icon: <Minus size={20} strokeWidth={2.5} /> },
+                        { id: 'qr', type: 'qrCode', def: undefined, title: 'QR Code', desc: 'Verification Scan', icon: <QrCode size={19} /> },
+                        { id: 'image', type: 'image', def: undefined, title: 'Image', desc: 'Logo or Emblem', icon: <ImageIcon size={19} /> },
                       ];
                       const filteredElements = allElements.filter(el =>
                         !mobileSearch ||
@@ -3962,10 +4218,10 @@ const duplicateElement = (id?: string) => {
                                 <button
                                   key={el.id}
                                   onClick={() => {
-                                    addElement(el.type, el.def);
+                                    addElement(el.type, el.def, el.shapeType);
                                     setMobileOpenTab(null);
                                   }}
-                                  className={`p-3.5 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700/80 border border-zinc-700/70 hover:border-zinc-500 flex items-center gap-3 text-left active:scale-95 transition-all shadow-xs ${el.colSpan === 2 ? 'col-span-2' : ''}`}
+                                  className="p-3.5 rounded-2xl bg-zinc-800/80 hover:bg-zinc-700/80 border border-zinc-700/70 hover:border-zinc-500 flex items-center gap-3 text-left active:scale-95 transition-all shadow-xs"
                                 >
                                   <div className="w-10 h-10 rounded-xl bg-zinc-700/60 text-zinc-100 border border-zinc-600/40 flex items-center justify-center shrink-0">
                                     {el.icon}
@@ -4179,7 +4435,7 @@ const duplicateElement = (id?: string) => {
                             else if (label === 'image') label = 'Image Asset';
                             else if (label === 'qrCode') label = 'QR Code';
                             else if (label === 'signature') label = 'Signature';
-                            else if (label === 'shape') label = 'Divider Line';
+                            else if (label === 'shape') label = getShapeLabel(el.shapeType);
 
                             return (
                               <div
@@ -4373,7 +4629,7 @@ const duplicateElement = (id?: string) => {
                   </div>
                   <div className="flex items-center justify-between px-4 pb-2 border-b border-zinc-800 shrink-0">
                     <span className="text-xs font-bold uppercase tracking-wider text-zinc-300">
-                      {mobileElementAction === "edit" && "Edit Content"}
+                      {mobileElementAction === "edit" && (selectedElement.type === "shape" ? "Shape Settings" : "Edit Content")}
                       {mobileElementAction === "font" && "Choose Font"}
                       {mobileElementAction === "color" && "Color Palette"}
                       {mobileElementAction === "format" && "Text Format & Alignment"}
@@ -4600,6 +4856,129 @@ const duplicateElement = (id?: string) => {
                             )}
                           </div>
                         )}
+                        {selectedElement.type === "shape" && (() => {
+                          const variant = resolveShapeVariant(selectedElement.shapeType);
+                          const strokeW = selectedElement.strokeWidth ?? 0;
+                          const radius = selectedElement.borderRadius ?? 0;
+                          const opacityPct = Math.round((selectedElement.opacity ?? 1) * 100);
+                          return (
+                            <div className="space-y-4">
+                              <div className="space-y-2">
+                                <label className="text-xs text-zinc-400 font-semibold tracking-wide uppercase">Shape Type</label>
+                                <div className="grid grid-cols-4 gap-2">
+                                  {SHAPE_OPTIONS.map((opt) => {
+                                    const active = variant === opt.value;
+                                    return (
+                                      <button
+                                        key={opt.value}
+                                        type="button"
+                                        onClick={() => updateSelectedElement(buildShapeVariantUpdates(selectedElement, opt.value))}
+                                        className={`py-2.5 px-2 rounded-xl border text-[11px] font-semibold flex flex-col items-center gap-1 transition-all ${
+                                          active
+                                            ? "bg-white text-zinc-950 border-white"
+                                            : "bg-zinc-900 text-zinc-300 border-zinc-700 hover:border-zinc-500"
+                                        }`}
+                                      >
+                                        {renderElementIcon({ type: "shape", shapeType: opt.value }, 16)}
+                                        <span>{opt.label}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
+                              <div className="space-y-2 pt-2 border-t border-zinc-800">
+                                <div className="flex items-center justify-between">
+                                  <label className="text-xs text-zinc-400 font-semibold tracking-wide uppercase">Border Thickness</label>
+                                  <span className="text-xs font-mono text-zinc-300">{strokeW}px</span>
+                                </div>
+                                <input
+                                  type="range"
+                                  min="0"
+                                  max="40"
+                                  step="1"
+                                  value={strokeW}
+                                  onChange={(e) => {
+                                    const nextW = Number(e.target.value);
+                                    const updates: Partial<CanvasElement> = { strokeWidth: nextW };
+                                    if (nextW > 0 && (!selectedElement.strokeColor || selectedElement.strokeColor === "transparent")) {
+                                      updates.strokeColor = "#000000";
+                                    }
+                                    updateSelectedElement(updates);
+                                  }}
+                                  className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-white"
+                                />
+                                {strokeW > 0 && (
+                                  <div className="flex items-center gap-2 pt-1 overflow-x-auto no-scrollbar">
+                                    {["#000000", "#1e3a8a", "#059669", "#b45309", "#ffffff", "#991b1b", "#7c3aed", "#64748b"].map((c) => (
+                                      <button
+                                        key={c}
+                                        type="button"
+                                        onClick={() => updateSelectedElement({ strokeColor: c })}
+                                        className={`w-7 h-7 rounded-lg border shrink-0 transition-transform active:scale-95 ${
+                                          selectedElement.strokeColor?.toLowerCase() === c.toLowerCase()
+                                            ? "ring-2 ring-white border-white"
+                                            : "border-zinc-700"
+                                        }`}
+                                        style={{ backgroundColor: c }}
+                                        title={`Border ${c}`}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              {(variant === "square" || variant === "divider") && (
+                                <div className="space-y-2 pt-2 border-t border-zinc-800">
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-xs text-zinc-400 font-semibold tracking-wide uppercase">Corner Radius</label>
+                                    <span className="text-xs font-mono text-zinc-300">{radius}px</span>
+                                  </div>
+                                  <input
+                                    type="range"
+                                    min="0"
+                                    max="200"
+                                    step="2"
+                                    value={radius}
+                                    onChange={(e) => updateSelectedElement({ borderRadius: Number(e.target.value) })}
+                                    className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-white"
+                                  />
+                                </div>
+                              )}
+
+                              <div className="space-y-2 pt-2 border-t border-zinc-800">
+                                <div className="flex items-center justify-between">
+                                  <label className="text-xs text-zinc-400 font-semibold tracking-wide uppercase">Opacity</label>
+                                  <span className="text-xs font-mono text-zinc-300">{opacityPct}%</span>
+                                </div>
+                                <input
+                                  type="range"
+                                  min="10"
+                                  max="100"
+                                  step="5"
+                                  value={opacityPct}
+                                  onChange={(e) => updateSelectedElement({ opacity: Number(e.target.value) / 100 })}
+                                  className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-white"
+                                />
+                              </div>
+
+                              {variant !== "divider" && (
+                                <button
+                                  type="button"
+                                  onClick={() => updateSelectedElement({ lockAspectRatio: !isSelectedAspectLocked })}
+                                  className={`w-full py-2.5 px-3 rounded-xl text-xs font-semibold border flex items-center justify-center gap-1.5 ${
+                                    isSelectedAspectLocked
+                                      ? "bg-white text-zinc-950 border-white"
+                                      : "bg-zinc-900 text-zinc-300 border-zinc-700"
+                                  }`}
+                                >
+                                  {isSelectedAspectLocked ? <Lock size={12} /> : <Unlock size={12} />}
+                                  <span>{isSelectedAspectLocked ? "Aspect Ratio Locked" : "Free Resize Proportions"}</span>
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
 
@@ -4661,7 +5040,21 @@ const duplicateElement = (id?: string) => {
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <label className="text-xs text-zinc-400 font-semibold tracking-wide uppercase">Palette Swatches</label>
-                          <span className="text-[11px] text-zinc-500 font-mono">16 curated tones</span>
+                          {selectedElement.type === "shape" ? (
+                            <button
+                              type="button"
+                              onClick={toggleShapeTransparentFill}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors ${
+                                selectedElement.color === "transparent"
+                                  ? "bg-white text-zinc-950 border-white"
+                                  : "bg-zinc-900 text-zinc-300 border-zinc-700 hover:border-zinc-500"
+                              }`}
+                            >
+                              {selectedElement.color === "transparent" ? "No Fill Active" : "No Fill (Outline Only)"}
+                            </button>
+                          ) : (
+                            <span className="text-[11px] text-zinc-500 font-mono">16 curated tones</span>
+                          )}
                         </div>
                         <div className="grid grid-cols-8 gap-2">
                           {[
@@ -5002,6 +5395,16 @@ function resolveImageAspectLocked(el: Pick<CanvasElement, "type" | "src" | "obje
   return el.lockAspectRatio ?? (el.objectFit !== "cover");
 }
 
+/** Resolves whether an image or geometric shape locks aspect ratio during resizing. */
+function resolveElementAspectLocked(
+  el: Pick<CanvasElement, "type" | "src" | "objectFit" | "lockAspectRatio" | "shapeType">
+): boolean {
+  if (el.type === "shape") {
+    return resolveShapeVariant(el.shapeType) !== "divider" && el.lockAspectRatio === true;
+  }
+  return resolveImageAspectLocked(el);
+}
+
 /** Computes canvas-space (x, y, width, height) matching `naturalAspectRatio` around the element center. */
 function computeFittedImageBounds(
   el: Pick<CanvasElement, "x" | "y" | "width" | "height">,
@@ -5222,9 +5625,10 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
     }
   };
 
-  const isLockedImage = resolveImageAspectLocked(el);
-  const isProportional = el.type === 'qrCode' || el.type === 'badge' || isLockedImage;
-  const hasTopEdgeHandle = !isRotated && !isRotating && !(isText || isLockedImage || isTypedSignature);
+  const isDividerShape = el.type === 'shape' && resolveShapeVariant(el.shapeType) === 'divider';
+  const isAspectLocked = resolveElementAspectLocked(el);
+  const isProportional = el.type === 'qrCode' || el.type === 'badge' || isAspectLocked;
+  const hasTopEdgeHandle = !isRotated && !isRotating && !(isText || isAspectLocked || isTypedSignature);
   const baseResizeHandleStyle = {
     width: `${handlePx}px`,
     height: `${handlePx}px`,
@@ -5279,7 +5683,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         height: (isTypedSignature || isText) ? 'auto' : (el.height || 'auto') 
       }}
       minWidth={(isText || isTypedSignature) ? 40 : 10}
-      minHeight={isText ? textMinH : (el.type === 'shape' ? 2 : 10)}
+      minHeight={isText ? textMinH : (isDividerShape ? 2 : 10)}
       position={{ x: Number.isFinite(el.x) ? el.x : 0, y: Number.isFinite(el.y) ? el.y : 0 }}
       onDragStart={() => {
         if (el.locked) return;
@@ -5406,7 +5810,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
           : isSelected && !isEditing 
             ? (isText || isTypedSignature)
               ? { left: true, right: true, topLeft: true, topRight: true, bottomLeft: true, bottomRight: true, top: false, bottom: false }
-              : isLockedImage
+              : isAspectLocked
                 ? { topLeft: true, topRight: true, bottomLeft: true, bottomRight: true, top: false, bottom: false, left: false, right: false }
                 : true
             : false
@@ -5414,12 +5818,12 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
       lockAspectRatio={isProportional}
       resizeHandleStyles={{
         bottomRight: { ...baseResizeHandleStyle, right: `-${halfPx}px`, bottom: `-${halfPx}px` },
-        right: isLockedImage ? { display: 'none' } : { ...baseResizeHandleStyle, right: `-${halfPx}px`, top: "50%", transform: "translateY(-50%)" },
-        bottom: (isText || isLockedImage || isTypedSignature) ? { display: 'none' } : { ...baseResizeHandleStyle, bottom: `-${halfPx}px`, left: "50%", transform: "translateX(-50%)" },
+        right: isAspectLocked ? { display: 'none' } : { ...baseResizeHandleStyle, right: `-${halfPx}px`, top: "50%", transform: "translateY(-50%)" },
+        bottom: (isText || isAspectLocked || isTypedSignature) ? { display: 'none' } : { ...baseResizeHandleStyle, bottom: `-${halfPx}px`, left: "50%", transform: "translateX(-50%)" },
         bottomLeft: { ...baseResizeHandleStyle, left: `-${halfPx}px`, bottom: `-${halfPx}px` },
-        left: isLockedImage ? { display: 'none' } : { ...baseResizeHandleStyle, left: `-${halfPx}px`, top: "50%", transform: "translateY(-50%)" },
+        left: isAspectLocked ? { display: 'none' } : { ...baseResizeHandleStyle, left: `-${halfPx}px`, top: "50%", transform: "translateY(-50%)" },
         topLeft: { ...baseResizeHandleStyle, left: `-${halfPx}px`, top: `-${halfPx}px` },
-        top: (isText || isLockedImage || isTypedSignature) ? { display: 'none' } : { ...baseResizeHandleStyle, top: `-${halfPx}px`, left: "50%", transform: "translateX(-50%)" },
+        top: (isText || isAspectLocked || isTypedSignature) ? { display: 'none' } : { ...baseResizeHandleStyle, top: `-${halfPx}px`, left: "50%", transform: "translateX(-50%)" },
         topRight: { ...baseResizeHandleStyle, right: `-${halfPx}px`, top: `-${halfPx}px` }
       }}
     >
@@ -5429,10 +5833,18 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         style={{
           transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
           transformOrigin: "center center",
-          backgroundColor: el.type === 'shape' ? (el.color || '#000000') : 'transparent',
-          border: isSelected ? `${borderPx}px solid #18181b` : undefined,
-          boxShadow: isSelected ? `0 0 0 ${Math.max(1, Math.round(1 / s))}px rgba(255,255,255,0.9)` : undefined,
-          padding: `${Math.max(1, Math.round(2 / s))}px`
+          backgroundColor: 'transparent',
+          ...(el.type === 'shape'
+            ? {
+                outline: isSelected ? `${borderPx}px solid #18181b` : undefined,
+                boxShadow: isSelected ? `0 0 0 ${borderPx + Math.max(1, Math.round(1 / s))}px rgba(255,255,255,0.9)` : undefined,
+                padding: 0,
+              }
+            : {
+                border: isSelected ? `${borderPx}px solid #18181b` : undefined,
+                boxShadow: isSelected ? `0 0 0 ${Math.max(1, Math.round(1 / s))}px rgba(255,255,255,0.9)` : undefined,
+                padding: `${Math.max(1, Math.round(2 / s))}px`,
+              }),
         }}
       >
         <div onDoubleClick={handleDoubleClick} className={`w-full h-full flex flex-col pointer-events-auto ${(el.type === 'staticText' || el.type === 'dynamicText') ? 'justify-start' : (el.type === 'signature' ? 'justify-end' : 'justify-center')}`}>
@@ -5616,7 +6028,18 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
               {el.signatoryTitle ?? (el.text?.split('|')[1] || "Title")}
             </div>
           </div>
-        ) : el.type === 'shape' ? null : (
+        ) : el.type === 'shape' ? (
+          <CanvasShape
+            shapeType={el.shapeType}
+            width={el.width}
+            height={el.height}
+            color={el.color}
+            strokeColor={el.strokeColor}
+            strokeWidth={el.strokeWidth}
+            borderRadius={el.borderRadius}
+            opacity={el.opacity}
+          />
+        ) : (
           <span className="pointer-events-none block w-full">{displayText}</span>
         )}
         </div>
@@ -5692,7 +6115,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
           <div
             className="absolute left-1/2 flex flex-col items-center pointer-events-auto z-30 cursor-grab active:cursor-grabbing select-none"
             style={{
-              top: hasTopEdgeHandle ? -halfPx + Math.floor(borderPx / 2) : 0,
+              top: hasTopEdgeHandle ? (el.type === 'shape' ? -halfPx : -halfPx + Math.floor(borderPx / 2)) : 0,
               transform: `translate(-50%, -100%) scale(${1 / s})`,
               transformOrigin: "bottom center"
             }}

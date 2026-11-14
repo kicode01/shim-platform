@@ -5,7 +5,9 @@ import QRCode from "qrcode";
 import { QRCodeSVG } from "qrcode.react";
 import { PRESETS } from "@/lib/presets";
 import { fitFontSize } from "@/lib/fit-text";
+import { CanvasShape, ShapeVariant } from "@/components/CanvasShape";
 
+export type { ShapeVariant };
 export type CanvasElementType = "dynamicText" | "staticText" | "image" | "qrCode" | "signature" | "badge" | "shape";
 
 const QrCodeElement = ({ 
@@ -597,6 +599,16 @@ export interface CanvasElement {
   lockAspectRatio?: boolean;
   /** Natural width / height ratio of the uploaded image (used to restore proportions). */
   naturalAspectRatio?: number;
+  /** Geometric shape variant when type === "shape" (omitted preserves legacy divider bars). */
+  shapeType?: ShapeVariant;
+  /** Optional outline stroke color for shape elements. */
+  strokeColor?: string;
+  /** Optional outline stroke width in canvas px for shape elements. */
+  strokeWidth?: number;
+  /** Corner radius in canvas px for square/divider shapes. */
+  borderRadius?: number;
+  /** Element opacity (0.05 to 1) for shape elements. */
+  opacity?: number;
 }
 
 export interface CertificateDesignConfig {
@@ -1095,7 +1107,30 @@ export default function CertificateView({
 
             if (el.type === "shape") {
               return (
-                <div key={el.id} style={{ position: "absolute", zIndex: 1, left: el.x, top: el.y, width: el.width, height: el.height, backgroundColor: el.color || "#000000", transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined, transformOrigin: "center center" }} />
+                <div
+                  key={el.id}
+                  style={{
+                    position: "absolute",
+                    zIndex: 1,
+                    left: el.x,
+                    top: el.y,
+                    width: el.width,
+                    height: el.height,
+                    transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
+                    transformOrigin: "center center",
+                  }}
+                >
+                  <CanvasShape
+                    shapeType={el.shapeType}
+                    width={el.width}
+                    height={el.height}
+                    color={el.color}
+                    strokeColor={el.strokeColor}
+                    strokeWidth={el.strokeWidth}
+                    borderRadius={el.borderRadius}
+                    opacity={el.opacity}
+                  />
+                </div>
               );
             }
 

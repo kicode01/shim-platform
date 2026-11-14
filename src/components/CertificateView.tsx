@@ -1112,7 +1112,7 @@ export default function CertificateView({
                     {!el.hideLine && (
                       <div style={{ width: "100%", borderTop: `${el.lineThickness ?? 4}px solid ${el.lineColor || el.color || "#000000"}`, flexShrink: 0, marginBottom: `${el.linePadding ?? 10}px`, marginTop: `${el.linePadding ?? 10}px` }} />
                     )}
-                    <div style={{ whiteSpace: "nowrap", fontSize: `${(el.fontSize || 120) * (el.titleFontSize ?? 0.4)}px`, fontFamily: resolveFontFamily(el.titleFontFamily || "var(--font-sans, sans-serif)"), color: el.titleColor || el.color || "#000000", fontWeight: "bold", textTransform: "uppercase", letterSpacing: `${el.titleLetterSpacing ?? 4}px` }}>
+                    <div style={{ whiteSpace: "nowrap", marginTop: el.hideLine ? `${el.linePadding ?? 10}px` : undefined, fontSize: `${(el.fontSize || 120) * (el.titleFontSize ?? 0.4)}px`, fontFamily: resolveFontFamily(el.titleFontFamily || "var(--font-sans, sans-serif)"), color: el.titleColor || el.color || "#000000", fontWeight: "bold", textTransform: "uppercase", letterSpacing: `${el.titleLetterSpacing ?? 4}px` }}>
                       {el.signatoryTitle ?? (el.text?.split('|')[1] || "Title")}
                     </div>
                   </div>

@@ -2793,6 +2793,19 @@ const duplicateElement = (id?: string) => {
                                   className="w-full h-1 bg-zinc-200 rounded-lg appearance-none cursor-pointer" 
                                 />
                               </div>
+                              <div className="col-span-2">
+                                <label className="flex justify-between text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">
+                                  <span>Line Spacing</span>
+                                  <span className="text-zinc-900">{selectedElement.linePadding ?? 10}px</span>
+                                </label>
+                                <input 
+                                  type="range" 
+                                  min="0" max="80" step="1"
+                                  value={selectedElement.linePadding ?? 10} 
+                                  onChange={(e) => updateSelectedElement({ linePadding: parseInt(e.target.value) })}
+                                  className="w-full h-1 bg-zinc-200 rounded-lg appearance-none cursor-pointer" 
+                                />
+                              </div>
                             </div>
                           </div>
                         )}
@@ -2816,26 +2829,17 @@ const duplicateElement = (id?: string) => {
                                 <div className="col-span-2">
                                   <label className="flex justify-between text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">
                                     <span>Thickness</span>
-                                    <span className="text-zinc-900">{selectedElement.lineThickness || 4}px</span>
+                                    <span className="text-zinc-900">{selectedElement.lineThickness ?? 4}px</span>
                                   </label>
                                   <input 
                                     type="range" 
                                     min="1" max="10" 
-                                    value={selectedElement.lineThickness || 4} 
+                                    value={selectedElement.lineThickness ?? 4} 
                                     onChange={(e) => updateSelectedElement({ lineThickness: parseInt(e.target.value) })}
                                     className="w-full h-1 bg-zinc-200 rounded-lg appearance-none cursor-pointer" 
                                   />
                                 </div>
-                                <div>
-                                  <label className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Padding</label>
-                                  <input
-                                    type="number"
-                                    value={selectedElement.linePadding ?? 10}
-                                    onChange={(e) => updateSelectedElement({ linePadding: parseInt(e.target.value) || 0 })}
-                                    className="input-field py-1 text-sm w-full"
-                                  />
-                                </div>
-                                <div>
+                                <div className="col-span-2">
                                   <label className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Line Color</label>
                                   <ColorSelector value={selectedElement.lineColor || selectedElement.color || "#000000"} onChange={(val) => updateSelectedElement({ lineColor: val })} />
                                 </div>
@@ -4470,6 +4474,28 @@ const duplicateElement = (id?: string) => {
                                     const nextPx = Math.min(600, Math.round((selectedElement.fontSize || 120) * (selectedElement.titleFontSize ?? 0.4)) + 4);
                                     updateSelectedElement({ titleFontSize: toTitleScale(nextPx, selectedElement.fontSize) });
                                   }}
+                                  className="w-8 h-9 flex items-center justify-center text-zinc-300 hover:text-white hover:bg-zinc-800"
+                                >
+                                  <Plus size={12} />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between pt-1">
+                              <span className="text-xs text-zinc-300">Line Spacing</span>
+                              <div className="h-9 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center overflow-hidden">
+                                <button
+                                  type="button"
+                                  onClick={() => updateSelectedElement({ linePadding: Math.max(0, (selectedElement.linePadding ?? 10) - 4) })}
+                                  className="w-8 h-9 flex items-center justify-center text-zinc-300 hover:text-white hover:bg-zinc-800"
+                                >
+                                  <Minus size={12} />
+                                </button>
+                                <span className="px-2 text-xs font-mono font-bold text-white min-w-[44px] text-center">
+                                  {selectedElement.linePadding ?? 10}px
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => updateSelectedElement({ linePadding: Math.min(80, (selectedElement.linePadding ?? 10) + 4) })}
                                   className="w-8 h-9 flex items-center justify-center text-zinc-300 hover:text-white hover:bg-zinc-800"
                                 >
                                   <Plus size={12} />

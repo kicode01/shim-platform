@@ -62,6 +62,11 @@ function ColorSelector({ value, onChange }: { value: string, onChange: (val: str
   );
 }
 
+function toTitleScale(titlePx: number, baseFontSize?: number): number {
+  const baseFs = baseFontSize || 120;
+  return Math.max(0.01, Number((titlePx / baseFs).toFixed(4)));
+}
+
 function FontSizeSelector({ value, onChange }: { value: number, onChange: (val: number) => void }) {
   const [isOpen, setIsOpen] = useState(false);
   const presets = [12, 14, 16, 18, 24, 32, 36, 48, 60, 72, 96, 120];
@@ -2761,17 +2766,24 @@ const duplicateElement = (id?: string) => {
                                   ]}
                                 />
                               </div>
-                              <div className="col-span-2">
+                              <div>
+                                <label className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Title Size (pt)</label>
+                                <FontSizeSelector
+                                  value={Math.round((selectedElement.fontSize || 120) * (selectedElement.titleFontSize ?? 0.4))}
+                                  onChange={(titlePx) => updateSelectedElement({ titleFontSize: toTitleScale(titlePx, selectedElement.fontSize) })}
+                                />
+                              </div>
+                              <div>
                                 <label className="flex justify-between text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">
                                   <span>Scale Multiplier</span>
-                                  <span className="text-zinc-900">{selectedElement.titleFontSize || 0.4}x</span>
+                                  <span className="text-zinc-900">{Number((selectedElement.titleFontSize ?? 0.4).toFixed(2))}x</span>
                                 </label>
                                 <input 
                                   type="range" 
-                                  min="0.2" max="1" step="0.05"
-                                  value={selectedElement.titleFontSize || 0.4} 
+                                  min="0.1" max="2" step="0.05"
+                                  value={selectedElement.titleFontSize ?? 0.4} 
                                   onChange={(e) => updateSelectedElement({ titleFontSize: parseFloat(e.target.value) })}
-                                  className="w-full h-1 bg-zinc-200 rounded-lg appearance-none cursor-pointer" 
+                                  className="w-full h-1 bg-zinc-200 rounded-lg appearance-none cursor-pointer mt-3" 
                                 />
                               </div>
                               <div className="col-span-2">
@@ -4447,6 +4459,34 @@ const duplicateElement = (id?: string) => {
                               />
                             </div>
                             <div className="flex items-center justify-between pt-1">
+                              <span className="text-xs text-zinc-300">Title Size (pt)</span>
+                              <div className="h-9 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center overflow-hidden">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const nextPx = Math.max(8, Math.round((selectedElement.fontSize || 120) * (selectedElement.titleFontSize ?? 0.4)) - 4);
+                                    updateSelectedElement({ titleFontSize: toTitleScale(nextPx, selectedElement.fontSize) });
+                                  }}
+                                  className="w-8 h-9 flex items-center justify-center text-zinc-300 hover:text-white hover:bg-zinc-800"
+                                >
+                                  <Minus size={12} />
+                                </button>
+                                <span className="px-2 text-xs font-mono font-bold text-white min-w-[44px] text-center">
+                                  {Math.round(((selectedElement.fontSize || 120) * (selectedElement.titleFontSize ?? 0.4)) / 4.166667)}pt
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const nextPx = Math.min(600, Math.round((selectedElement.fontSize || 120) * (selectedElement.titleFontSize ?? 0.4)) + 4);
+                                    updateSelectedElement({ titleFontSize: toTitleScale(nextPx, selectedElement.fontSize) });
+                                  }}
+                                  className="w-8 h-9 flex items-center justify-center text-zinc-300 hover:text-white hover:bg-zinc-800"
+                                >
+                                  <Plus size={12} />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between pt-1">
                               <span className="text-xs text-zinc-300">Underline divider</span>
                               <input
                                 type="checkbox"
@@ -5547,7 +5587,7 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
             {!el.hideLine && (
               <div style={{ width: "100%", borderTop: `${el.lineThickness ?? 4}px solid ${el.lineColor || el.color || "#000000"}`, flexShrink: 0, marginBottom: `${el.linePadding ?? 10}px`, marginTop: `${el.linePadding ?? 10}px` }} />
             )}
-            <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", fontSize: `${(el.fontSize || 120) * (el.titleFontSize ?? 0.4)}px`, fontFamily: el.titleFontFamily || "var(--font-sans, sans-serif)", color: el.titleColor || el.color || "#000000", fontWeight: "bold", textTransform: "uppercase", letterSpacing: `${el.titleLetterSpacing ?? 4}px` }}>
+            <div style={{ whiteSpace: "nowrap", marginTop: el.hideLine ? `${el.linePadding ?? 10}px` : undefined, fontSize: `${(el.fontSize || 120) * (el.titleFontSize ?? 0.4)}px`, fontFamily: el.titleFontFamily || "var(--font-sans, sans-serif)", color: el.titleColor || el.color || "#000000", fontWeight: "bold", textTransform: "uppercase", letterSpacing: `${el.titleLetterSpacing ?? 4}px` }}>
               {el.signatoryTitle ?? (el.text?.split('|')[1] || "Title")}
             </div>
           </div>

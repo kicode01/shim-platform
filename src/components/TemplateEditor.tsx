@@ -2542,11 +2542,7 @@ const duplicateElement = (id?: string) => {
                                   <label className="btn-secondary w-full justify-center cursor-pointer text-xs py-2 border-dashed">
                                     <ImageIcon size={14} className="mr-1.5 text-zinc-500" /> Upload Image instead
                                     <input type="file" accept="image/png, image/jpeg, image/svg+xml" onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (!file) return;
-                                      const reader = new FileReader();
-                                      reader.onload = (event) => updateSelectedElement({ src: event.target?.result as string });
-                                      reader.readAsDataURL(file);
+                                      readImageFileAsDataUrl(e, (src) => updateSelectedElement({ src }));
                                     }} className="hidden" />
                                   </label>
                                   {selectedElement.src && (
@@ -2562,11 +2558,7 @@ const duplicateElement = (id?: string) => {
                                 <label className="btn-secondary w-full justify-center cursor-pointer text-sm py-3 border-dashed bg-zinc-50 hover:bg-zinc-100">
                                   <ImageIcon size={16} className="mr-2 text-zinc-500" /> Upload File
                                   <input type="file" accept="image/png, image/jpeg, image/svg+xml" onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (!file) return;
-                                    const reader = new FileReader();
-                                    reader.onload = (event) => updateSelectedElement({ src: event.target?.result as string });
-                                    reader.readAsDataURL(file);
+                                    readImageFileAsDataUrl(e, (src) => updateSelectedElement({ src }));
                                   }} className="hidden" />
                                 </label>
                                 {selectedElement.src && (
@@ -4705,11 +4697,29 @@ const duplicateElement = (id?: string) => {
     </div>
         );
 }
+
+/** Reads an uploaded image input file as a base64 Data URL and resets the input so the same file can be re-selected. */
+function readImageFileAsDataUrl(e: React.ChangeEvent<HTMLInputElement>, onLoad: (dataUrl: string) => void) {
+  const input = e.target;
+  const file = input.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    const result = event.target?.result;
+    if (typeof result === "string") {
+      onLoad(result);
+    }
+    input.value = "";
+  };
+  reader.readAsDataURL(file);
+}
+
 function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElementId, updateSelectedElement, updateElement, setActiveGuides, currentOrientation, scale, dummyQrCode, isPanMode }: any) {
   const [isEditing, setIsEditing] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
   const [isScalingRotated, setIsScalingRotated] = useState(false);
   const elementRef = useRef<HTMLDivElement>(null);
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
   const dragStartData = useRef({ width: 0, fontSize: 0 });
   const isDraggingRef = useRef(false);
   const dragStartPos = useRef({ x: 0, y: 0 });
@@ -4863,6 +4873,9 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
     e.stopPropagation();
     if (el.type === 'staticText' || el.type === 'dynamicText' || el.type === 'signature') {
       setIsEditing(true);
+    } else if (el.type === 'image' && !el.locked && !isPanMode) {
+      setSelectedElementId(el.id);
+      imageFileInputRef.current?.click();
     }
   };
 
@@ -5097,6 +5110,19 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
         }}
       >
         <div onDoubleClick={handleDoubleClick} className={`w-full h-full flex flex-col pointer-events-auto ${(el.type === 'staticText' || el.type === 'dynamicText') ? 'justify-start' : (el.type === 'signature' ? 'justify-end' : 'justify-center')}`}>
+        {el.type === 'image' && (
+          <input
+            ref={imageFileInputRef}
+            type="file"
+            accept="image/png, image/jpeg, image/svg+xml"
+            onClick={(e) => e.stopPropagation()}
+            onDoubleClick={(e) => e.stopPropagation()}
+            onChange={(e) => {
+              readImageFileAsDataUrl(e, (src) => updateElement(el.id, { src }));
+            }}
+            className="hidden"
+          />
+        )}
         {isEditing ? (
           <textarea
             autoFocus
@@ -5229,8 +5255,14 @@ function CanvasDraggableElement({ el, isSelected, displayText, setSelectedElemen
                 fgColor={el.color || "#000000"}
               />
             ) : (
-              <div className="w-full h-full bg-zinc-50 flex items-center justify-center border-2 border-dashed border-zinc-300 text-zinc-400 rounded-xl">
-                <ImageIcon size={120} />
+              <div
+                title={el.locked ? undefined : "Double-click to upload image"}
+                className="w-full h-full bg-zinc-50 flex flex-col items-center justify-center gap-3 px-6 text-center border-2 border-dashed border-zinc-300 text-zinc-400 rounded-xl overflow-hidden select-none"
+              >
+                <ImageIcon size={96} className="shrink-0" />
+                <span className="text-[32px] font-semibold tracking-tight leading-tight text-zinc-500">
+                  Double-click to upload
+                </span>
               </div>
             )}
           </div>

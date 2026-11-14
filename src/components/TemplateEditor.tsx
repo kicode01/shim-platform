@@ -2767,24 +2767,18 @@ const duplicateElement = (id?: string) => {
                                 />
                               </div>
                               <div>
-                                <label className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Title Size (pt)</label>
+                                <label className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">
+                                  <span>Title Size (pt)</span>
+                                  <span className="text-zinc-400 font-medium normal-case">{Number((selectedElement.titleFontSize ?? 0.4).toFixed(2))}x</span>
+                                </label>
                                 <FontSizeSelector
                                   value={Math.round((selectedElement.fontSize || 120) * (selectedElement.titleFontSize ?? 0.4))}
                                   onChange={(titlePx) => updateSelectedElement({ titleFontSize: toTitleScale(titlePx, selectedElement.fontSize) })}
                                 />
                               </div>
                               <div>
-                                <label className="flex justify-between text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">
-                                  <span>Scale Multiplier</span>
-                                  <span className="text-zinc-900">{Number((selectedElement.titleFontSize ?? 0.4).toFixed(2))}x</span>
-                                </label>
-                                <input 
-                                  type="range" 
-                                  min="0.1" max="2" step="0.05"
-                                  value={selectedElement.titleFontSize ?? 0.4} 
-                                  onChange={(e) => updateSelectedElement({ titleFontSize: parseFloat(e.target.value) })}
-                                  className="w-full h-1 bg-zinc-200 rounded-lg appearance-none cursor-pointer mt-3" 
-                                />
+                                <label className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Title Color</label>
+                                <ColorSelector value={selectedElement.titleColor || selectedElement.color || "#000000"} onChange={(val) => updateSelectedElement({ titleColor: val })} />
                               </div>
                               <div className="col-span-2">
                                 <label className="flex justify-between text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">
@@ -2798,10 +2792,6 @@ const duplicateElement = (id?: string) => {
                                   onChange={(e) => updateSelectedElement({ titleLetterSpacing: parseInt(e.target.value) })}
                                   className="w-full h-1 bg-zinc-200 rounded-lg appearance-none cursor-pointer" 
                                 />
-                              </div>
-                              <div className="col-span-2">
-                                <label className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Title Color</label>
-                                <ColorSelector value={selectedElement.titleColor || selectedElement.color || "#000000"} onChange={(val) => updateSelectedElement({ titleColor: val })} />
                               </div>
                             </div>
                           </div>

@@ -8,10 +8,15 @@ export async function POST(req: Request) {
     const name = typeof body.name === "string" ? body.name.trim() : "";
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
     const password = typeof body.password === "string" ? body.password : "";
+    const confirmPassword = typeof body.confirmPassword === "string" ? body.confirmPassword : undefined;
     const role = body.role;
 
     if (!email || !password) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
+    }
+
+    if (body.confirmPassword !== undefined && confirmPassword !== password) {
+      return NextResponse.json({ message: "Passwords do not match." }, { status: 400 });
     }
 
     const exists = await prisma.user.findFirst({

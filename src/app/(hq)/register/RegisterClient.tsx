@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -17,9 +17,72 @@ const FIELD =
   "dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-600 " +
   "dark:focus:border-zinc-600 dark:focus:bg-zinc-900 dark:focus:ring-white/5";
 
-const FIELD_ICON = "pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500";
+const FIELD_ICON = "pointer-events-none absolute left-3.5 top-1/2 z-10 -translate-y-1/2 text-zinc-400 dark:text-zinc-500";
 
 const LABEL = "mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300";
+
+const FIELD_INVALID =
+  "border-red-300 focus:border-red-400 focus:ring-red-500/10 " +
+  "dark:border-red-500/50 dark:focus:border-red-500 dark:focus:ring-red-500/10";
+
+interface PasswordInputFieldProps {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  show: boolean;
+  onToggleShow: () => void;
+  toggleLabel: string;
+  invalid?: boolean;
+  describedBy?: string;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
+}
+
+/** Shared password input row with leading icon and show/hide visibility toggle. */
+function PasswordInputField({
+  id,
+  label,
+  value,
+  onChange,
+  show,
+  onToggleShow,
+  toggleLabel,
+  invalid = false,
+  describedBy,
+  inputRef,
+}: PasswordInputFieldProps) {
+  return (
+    <div>
+      <label htmlFor={id} className={LABEL}>
+        {label}
+      </label>
+      <div className="relative">
+        <Key size={16} className={FIELD_ICON} />
+        <input
+          ref={inputRef}
+          id={id}
+          type={show ? "text" : "password"}
+          autoComplete="new-password"
+          className={`${FIELD} pr-10 ${invalid ? FIELD_INVALID : ""}`}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="••••••••"
+          aria-invalid={invalid || undefined}
+          aria-describedby={describedBy}
+          required
+        />
+        <button
+          type="button"
+          onClick={onToggleShow}
+          aria-label={toggleLabel}
+          className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-md p-0.5 text-zinc-400 transition-colors hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+        >
+          {show ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 const SUBMIT =
   "mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 py-2.5 text-sm font-medium " +
@@ -47,11 +110,17 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState("organizer");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
+  const confirmPasswordRef = useRef<HTMLInputElement>(null);
+
+  const passwordsMismatch = confirmPassword.length > 0 && password !== confirmPassword;
+  const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
 
   // Pre-fill from an emailed signup link (?email=...&claim=...) so the attendee
   // only has to choose a password. Default the role to attendee in that case.
@@ -68,16 +137,37 @@ export default function RegisterPage() {
     ? `/login?email=${encodeURIComponent(email)}${claimId ? `&claim=${claimId}` : ""}`
     : "/login";
 
+  const handlePasswordChange = (nextPassword: string) => {
+    setPassword(nextPassword);
+    if (error === "Passwords do not match." && (!confirmPassword || nextPassword === confirmPassword)) {
+      setError("");
+    }
+  };
+
+  const handleConfirmPasswordChange = (nextConfirm: string) => {
+    setConfirmPassword(nextConfirm);
+    if (error === "Passwords do not match." && (!nextConfirm || password === nextConfirm)) {
+      setError("");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError("");
     setAlreadyRegistered(false);
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      confirmPasswordRef.current?.focus();
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
-        body: JSON.stringify({ name, email, password, role }),
+        body: JSON.stringify({ name, email, password, confirmPassword, role }),
         headers: { "Content-Type": "application/json" },
       });
 
@@ -259,31 +349,45 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
+                <PasswordInputField
+                  id="reg-password"
+                  label="Password"
+                  value={password}
+                  onChange={handlePasswordChange}
+                  show={showPassword}
+                  onToggleShow={() => setShowPassword(!showPassword)}
+                  toggleLabel={showPassword ? "Hide password" : "Show password"}
+                />
+
                 <div>
-                  <label htmlFor="reg-password" className={LABEL}>
-                    Password
-                  </label>
-                  <div className="relative">
-                    <Key size={16} className={FIELD_ICON} />
-                    <input
-                      id="reg-password"
-                      type={showPassword ? "text" : "password"}
-                      autoComplete="new-password"
-                      className={`${FIELD} pr-10`}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-0.5 text-zinc-400 transition-colors hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+                  <PasswordInputField
+                    id="reg-confirm-password"
+                    label="Confirm Password"
+                    value={confirmPassword}
+                    onChange={handleConfirmPasswordChange}
+                    show={showConfirmPassword}
+                    onToggleShow={() => setShowConfirmPassword(!showConfirmPassword)}
+                    toggleLabel={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                    invalid={passwordsMismatch}
+                    describedBy={confirmPassword.length > 0 ? "reg-confirm-password-feedback" : undefined}
+                    inputRef={confirmPasswordRef}
+                  />
+                  {passwordsMismatch && (
+                    <p
+                      id="reg-confirm-password-feedback"
+                      className="mt-1.5 text-xs text-red-600 dark:text-red-400"
                     >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
+                      Passwords do not match.
+                    </p>
+                  )}
+                  {passwordsMatch && (
+                    <p
+                      id="reg-confirm-password-feedback"
+                      className="mt-1.5 flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400"
+                    >
+                      <Check size={12} strokeWidth={3} /> Passwords match
+                    </p>
+                  )}
                 </div>
 
                 <fieldset>

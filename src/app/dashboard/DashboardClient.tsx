@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef } from "react";
+import { getEffectiveCertificateStatus } from "@/lib/security";
 
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import Link from "next/link";
@@ -61,7 +62,7 @@ export default function DashboardClient({
 }: {
   initialEvents: EventItem[];
   initialStats: StatsData;
-  allCertificates?: { issueDate: string | Date; status: string; isClaimed: boolean }[];
+  allCertificates?: { issueDate: string | Date; status: string; validityDate?: string | Date | null; isClaimed: boolean }[];
   allVerifications?: { timestamp: string | Date }[];
 }) {
   const [timeframe, setTimeframe] = useState("30d");
@@ -125,8 +126,8 @@ export default function DashboardClient({
   const currentCerts = allCertificates.filter(c => new Date(c.issueDate) >= start);
   const currentVerifs = allVerifications.filter(v => new Date(v.timestamp) >= start);
   
-  const currentValid = currentCerts.filter(c => c.status === "valid").length;
-  const currentRevoked = currentCerts.filter(c => c.status === "revoked").length;
+  const currentValid = currentCerts.filter(c => getEffectiveCertificateStatus(c) === "valid").length;
+  const currentRevoked = currentCerts.filter(c => getEffectiveCertificateStatus(c) === "revoked").length;
   const currentClaimed = currentCerts.filter(c => c.isClaimed).length;
   const currentValidationRate = currentCerts.length > 0 ? Math.round((currentValid / currentCerts.length) * 100) : 0;
 
@@ -140,8 +141,8 @@ export default function DashboardClient({
     return d >= prevStart && d < start;
   });
 
-  const prevValid = prevCerts.filter(c => c.status === "valid").length;
-  const prevRevoked = prevCerts.filter(c => c.status === "revoked").length;
+  const prevValid = prevCerts.filter(c => getEffectiveCertificateStatus(c) === "valid").length;
+  const prevRevoked = prevCerts.filter(c => getEffectiveCertificateStatus(c) === "revoked").length;
   const prevClaimed = prevCerts.filter(c => c.isClaimed).length;
   const prevValidationRate = prevCerts.length > 0 ? Math.round((prevValid / prevCerts.length) * 100) : 0;
 

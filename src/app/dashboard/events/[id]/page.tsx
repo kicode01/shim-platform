@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getEffectiveCertificateStatus } from "@/lib/security";
 import EventDetailsClient from "./EventDetailsClient";
 import type { Metadata } from "next";
 
@@ -25,7 +26,7 @@ export default async function EventDetailsPage({ params }: { params: Promise<{ i
       },
       certificates: {
         where: { deletedAt: null },
-        select: { id: true, status: true, recipientEmail: true }
+        select: { id: true, status: true, validityDate: true, recipientEmail: true }
       }
     }
   });
@@ -39,7 +40,7 @@ export default async function EventDetailsPage({ params }: { params: Promise<{ i
   const certificateMap = new Map(
     event.certificates
       .filter(c => c.recipientEmail)
-      .map(c => [c.recipientEmail!, { id: c.id, status: c.status }])
+      .map(c => [c.recipientEmail!, { id: c.id, status: getEffectiveCertificateStatus(c) }])
   );
 
   // Fetch templates for the Default Template dropdown

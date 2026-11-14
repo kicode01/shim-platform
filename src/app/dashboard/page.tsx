@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { getEffectiveCertificateStatus } from "@/lib/security";
 
 import DashboardClient from "./DashboardClient";
 import Link from "next/link";
@@ -46,6 +47,7 @@ export default async function DashboardPage() {
   let allVerifications: any[] = [];
 
   try {
+    const now = new Date();
     [
       totalCertificates, 
       validCertificates, 
@@ -58,7 +60,13 @@ export default async function DashboardPage() {
       allVerifications
     ] = await Promise.all([
       prisma.certificate.count({ where: { ...issuerFilter } }),
-      prisma.certificate.count({ where: { ...issuerFilter, status: "valid" } }),
+      prisma.certificate.count({
+        where: {
+          ...issuerFilter,
+          status: "valid",
+          OR: [{ validityDate: null }, { validityDate: { gte: now } }]
+        }
+      }),
       prisma.certificate.count({ where: { ...issuerFilter, status: "revoked" } }),
       prisma.template.count({ where: templateFilter }),
       prisma.auditLog.count({ where: auditFilter }),
@@ -75,7 +83,7 @@ export default async function DashboardPage() {
       }),
       prisma.certificate.findMany({
         where: issuerFilter,
-        select: { issueDate: true, status: true, isClaimed: true }
+        select: { issueDate: true, status: true, validityDate: true, isClaimed: true }
       }),
       prisma.auditLog.findMany({
         where: auditFilter,
@@ -103,8 +111,9 @@ export default async function DashboardPage() {
     const d = new Date(cert.issueDate);
     const key = `${months[d.getMonth()]} ${d.getFullYear().toString().substring(2)}`;
     if (monthlyData[key]) {
-      if (cert.status === "valid") monthlyData[key].issued++;
-      else if (cert.status === "revoked") monthlyData[key].revoked++;
+      const eff = getEffectiveCertificateStatus(cert, today);
+      if (eff === "valid") monthlyData[key].issued++;
+      else if (eff === "revoked") monthlyData[key].revoked++;
     }
   });
 

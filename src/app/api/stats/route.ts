@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getEffectiveCertificateStatus } from "@/lib/security";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -12,6 +13,7 @@ export async function GET() {
   try {
     const userRole = (session.user as any).role;
     const userId = (session.user as any).id;
+    const now = new Date();
     const issuerFilter = userRole === "admin" ? { deletedAt: null } : { issuerId: userId, deletedAt: null };
     const templateFilter = userRole === "admin" ? {} : { userId };
     const auditFilter = userRole === "admin" ? { action: "VERIFIED" } : { action: "VERIFIED", certificate: { issuerId: userId } };
@@ -27,7 +29,13 @@ export async function GET() {
       totalClaimed
     ] = await Promise.all([
       prisma.certificate.count({ where: { ...issuerFilter } }),
-      prisma.certificate.count({ where: { ...issuerFilter, status: "valid" } }),
+      prisma.certificate.count({
+        where: {
+          ...issuerFilter,
+          status: "valid",
+          OR: [{ validityDate: null }, { validityDate: { gte: now } }]
+        }
+      }),
       prisma.certificate.count({ where: { ...issuerFilter, status: "revoked" } }),
       prisma.template.count({ where: templateFilter }),
       prisma.certificate.findMany({
@@ -40,7 +48,7 @@ export async function GET() {
       }),
       prisma.certificate.findMany({
         where: issuerFilter,
-        select: { issueDate: true, status: true }
+        select: { issueDate: true, status: true, validityDate: true }
       }),
       prisma.auditLog.count({ where: auditFilter }),
       prisma.certificate.count({ where: { ...issuerFilter, isClaimed: true } })
@@ -63,8 +71,9 @@ export async function GET() {
       const d = new Date(cert.issueDate);
       const key = `${months[d.getMonth()]} ${d.getFullYear().toString().substring(2)}`;
       if (monthlyData[key]) {
-        if (cert.status === "valid") monthlyData[key].issued++;
-        else if (cert.status === "revoked") monthlyData[key].revoked++;
+        const eff = getEffectiveCertificateStatus(cert, now);
+        if (eff === "valid") monthlyData[key].issued++;
+        else if (eff === "revoked") monthlyData[key].revoked++;
       }
     });
 

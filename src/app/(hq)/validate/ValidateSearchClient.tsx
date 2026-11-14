@@ -37,6 +37,7 @@ interface FetchedCertificate {
   role?: string | null;
   eventId?: string | null;
   issueDate: string;
+  validityDate?: string | null;
   status: string;
   fingerprint?: string;
   isPiiMasked?: boolean;
@@ -55,6 +56,36 @@ interface FetchedCertificate {
     email?: string | null;
   };
 }
+
+const STATUS_DISPLAY: Record<string, {
+  heading: string;
+  badgeLabel: string;
+  badgeClass: string;
+  recentClass: string;
+  ledgerState: string;
+}> = {
+  valid: {
+    heading: "Verified Genuine",
+    badgeLabel: "Authentic",
+    badgeClass: "text-green-400 bg-green-500/10 border-green-500/20",
+    recentClass: "bg-green-500/5 text-green-400 border-green-500/20",
+    ledgerState: "Immutable (Active)",
+  },
+  expired: {
+    heading: "Certificate Expired",
+    badgeLabel: "Expired",
+    badgeClass: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+    recentClass: "bg-amber-500/5 text-amber-400 border-amber-500/20",
+    ledgerState: "Expired",
+  },
+  revoked: {
+    heading: "Certificate Invalid",
+    badgeLabel: "Revoked",
+    badgeClass: "text-red-400 bg-red-500/10 border-red-500/20",
+    recentClass: "bg-red-500/5 text-red-400 border-red-500/20",
+    ledgerState: "Revoked",
+  },
+};
 
 export function extractCertificateId(input: string): string {
   const trimmed = input.trim();
@@ -897,11 +928,9 @@ export default function ValidateSearchClient() {
                             </div>
                           </div>
                           <span className={`shrink-0 text-[10px] font-bold px-2 py-1 uppercase tracking-wider rounded-sm border ${
-                            check.status === 'valid' 
-                              ? 'bg-green-500/5 text-green-400 border-green-500/20' 
-                              : 'bg-red-500/5 text-red-400 border-red-500/20'
+                            (STATUS_DISPLAY[check.status] || STATUS_DISPLAY.revoked).recentClass
                           }`}>
-                            {check.status === 'valid' ? 'Authentic' : 'Revoked'}
+                            {(STATUS_DISPLAY[check.status] || STATUS_DISPLAY.revoked).badgeLabel}
                           </span>
                         </button>
                       ))}
@@ -939,17 +968,13 @@ export default function ValidateSearchClient() {
                     Registry Status
                   </div>
                   <h2 className="text-2xl sm:text-4xl font-serif text-zinc-100 mb-2.5 sm:mb-4 tracking-tight">
-                    {certificate.status === "valid" ? "Verified Genuine" : "Certificate Invalid"}
+                    {(STATUS_DISPLAY[certificate.status] || STATUS_DISPLAY.revoked).heading}
                   </h2>
-                  {certificate.status === "valid" ? (
-                    <span className="inline-flex items-center text-xs font-bold uppercase tracking-widest text-green-400 bg-green-500/10 px-3 py-1.5 rounded-sm border border-green-500/20">
-                      Authentic
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center text-xs font-bold uppercase tracking-widest text-red-400 bg-red-500/10 px-3 py-1.5 rounded-sm border border-red-500/20">
-                      Revoked
-                    </span>
-                  )}
+                  <span className={`inline-flex items-center text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-sm border ${
+                    (STATUS_DISPLAY[certificate.status] || STATUS_DISPLAY.revoked).badgeClass
+                  }`}>
+                    {(STATUS_DISPLAY[certificate.status] || STATUS_DISPLAY.revoked).badgeLabel}
+                  </span>
                 </motion.div>
 
                 {/* 2. The Certificate */}
@@ -1099,7 +1124,7 @@ export default function ValidateSearchClient() {
                       <div className="text-sm font-medium text-zinc-200">{certificate.event?.name || certificate.eventId || "Unknown Event"}</div>
                     </div>
                     
-                    <div className="col-span-2 sm:col-span-2 mt-2">
+                    <div className="col-span-2 sm:col-span-1 mt-2">
                       <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Ledger Record ID</div>
                       <div className="text-xs font-mono text-zinc-300 tracking-wider break-all select-all">
                         {certificate.id}
@@ -1114,9 +1139,18 @@ export default function ValidateSearchClient() {
                     </div>
 
                     <div className="col-span-1 mt-2">
+                      <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Valid Until</div>
+                      <div className={`text-sm font-medium ${certificate.status === "expired" ? "text-amber-400" : "text-zinc-200"}`}>
+                        {certificate.validityDate
+                          ? new Date(certificate.validityDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' })
+                          : "No Expiration"}
+                      </div>
+                    </div>
+
+                    <div className="col-span-2 sm:col-span-1 mt-2">
                       <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Ledger State</div>
-                      <div className="text-sm font-medium text-zinc-200">
-                        {certificate.status === "valid" ? "Immutable (Active)" : "Revoked"}
+                      <div className={`text-sm font-medium ${certificate.status === "expired" ? "text-amber-400" : "text-zinc-200"}`}>
+                        {(STATUS_DISPLAY[certificate.status] || STATUS_DISPLAY.revoked).ledgerState}
                       </div>
                     </div>
 

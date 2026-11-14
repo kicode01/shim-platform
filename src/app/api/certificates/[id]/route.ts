@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { computeCertificateFingerprint, maskEmail } from "@/lib/security";
+import {
+  computeCertificateFingerprint,
+  getEffectiveCertificateStatus,
+  maskEmail,
+  parseValidityDateInput,
+} from "@/lib/security";
 
 export async function GET(
   req: Request,
@@ -112,9 +117,13 @@ export async function GET(
       )
     );
 
+    const effectiveStatus = getEffectiveCertificateStatus(certificate);
+
     // Mask PII for public scanners/unauthenticated viewers
     const responseData = {
       ...certificate,
+      status: effectiveStatus,
+      validityDate: certificate.validityDate,
       fingerprint,
       recipientEmail: isAuthorized ? certificate.recipientEmail : maskEmail(certificate.recipientEmail),
       issuer: {
@@ -144,10 +153,19 @@ export async function PATCH(
 
   try {
     const body = await req.json();
-    const { status } = body;
+    const { status, validityDate } = body;
 
-    if (!status || !["valid", "revoked"].includes(status)) {
+    if (status !== undefined && !["valid", "revoked"].includes(status)) {
       return NextResponse.json({ message: "Invalid status value" }, { status: 400 });
+    }
+
+    const parsedValidity = parseValidityDateInput(validityDate);
+    if (parsedValidity.error) {
+      return NextResponse.json({ message: parsedValidity.error }, { status: 400 });
+    }
+
+    if (status === undefined && !parsedValidity.provided) {
+      return NextResponse.json({ message: "No status or validityDate updates provided" }, { status: 400 });
     }
 
     const userRole = (session.user as any).role;
@@ -157,9 +175,13 @@ export async function PATCH(
       return NextResponse.json({ message: "Certificate not found" }, { status: 404 });
     }
 
+    const updateData: { status?: string; validityDate?: Date | null } = {};
+    if (status !== undefined) updateData.status = status;
+    if (parsedValidity.provided) updateData.validityDate = parsedValidity.date;
+
     const updated = await prisma.certificate.update({
       where: { id },
-      data: { status }
+      data: updateData
     });
 
     if (status === "revoked") {
@@ -172,7 +194,10 @@ export async function PATCH(
       });
     }
 
-    return NextResponse.json(updated);
+    return NextResponse.json({
+      ...updated,
+      status: getEffectiveCertificateStatus(updated),
+    });
   } catch (error) {
     console.error("Error updating certificate status:", error);
     return NextResponse.json({ message: "Error updating certificate" }, { status: 500 });

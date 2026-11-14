@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { getEffectiveCertificateStatus } from "@/lib/security";
 import CredentialsClient from "./CredentialsClient";
 
 export const metadata: Metadata = {
@@ -44,7 +45,9 @@ export default async function CredentialsPage() {
 
   const serializedCertificates = certificates.map(c => ({
     ...c,
+    status: getEffectiveCertificateStatus(c),
     issueDate: c.issueDate.toISOString(),
+    validityDate: c.validityDate ? c.validityDate.toISOString() : null,
     deletedAt: c.deletedAt ? c.deletedAt.toISOString() : null,
   }));
 

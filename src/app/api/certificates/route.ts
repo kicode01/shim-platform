@@ -3,7 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { linkCertificatesByEmail } from "@/lib/claim";
-import { computeCertificateFingerprint } from "@/lib/security";
+import {
+  computeCertificateFingerprint,
+  getEffectiveCertificateStatus,
+  parseValidityDateInput,
+} from "@/lib/security";
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
@@ -18,15 +22,19 @@ export async function GET(req: Request) {
   try {
     const userRole = (session.user as any).role;
     const userId = (session.user as any).id;
+    const now = new Date();
     const whereClause: any = userRole === "admin" ? {} : { issuerId: userId };
+    const andConditions: any[] = [];
 
     if (search) {
-      whereClause.OR = [
-        { recipientName: { contains: search, mode: "insensitive" } },
-        { recipientEmail: { contains: search, mode: "insensitive" } },
-        { role: { contains: search, mode: "insensitive" } },
-        { id: { contains: search, mode: "insensitive" } }
-      ];
+      andConditions.push({
+        OR: [
+          { recipientName: { contains: search, mode: "insensitive" } },
+          { recipientEmail: { contains: search, mode: "insensitive" } },
+          { role: { contains: search, mode: "insensitive" } },
+          { id: { contains: search, mode: "insensitive" } }
+        ]
+      });
     }
 
     const isTrash = status === "trash";
@@ -34,9 +42,21 @@ export async function GET(req: Request) {
       whereClause.deletedAt = { not: null };
     } else {
       whereClause.deletedAt = null;
-      if (status && status !== "all") {
+      if (status === "valid") {
+        whereClause.status = "valid";
+        andConditions.push({
+          OR: [{ validityDate: null }, { validityDate: { gte: now } }]
+        });
+      } else if (status === "expired") {
+        whereClause.status = "valid";
+        whereClause.validityDate = { lt: now };
+      } else if (status && status !== "all") {
         whereClause.status = status;
       }
+    }
+
+    if (andConditions.length > 0) {
+      whereClause.AND = andConditions;
     }
 
     const certificates = await prisma.certificate.findMany({
@@ -55,7 +75,12 @@ export async function GET(req: Request) {
       orderBy: isTrash ? { deletedAt: "desc" } : { issueDate: "desc" }
     });
 
-    return NextResponse.json(certificates);
+    const enriched = certificates.map((c) => ({
+      ...c,
+      status: getEffectiveCertificateStatus(c, now),
+    }));
+
+    return NextResponse.json(enriched);
   } catch (error) {
     console.error("Error fetching certificates:", error);
     return NextResponse.json({ message: "Error fetching certificates" }, { status: 500 });
@@ -70,10 +95,15 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { recipientName, recipientEmail, role, eventId, templateId } = body;
+    const { recipientName, recipientEmail, role, eventId, templateId, validityDate } = body;
 
     if (!recipientName?.trim() || !templateId?.trim()) {
       return NextResponse.json({ message: "Recipient Name and Template are required" }, { status: 400 });
+    }
+
+    const parsedValidity = parseValidityDateInput(validityDate);
+    if (parsedValidity.error) {
+      return NextResponse.json({ message: parsedValidity.error }, { status: 400 });
     }
 
     // Safely resolve issuer ID from session or database fallback
@@ -130,6 +160,7 @@ export async function POST(req: Request) {
         eventId: resolvedEventId,
         templateId: template.id,
         issuerId,
+        validityDate: parsedValidity.date,
         status: "valid"
       },
       include: {

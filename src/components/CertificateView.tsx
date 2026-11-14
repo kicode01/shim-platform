@@ -1203,6 +1203,37 @@ export default function CertificateView({
               <QrCodeElement url={validateUrl} certificateId={certificateId} color="#0f172a" width="100%" height="100%" elWidth={228} />
             </div>
           )}
+          {(status === "revoked" || status === "expired") && (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                pointerEvents: "none",
+                zIndex: 25,
+              }}
+            >
+              <div
+                style={{
+                  transform: "rotate(-18deg)",
+                  border: `16px solid ${status === "expired" ? "rgba(217, 119, 6, 0.78)" : "rgba(220, 38, 38, 0.78)"}`,
+                  color: status === "expired" ? "rgba(180, 83, 9, 0.85)" : "rgba(185, 28, 28, 0.85)",
+                  backgroundColor: "rgba(255, 255, 255, 0.82)",
+                  padding: "36px 96px",
+                  fontSize: "136px",
+                  fontWeight: 900,
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  borderRadius: "24px",
+                  boxShadow: "0 16px 40px rgba(0,0,0,0.12)",
+                }}
+              >
+                {status === "expired" ? "EXPIRED" : "REVOKED"}
+              </div>
+            </div>
+          )}
         </div>
       </div>
       </>
@@ -1301,10 +1332,33 @@ export default function CertificateView({
           {/* eslint-disable-next-line @next/next/no-page-custom-font */}
           <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Great+Vibes&family=Pinyon+Script&display=swap" />
 
-          {/* Revoked Stamp if status is revoked */}
+          {/* Revoked or Expired Stamp */}
           {status === "revoked" && (
             <div className="diploma-revoked-overlay">
               INVALIDATED / REVOKED
+            </div>
+          )}
+          {status === "expired" && (
+            <div
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%) rotate(-18deg)",
+                border: "4px solid rgba(217, 119, 6, 0.8)",
+                color: "rgba(180, 83, 9, 0.9)",
+                backgroundColor: "rgba(255, 251, 235, 0.9)",
+                padding: "0.65rem 2rem",
+                fontSize: "2rem",
+                fontWeight: 900,
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+                zIndex: 25,
+                pointerEvents: "none",
+                borderRadius: "6px",
+              }}
+            >
+              EXPIRED
             </div>
           )}
 

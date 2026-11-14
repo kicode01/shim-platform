@@ -24,6 +24,7 @@ interface CertificateItem {
   recipientEmail?: string | null;
   role?: string | null;
   issueDate: string;
+  validityDate?: string | null;
   deletedAt?: string | null;
   status: string;
   template?: { id: string; name: string };
@@ -132,6 +133,17 @@ export default function CredentialsClient({
         </div>
       );
     }
+    const isExpired =
+      cert.status === "expired" ||
+      (cert.status === "valid" && Boolean(cert.validityDate && new Date(cert.validityDate).getTime() < Date.now()));
+    if (isExpired) {
+      return (
+        <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] leading-none font-bold tracking-wider uppercase text-orange-700 bg-orange-50 border border-orange-200/70 shrink-0">
+          <div className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0" />
+          <span className="-translate-y-[1px]">EXPIRED</span>
+        </div>
+      );
+    }
     if (cert.status === "valid") {
       return (
         <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] leading-none font-bold tracking-wider uppercase text-zinc-600 bg-zinc-100 border border-zinc-200/50 shrink-0">
@@ -151,7 +163,7 @@ export default function CredentialsClient({
   const handleToggleStatus = async (id: string, currentStatus: string) => {
     setUpdatingId(id);
     try {
-      const newStatus = currentStatus === "valid" ? "revoked" : "valid";
+      const newStatus = currentStatus === "revoked" ? "valid" : "revoked";
       const res = await fetch(`/api/certificates/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -159,7 +171,8 @@ export default function CredentialsClient({
       });
 
       if (res.ok) {
-        setCertificates(prev => prev.map(c => c.id === id ? { ...c, status: newStatus } : c));
+        const updated = await res.json().catch(() => null);
+        setCertificates(prev => prev.map(c => c.id === id ? { ...c, status: updated?.status || newStatus } : c));
         setConfirmRevokeId(null);
       } else {
         showToast("Failed to update status", "error");
@@ -251,13 +264,13 @@ export default function CredentialsClient({
         <div className="p-4 sm:p-6 border-b border-zinc-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white">
           <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
             {/* Filter */}
-            <div className="mob-filter-row flex bg-zinc-100 rounded-2xl p-1 w-full sm:w-auto">
-              {["all", "valid", "revoked", "trash"].map((filter) => {
+            <div className="mob-filter-row flex flex-wrap bg-zinc-100 rounded-2xl p-1 w-full sm:w-auto">
+              {["all", "valid", "expired", "revoked", "trash"].map((filter) => {
                 const isActive = statusFilter === filter;
                 return (
                   <button 
                     key={filter}
-                    className={`relative px-4 py-1.5 text-sm font-medium capitalize rounded-xl transition-colors duration-200 z-10 flex items-center justify-center gap-1.5 ${
+                    className={`relative px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium capitalize rounded-xl transition-colors duration-200 z-10 flex items-center justify-center gap-1.5 ${
                       isActive 
                         ? "bg-white text-zinc-800 shadow-sm" 
                         : "text-zinc-500 hover:text-zinc-800 hover:bg-zinc-200/50"
@@ -392,6 +405,12 @@ export default function CredentialsClient({
                         <div suppressHydrationWarning className="text-[13px] font-medium text-zinc-600">
                           {new Date(cert.issueDate).toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "UTC" })}
                         </div>
+                        {!cert.deletedAt && cert.validityDate && (
+                          <div suppressHydrationWarning className={`text-[11px] mt-0.5 ${cert.status === "expired" ? "text-orange-600 font-medium" : "text-zinc-400"}`}>
+                            {cert.status === "expired" ? "Exp " : "Valid til "}
+                            {new Date(cert.validityDate).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", timeZone: "UTC" })}
+                          </div>
+                        )}
                         {cert.deletedAt && (
                           <div suppressHydrationWarning className="text-[11px] text-zinc-400 mt-0.5">
                             Trashed {new Date(cert.deletedAt).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", timeZone: "UTC" })}
@@ -461,7 +480,7 @@ export default function CredentialsClient({
 
                                 <button
                                   onClick={() => {
-                                    if (cert.status === "valid") {
+                                    if (cert.status !== "revoked") {
                                       setConfirmRevokeId(cert.id);
                                       setConfirmDeleteId(null);
                                     } else {
@@ -470,9 +489,9 @@ export default function CredentialsClient({
                                   }}
                                   disabled={updatingId === cert.id}
                                   className="w-8 h-8 rounded-md text-zinc-400 hover:text-zinc-800 hover:bg-zinc-100 transition-colors flex items-center justify-center shrink-0"
-                                  title={cert.status === "valid" ? "Revoke Credential" : "Restore Credential"}
+                                  title={cert.status !== "revoked" ? "Revoke Credential" : "Restore Credential"}
                                 >
-                                  {updatingId === cert.id ? <Loader2 size={14} className="animate-spin" /> : cert.status === "valid" ? <Ban size={14} /> : <CheckCircle2 size={14} />}
+                                  {updatingId === cert.id ? <Loader2 size={14} className="animate-spin" /> : cert.status !== "revoked" ? <Ban size={14} /> : <CheckCircle2 size={14} />}
                                 </button>
 
                                 <button
@@ -523,6 +542,11 @@ export default function CredentialsClient({
                       </div>
                       <div suppressHydrationWarning className="mt-0.5 text-[12px] text-zinc-400">
                         {new Date(cert.issueDate).toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "UTC" })}
+                        {!cert.deletedAt && cert.validityDate && (
+                          <span className={`ml-2 ${cert.status === "expired" ? "text-orange-600 font-medium" : "text-zinc-400"}`}>
+                            · {cert.status === "expired" ? "Expired" : "Valid til"} {new Date(cert.validityDate).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric", timeZone: "UTC" })}
+                          </span>
+                        )}
                         {cert.deletedAt && (
                           <span className="ml-2 text-zinc-400">
                             · Trashed {new Date(cert.deletedAt).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", timeZone: "UTC" })}
@@ -597,7 +621,7 @@ export default function CredentialsClient({
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={() => {
-                                    if (cert.status === "valid") {
+                                    if (cert.status !== "revoked") {
                                       setConfirmRevokeId(cert.id);
                                       setConfirmDeleteId(null);
                                     } else {
@@ -606,9 +630,9 @@ export default function CredentialsClient({
                                   }}
                                   disabled={updatingId === cert.id}
                                   className="mob-card-action h-11 px-3 rounded-md bg-zinc-100 text-zinc-700 hover:bg-zinc-200 text-xs font-medium flex items-center justify-center shrink-0"
-                                  title={cert.status === "valid" ? "Revoke Credential" : "Restore Credential"}
+                                  title={cert.status !== "revoked" ? "Revoke Credential" : "Restore Credential"}
                                 >
-                                  {updatingId === cert.id ? <Loader2 size={16} className="animate-spin" /> : cert.status === "valid" ? "Revoke" : "Restore"}
+                                  {updatingId === cert.id ? <Loader2 size={16} className="animate-spin" /> : cert.status !== "revoked" ? "Revoke" : "Restore"}
                                 </button>
                                 <button
                                   onClick={() => {

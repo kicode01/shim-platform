@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { computeCertificateFingerprint } from "@/lib/security";
+import { computeCertificateFingerprint, parseValidityDateInput } from "@/lib/security";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -12,10 +12,26 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { templateId, recipients, defaultRole, defaultEventId } = await req.json();
+    const { templateId, recipients, defaultRole, defaultEventId, defaultValidityDate } = await req.json();
     
     if (!templateId || !Array.isArray(recipients) || recipients.length === 0) {
       return NextResponse.json({ message: "Template ID and a valid list of recipients are required." }, { status: 400 });
+    }
+
+    const parsedDefaultValidity = parseValidityDateInput(defaultValidityDate);
+    if (parsedDefaultValidity.error) {
+      return NextResponse.json({ message: parsedDefaultValidity.error }, { status: 400 });
+    }
+
+    for (const recipient of recipients) {
+      if (!recipient?.name || !String(recipient.name).trim()) continue;
+      const rowValidity = recipient.validityDate ?? recipient.validity_date;
+      if (rowValidity !== undefined) {
+        const parsedRow = parseValidityDateInput(rowValidity);
+        if (parsedRow.error) {
+          return NextResponse.json({ message: `Invalid validity date for "${recipient.name}": ${parsedRow.error}` }, { status: 400 });
+        }
+      }
     }
 
     let issuerId = (session.user as any).id;
@@ -70,6 +86,11 @@ export async function POST(req: Request) {
         resolvedEventId = fallbackEvent.id;
       }
 
+      const rawRowValidity = recipient.validityDate ?? recipient.validity_date;
+      const parsedRowValidity = rawRowValidity !== undefined && rawRowValidity !== ""
+        ? parseValidityDateInput(rawRowValidity)
+        : parsedDefaultValidity;
+
       const cert = await prisma.certificate.create({
         data: {
           recipientName: recipient.name.trim(),
@@ -78,6 +99,7 @@ export async function POST(req: Request) {
           eventId: resolvedEventId,
           templateId,
           issuerId,
+          validityDate: parsedRowValidity.date,
           status: "valid"
         },
         include: {

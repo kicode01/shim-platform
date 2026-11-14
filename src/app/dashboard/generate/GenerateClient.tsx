@@ -56,7 +56,9 @@ function GenerateCertificatesContent() {
   const [singleEmail, setSingleEmail] = useState("");
   const [singleRole, setSingleRole] = useState("");
   const [singleEventId, setSingleEventId] = useState("");
+  const [singleValidityDate, setSingleValidityDate] = useState("");
   const [bulkEventId, setBulkEventId] = useState("");
+  const [bulkValidityDate, setBulkValidityDate] = useState("");
   const [singleIssuing, setSingleIssuing] = useState(false);
   const [singleSuccess, setSingleSuccess] = useState<any>(null);
 
@@ -144,6 +146,8 @@ function GenerateCertificatesContent() {
               normRow.role = val;
             } else if (k === "event" || k === "event name" || k === "event title") {
               normRow.event = val;
+            } else if (k === "validitydate" || k === "validity_date" || k === "validity date" || k === "expiration" || k === "expires") {
+              normRow.validityDate = val;
             } else {
               normRow[key.trim()] = val;
             }
@@ -212,6 +216,7 @@ function GenerateCertificatesContent() {
           role: singleRole.trim() || selectedTemplate.name,
           eventId: singleEventId.trim(),
           templateId: selectedTemplate.id,
+          validityDate: singleValidityDate || null,
         })
       });
 
@@ -262,7 +267,8 @@ function GenerateCertificatesContent() {
           templateId: selectedTemplate.id,
           recipients: csvData,
           defaultRole: selectedTemplate.name,
-          defaultEventId: bulkEventId
+          defaultEventId: bulkEventId,
+          defaultValidityDate: bulkValidityDate || null,
         })
       });
 
@@ -580,6 +586,7 @@ function GenerateCertificatesContent() {
                         setSingleEmail("");
                         setSingleRole("");
                         setSingleEventId("");
+                        setSingleValidityDate("");
                         setSingleSuccess(null);
                       }}
                       className="text-xs font-medium text-zinc-500 hover:text-zinc-700 bg-zinc-100 hover:bg-zinc-200 px-3 py-1.5 rounded-md transition-colors"
@@ -716,6 +723,22 @@ function GenerateCertificatesContent() {
                       </div>
                     </div>
 
+                    <div>
+                      <label htmlFor="singleValidityDate" className="text-sm font-medium text-zinc-700 mb-1.5 block">
+                        Validity Date (Optional)
+                      </label>
+                      <input
+                        id="singleValidityDate"
+                        type="date"
+                        className="w-full px-4 py-2.5 bg-white border border-zinc-300 rounded-md text-sm font-medium text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-700 focus:border-transparent shadow-sm"
+                        value={singleValidityDate}
+                        onChange={e => setSingleValidityDate(e.target.value)}
+                      />
+                      <p className="text-xs text-zinc-500 mt-1">
+                        Leave blank for lifetime validity. Auto-expires after this date.
+                      </p>
+                    </div>
+
                     <div className="flex flex-col sm:flex-row gap-3 mt-4">
                       <button 
                         type="button"
@@ -792,6 +815,19 @@ function GenerateCertificatesContent() {
                           dropdownClassName="w-full"
                         />
                       </div>
+                    </div>
+
+                    <div className="mb-6 shrink-0">
+                      <label htmlFor="bulkValidityDate" className="text-sm font-medium text-zinc-700 mb-1.5 block">
+                        Default Validity Date (Optional)
+                      </label>
+                      <input
+                        id="bulkValidityDate"
+                        type="date"
+                        className="w-full px-4 py-2.5 bg-white border border-zinc-300 rounded-md text-sm font-medium text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-700 focus:border-transparent shadow-sm"
+                        value={bulkValidityDate}
+                        onChange={e => setBulkValidityDate(e.target.value)}
+                      />
                     </div>
 
                     <div 

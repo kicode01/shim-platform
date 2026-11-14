@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { linkCertificatesToUser } from "@/lib/claim";
+import { getEffectiveCertificateStatus } from "@/lib/security";
 import PortalClient from "./PortalClient";
 import type { Metadata } from "next";
 
@@ -114,8 +115,9 @@ export default async function PortalPage() {
     id: cert.id,
     recipientName: cert.recipientName,
     role: cert.role,
-    status: cert.status,
+    status: getEffectiveCertificateStatus(cert),
     issueDate: cert.issueDate.toISOString(),
+    validityDate: cert.validityDate ? cert.validityDate.toISOString() : null,
     event: { name: cert.event?.name || "Event" },
     template: { name: cert.template?.name || "Standard Template" }
   }));

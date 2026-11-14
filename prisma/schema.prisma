@@ -103,6 +103,7 @@ model Certificate {
   recipientEmail String?
   role           String    @default("Participant") // e.g., "Participant", "Speaker", "Exhibitor"
   issueDate      DateTime  @default(now())
+  validityDate   DateTime?
   status         String    @default("valid") // "valid" or "revoked"
   
   eventId        String
@@ -127,6 +128,7 @@ model Certificate {
 
   @@index([id])
   @@index([deletedAt])
+  @@index([validityDate])
 }
 
 model AuditLog {

@@ -22,6 +22,7 @@ interface Certificate {
   role: string;
   status: string;
   issueDate: string;
+  validityDate?: string | null;
   event: { name: string };
   template: { name: string };
 }
@@ -327,6 +328,10 @@ export default function PortalClient({ user, certificates, stats, insights }: Po
                               <Check size={9} strokeWidth={3} />
                               Valid
                             </span>
+                          ) : cert.status === "expired" ? (
+                            <span className="text-[10px] font-bold tracking-widest uppercase text-orange-700 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-md">
+                              Expired
+                            </span>
                           ) : (
                             <span className="text-[10px] font-bold tracking-widest uppercase text-zinc-500 bg-zinc-100 border border-zinc-200 px-2 py-0.5 rounded-md">
                               {cert.status}
@@ -342,6 +347,14 @@ export default function PortalClient({ user, certificates, stats, insights }: Po
                           <span suppressHydrationWarning className="tabular-nums whitespace-nowrap">
                             {formatDate(cert.issueDate)}
                           </span>
+                          {cert.validityDate && (
+                            <>
+                              <span className="text-zinc-300">·</span>
+                              <span suppressHydrationWarning className={`tabular-nums whitespace-nowrap ${cert.status === "expired" ? "text-orange-600" : ""}`}>
+                                {cert.status === "expired" ? "Exp" : "Valid til"} {formatDate(cert.validityDate)}
+                              </span>
+                            </>
+                          )}
                           <span className="hidden md:inline text-zinc-300">·</span>
                           <span
                             role="button"

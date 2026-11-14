@@ -215,3 +215,57 @@ export function maskEmail(email: string | null | undefined): string | null {
 
   return `${maskedLocal}${domainPart}`;
 }
+
+export type EffectiveCertificateStatus = "valid" | "revoked" | "expired";
+
+/**
+ * Returns true if the credential has a non-null validityDate strictly in the past.
+ */
+export function isCertificateExpired(
+  validityDate: Date | string | null | undefined,
+  now: Date = new Date()
+): boolean {
+  if (!validityDate) return false;
+  const parsed = validityDate instanceof Date ? validityDate : new Date(validityDate);
+  if (Number.isNaN(parsed.getTime())) return false;
+  return parsed.getTime() < now.getTime();
+}
+
+/**
+ * Computes effective runtime status using lazy expiration without mutating DB rows.
+ * Manual revocation takes precedence over expiration.
+ */
+export function getEffectiveCertificateStatus(
+  cert: { status: string; validityDate?: Date | string | null },
+  now: Date = new Date()
+): EffectiveCertificateStatus {
+  if (cert.status === "revoked") return "revoked";
+  if (isCertificateExpired(cert.validityDate, now)) return "expired";
+  return cert.status === "valid" ? "valid" : "revoked";
+}
+
+/**
+ * Parses an optional validity date input from API payloads.
+ * Date-only "YYYY-MM-DD" strings normalize to end-of-day UTC so credentials remain valid through that date.
+ */
+export function parseValidityDateInput(input: unknown): {
+  provided: boolean;
+  date: Date | null;
+  error?: string;
+} {
+  if (input === undefined) return { provided: false, date: null };
+  if (input === null || input === "") return { provided: true, date: null };
+  if (typeof input !== "string") {
+    return { provided: true, date: null, error: "Invalid validity date format" };
+  }
+  const trimmed = input.trim();
+  if (!trimmed) return { provided: true, date: null };
+  const normalized = /^\d{4}-\d{2}-\d{2}$/.test(trimmed)
+    ? `${trimmed}T23:59:59.999Z`
+    : trimmed;
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) {
+    return { provided: true, date: null, error: "Invalid validity date" };
+  }
+  return { provided: true, date: parsed };
+}

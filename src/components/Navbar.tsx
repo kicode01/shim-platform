@@ -3,9 +3,10 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getHostSurface, getSurfaceOrigin, getWorkspaceHref } from "@/lib/domain";
+import { performFullLogoutRedirect } from "@/lib/client-auth";
 import { 
   LayoutDashboard, 
   Stamp, 
@@ -47,10 +48,12 @@ export default function Navbar({ initialHost = "" }: { initialHost?: string }) {
   const logoutTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [signingOutAction, setSigningOutAction] = useState<"switch" | "logout" | null>(null);
+  const [navigatingWorkspace, setNavigatingWorkspace] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setAccountMenuOpen(false);
+    setNavigatingWorkspace(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -104,16 +107,7 @@ export default function Navbar({ initialHost = "" }: { initialHost?: string }) {
     setConfirmLogout(false);
     setAccountMenuOpen(false);
 
-    try {
-      await signOut({ redirect: false });
-    } finally {
-      const currentHost = window.location.host;
-      const currentSurface = getHostSurface(currentHost);
-      const isCrossSubdomain = currentSurface === "studio" || currentSurface === "wallet";
-      window.location.replace(
-        isCrossSubdomain ? `${getSurfaceOrigin("hq", currentHost)}/logout` : "/login"
-      );
-    }
+    await performFullLogoutRedirect();
   };
 
   const handleLogoutClick = async () => {
@@ -214,28 +208,48 @@ export default function Navbar({ initialHost = "" }: { initialHost?: string }) {
     </div>
   );
 
-  const renderWorkspaceLink = (className: string, showArrow = false) => {
-    const content = (
-      <>
-        <span>{workspaceLabel}</span>
-        {showArrow && <ArrowRight size={14} className="shrink-0" />}
-      </>
-    );
+  const handleWorkspaceClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
+      return;
+    }
+    e.preventDefault();
+    if (navigatingWorkspace) return;
+    setNavigatingWorkspace(true);
 
     if (workspaceHref.startsWith("/api/")) {
-      return (
-        <a href={workspaceHref} className={className}>
-          {content}
-        </a>
-      );
+      try {
+        const res = await fetch("/api/auth/handoff");
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.url) {
+            // Replace the current /validate or / entry so Browser Back from
+            // Dashboard/Portal does not return out to public pages.
+            window.location.replace(data.url);
+            return;
+          }
+        }
+      } catch {
+        // Fall back to direct handoff replace below.
+      }
+      window.location.replace(workspaceHref);
+      return;
     }
 
-    return (
-      <Link href={workspaceHref} className={className}>
-        {content}
-      </Link>
-    );
+    router.replace(workspaceHref);
+    setNavigatingWorkspace(false);
   };
+
+  const renderWorkspaceLink = (className: string, showArrow = false) => (
+    <a
+      href={workspaceHref}
+      onClick={handleWorkspaceClick}
+      aria-busy={navigatingWorkspace}
+      className={className}
+    >
+      <span>{workspaceLabel}</span>
+      {showArrow && <ArrowRight size={14} className="shrink-0" />}
+    </a>
+  );
 
   const renderLogoutButton = (variant: "landing" | "dashboard" | "portal", animateIcon = false) => {
     const confirmClasses = variant === "portal"
@@ -610,14 +624,23 @@ export default function Navbar({ initialHost = "" }: { initialHost?: string }) {
                       "mob-cta flex items-center justify-center bg-zinc-700 border border-zinc-700 text-zinc-100 hover:text-white hover:bg-zinc-600 transition-colors rounded-xl px-4 py-2 shadow-sm text-sm font-medium whitespace-nowrap"
                     )
                   ) : (
-                    <div className="flex items-center gap-1.5 sm:gap-6">
-                      <Link href="/" className="mob-cta text-sm font-medium text-zinc-500 hover:text-zinc-700 transition-colors whitespace-nowrap">
-                        Home
-                      </Link>
-                      <Link href="/login" className="mob-cta flex items-center justify-center bg-zinc-700 border border-zinc-700 hover:bg-zinc-700 text-zinc-100 hover:text-white transition-colors rounded-xl px-4 py-2 shadow-sm text-sm font-medium whitespace-nowrap">
-                        Sign In
-                      </Link>
-                    </div>
+                    (() => {
+                      const isSubdomain = isStudioHost || isWalletHost;
+                      const homeHref = isSubdomain ? `${getSurfaceOrigin("hq", host)}/` : "/";
+                      const loginHref = isSubdomain ? `${getSurfaceOrigin("hq", host)}/login` : "/login";
+                      const HomeTag = isSubdomain ? "a" : Link;
+                      const LoginTag = isSubdomain ? "a" : Link;
+                      return (
+                        <div className="flex items-center gap-1.5 sm:gap-6">
+                          <HomeTag href={homeHref} className="mob-cta text-sm font-medium text-zinc-500 hover:text-zinc-700 transition-colors whitespace-nowrap">
+                            Home
+                          </HomeTag>
+                          <LoginTag href={loginHref} className="mob-cta flex items-center justify-center bg-zinc-700 border border-zinc-700 hover:bg-zinc-700 text-zinc-100 hover:text-white transition-colors rounded-xl px-4 py-2 shadow-sm text-sm font-medium whitespace-nowrap">
+                            Sign In
+                          </LoginTag>
+                        </div>
+                      );
+                    })()
                   )}
                 </motion.div>
               )}

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { signOut } from "next-auth/react";
 import { Loader2 } from "lucide-react";
+import { signOutCurrentOrigin } from "@/lib/client-auth";
 
 export default function LogoutPage() {
   useEffect(() => {
@@ -10,9 +10,7 @@ export default function LogoutPage() {
 
     async function performSignOut() {
       try {
-        // Use redirect: false so NextAuth clears the current-origin cookie without
-        // redirecting to NEXTAUTH_URL when running locally on a different port.
-        await signOut({ redirect: false });
+        await signOutCurrentOrigin();
       } finally {
         if (active) {
           window.location.replace("/login");

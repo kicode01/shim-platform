@@ -1,12 +1,12 @@
 "use client";
 
-import { signOut } from "next-auth/react";
 import { LogOut } from "lucide-react";
+import { performFullLogoutRedirect } from "@/lib/client-auth";
 
 export default function LogoutButton() {
   return (
     <button 
-      onClick={() => signOut({ callbackUrl: "/" })} 
+      onClick={() => void performFullLogoutRedirect()} 
       className="btn btn-outline"
       style={{ padding: "0.4rem 0.8rem" }}
     >

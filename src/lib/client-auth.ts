@@ -109,3 +109,52 @@ export function getLoginUrlForCurrentHost(errorCode?: string): string {
 
   return errorCode ? `${base}?error=${encodeURIComponent(errorCode)}` : base;
 }
+
+/**
+ * Expires NextAuth session cookies on the current browser origin and notifies
+ * same-origin tabs via NextAuth's storage channel without consulting `NEXTAUTH_URL`.
+ */
+export async function signOutCurrentOrigin(): Promise<void> {
+  clearAuthRedirectGuard();
+
+  try {
+    await fetch("/api/auth/logout", {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+  } catch {
+    // Ignore transient network errors and still complete client navigation.
+  }
+
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      "nextauth.message",
+      JSON.stringify({
+        event: "session",
+        data: { trigger: "signout" },
+        timestamp: Math.floor(Date.now() / 1000),
+      })
+    );
+  } catch {
+    // Ignore storage access errors in restricted browser contexts.
+  }
+}
+
+/**
+ * Clears the active session cookie on the current surface, then either hands off
+ * to HQ `/logout` (when on `studio`/`wallet`) or replaces history with `/login`.
+ */
+export async function performFullLogoutRedirect(): Promise<void> {
+  await signOutCurrentOrigin();
+  if (typeof window === "undefined") return;
+
+  const currentHost = window.location.host;
+  const currentSurface = getHostSurface(currentHost);
+  const isCrossSubdomain =
+    currentSurface === "studio" || currentSurface === "wallet";
+  window.location.replace(
+    isCrossSubdomain ? `${getSurfaceOrigin("hq", currentHost)}/logout` : "/login"
+  );
+}

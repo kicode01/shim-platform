@@ -102,7 +102,7 @@ export default function AuthProvider({
   session?: Session | null;
 }) {
   return (
-    <SessionProvider session={session}>
+    <SessionProvider session={session} basePath="/api/auth">
       <AuthenticatedEntryGuard />
       {children}
     </SessionProvider>

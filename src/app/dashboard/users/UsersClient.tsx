@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -13,15 +14,19 @@ import {
   Ban,
   CheckCircle2,
   SlidersHorizontal,
+  FlaskConical,
 } from "lucide-react";
 import { CERTIFICATE_ROLES } from "@/lib/roles";
 import {
   ACCOUNT_TIERS,
+  AccountTier,
   DEFAULT_ORGANIZER_PAGES,
   ORGANIZER_PAGES,
   ORGANIZER_PAGE_KEYS,
   OrganizerPageKey,
 } from "@/lib/permissions";
+import type { ProfileEditingFeature } from "@/lib/features";
+import { emitProfileSyncSignal } from "@/lib/profile";
 
 export interface ManageUser {
   id: string;
@@ -55,16 +60,33 @@ const TIER_LABELS: Record<string, string> = {
   member: "Attendee (shim-wallet)",
 };
 
+const TIER_SHORT_LABELS: Record<AccountTier, string> = {
+  admin: "Admin",
+  organizer: "Organizer",
+  member: "Attendee",
+};
+
 export default function UsersClient({
   initialUsers,
   currentUserId,
   initialSearch = "",
+  initialProfileFeature = {
+    enabled: false,
+    roles: [...ACCOUNT_TIERS],
+    updatedAt: null,
+  },
 }: {
   initialUsers: ManageUser[];
   currentUserId: string;
   initialSearch?: string;
+  initialProfileFeature?: ProfileEditingFeature;
 }) {
+  const router = useRouter();
   const [users, setUsers] = useState<ManageUser[]>(initialUsers);
+  const [profileFeature, setProfileFeature] = useState<ProfileEditingFeature>(
+    initialProfileFeature
+  );
+  const [savingFeature, setSavingFeature] = useState(false);
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [tierFilter, setTierFilter] = useState<string>("all");
   const [editingUser, setEditingUser] = useState<ManageUser | null>(null);
@@ -265,11 +287,164 @@ export default function UsersClient({
     );
   };
 
+  const saveProfileFeature = async (next: {
+    enabled: boolean;
+    roles: AccountTier[];
+  }) => {
+    if (savingFeature) return;
+    setSavingFeature(true);
+    try {
+      const res = await fetch("/api/features", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(next),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.profileEditing) {
+        showToast(
+          data?.message || "Failed to update experimental feature toggle.",
+          "error"
+        );
+        return;
+      }
+
+      const updated: ProfileEditingFeature = {
+        enabled: Boolean(data.profileEditing.enabled),
+        roles: data.profileEditing.roles,
+        updatedAt: data.profileEditing.updatedAt ?? null,
+      };
+      setProfileFeature(updated);
+      emitProfileSyncSignal();
+      router.refresh();
+      showToast(
+        updated.enabled
+          ? `Experimental Profile Editing enabled (${updated.roles.map((r) => TIER_SHORT_LABELS[r]).join(", ")}).`
+          : "Experimental Profile Editing turned OFF.",
+        "success"
+      );
+    } catch {
+      showToast("Network error while updating feature toggle.", "error");
+    } finally {
+      setSavingFeature(false);
+    }
+  };
+
+  const handleToggleProfileMaster = () => {
+    const nextEnabled = !profileFeature.enabled;
+    const nextRoles =
+      nextEnabled && profileFeature.roles.length === 0
+        ? [...ACCOUNT_TIERS]
+        : profileFeature.roles;
+    void saveProfileFeature({ enabled: nextEnabled, roles: nextRoles });
+  };
+
+  const handleToggleProfileRole = (tier: AccountTier) => {
+    const exists = profileFeature.roles.includes(tier);
+    const nextRoles = exists
+      ? profileFeature.roles.filter((r) => r !== tier)
+      : ACCOUNT_TIERS.filter(
+          (t) => t === tier || profileFeature.roles.includes(t)
+        );
+    const nextEnabled = nextRoles.length === 0 ? false : profileFeature.enabled;
+    void saveProfileFeature({ enabled: nextEnabled, roles: nextRoles });
+  };
+
   const isEditingSelf = editingUser?.id === currentUserId;
 
   return (
     <>
       <div className="flex-1 bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm flex flex-col h-full min-h-0">
+        {/* Experimental Feature Rollout Gate */}
+        <div className="px-4 sm:px-6 py-3 border-b border-zinc-200 bg-zinc-50/70 flex flex-col lg:flex-row lg:items-center justify-between gap-3 shrink-0">
+          <div className="flex items-start gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-white border border-zinc-200 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+              <FlaskConical size={15} className="text-zinc-700" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs sm:text-sm font-semibold text-zinc-900">
+                  Self-Service Profile &amp; Icon Editing
+                </span>
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200">
+                  Experimental
+                </span>
+                <span
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                    profileFeature.enabled
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : "bg-zinc-100 text-zinc-600 border-zinc-200"
+                  }`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      profileFeature.enabled ? "bg-emerald-500" : "bg-zinc-400"
+                    }`}
+                  />
+                  {profileFeature.enabled ? "Live" : "Off"}
+                </span>
+              </div>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Lets selected roles update display name, monochrome profile icon, and non-demo password from the Navbar account menu. Flipping Off disables it immediately.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1 rounded-xl bg-white border border-zinc-200 p-1">
+              {ACCOUNT_TIERS.map((tier) => {
+                const active = profileFeature.roles.includes(tier);
+                return (
+                  <button
+                    key={tier}
+                    type="button"
+                    disabled={savingFeature}
+                    onClick={() => handleToggleProfileRole(tier)}
+                    aria-pressed={active}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer disabled:opacity-60 ${
+                      active
+                        ? "bg-zinc-900 text-white"
+                        : "text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100"
+                    }`}
+                  >
+                    {TIER_SHORT_LABELS[tier]}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              role="switch"
+              aria-checked={profileFeature.enabled}
+              aria-label="Toggle experimental self-service profile editing"
+              disabled={savingFeature}
+              onClick={handleToggleProfileMaster}
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer disabled:opacity-60 ${
+                profileFeature.enabled
+                  ? "bg-zinc-900 border-zinc-900 text-white hover:bg-zinc-800"
+                  : "bg-white border-zinc-300 text-zinc-700 hover:border-zinc-400"
+              }`}
+            >
+              {savingFeature ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <span
+                  className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
+                    profileFeature.enabled ? "bg-emerald-500" : "bg-zinc-300"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                      profileFeature.enabled ? "translate-x-3.5" : "translate-x-0.5"
+                    }`}
+                  />
+                </span>
+              )}
+              <span>{profileFeature.enabled ? "Enabled" : "Disabled"}</span>
+            </button>
+          </div>
+        </div>
+
         {/* Controls Bar */}
         <div className="p-4 sm:p-6 border-b border-zinc-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white">
           <div className="mob-filter-row flex flex-wrap bg-zinc-100 rounded-2xl p-1 w-full sm:w-auto">

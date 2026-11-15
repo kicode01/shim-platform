@@ -27,6 +27,7 @@ export interface AuthenticatedGuardUser {
   allowedPages: string[];
   certificateRole: string;
   membershipId: string | null;
+  avatarIcon: string | null;
 }
 
 export async function getFreshSessionUser(): Promise<AuthenticatedGuardUser | null> {
@@ -45,6 +46,7 @@ export async function getFreshSessionUser(): Promise<AuthenticatedGuardUser | nu
       allowedPages: true,
       certificateRole: true,
       membershipId: true,
+      avatarIcon: true,
     },
   });
 
@@ -55,13 +57,8 @@ export async function getFreshSessionUser(): Promise<AuthenticatedGuardUser | nu
   };
 }
 
-/**
- * Enforces API authorization, active status, and optional dashboard page permission.
- * Accepts either a single page key or an array of acceptable page keys (pass any).
- */
-export async function requireApiStaffAccess(
-  gate?: DashboardGateKey | DashboardGateKey[]
-): Promise<
+/** Ensures a valid, active authenticated session (for any tier: admin, organizer, or attendee). */
+export async function requireApiSessionUser(): Promise<
   | { user: AuthenticatedGuardUser; error?: undefined }
   | { user?: undefined; error: NextResponse }
 > {
@@ -80,6 +77,22 @@ export async function requireApiStaffAccess(
       ),
     };
   }
+
+  return { user };
+}
+
+/**
+ * Enforces API authorization, active status, and optional dashboard page permission.
+ * Accepts either a single page key or an array of acceptable page keys (pass any).
+ */
+export async function requireApiStaffAccess(
+  gate?: DashboardGateKey | DashboardGateKey[]
+): Promise<
+  | { user: AuthenticatedGuardUser; error?: undefined }
+  | { user?: undefined; error: NextResponse }
+> {
+  const { user, error } = await requireApiSessionUser();
+  if (error) return { error };
 
   if (user.role !== "admin" && user.role !== "organizer") {
     return {

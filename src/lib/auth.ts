@@ -3,6 +3,10 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_ORGANIZER_PAGES } from "@/lib/permissions";
+import {
+  canUserEditOwnProfile,
+  getProfileEditingSetting,
+} from "@/lib/features";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
@@ -97,23 +101,34 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (session.user && token?.id) {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-            isActive: true,
-          },
-        });
+        const [dbUser, profileFeature] = await Promise.all([
+          prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+              isActive: true,
+              avatarIcon: true,
+            },
+          }),
+          getProfileEditingSetting(),
+        ]);
 
         if (!dbUser) {
           return { expires: session.expires } as any;
         }
 
+        const canEditProfile = canUserEditOwnProfile(
+          dbUser.role,
+          profileFeature
+        );
+
         session.user.name = dbUser.name;
         session.user.email = dbUser.email;
+        session.user.avatarIcon = canEditProfile ? dbUser.avatarIcon : null;
+        session.user.canEditProfile = canEditProfile;
         (session.user as any).id = dbUser.id;
         (session.user as any).role = dbUser.role;
         (session.user as any).isActive = dbUser.isActive;

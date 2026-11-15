@@ -13,6 +13,7 @@ model User {
   email         String?      @unique
   emailVerified DateTime?
   image           String?
+  avatarIcon      String?
   role            String       @default("organizer") // "admin", "organizer", or "member"
   isActive        Boolean      @default(true)
   allowedPages    String[]     @default(["overview", "credentials", "events", "templates", "issue", "audit"])
@@ -181,4 +182,12 @@ model SupportTicket {
 
   @@index([status])
   @@index([createdAt])
+}
+
+model PlatformSetting {
+  key       String   @id
+  enabled   Boolean  @default(false)
+  roles     String[] @default(["admin", "organizer", "member"])
+  updatedAt DateTime @updatedAt
+  updatedBy String?
 }

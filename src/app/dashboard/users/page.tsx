@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { requireDashboardPageAccess } from "@/lib/auth-guard";
 import { resolveEffectiveAllowedPages } from "@/lib/permissions";
+import { getProfileEditingSetting } from "@/lib/features";
 import UsersClient, { ManageUser } from "./UsersClient";
 
 export const metadata: Metadata = {
@@ -22,7 +23,7 @@ export default async function UsersPage({
     ? resolvedSearchParams.search.trim()
     : "";
 
-  const [users, certificates] = await Promise.all([
+  const [users, certificates, initialProfileFeature] = await Promise.all([
     prisma.user.findMany({
       orderBy: { name: "asc" },
       select: {
@@ -43,6 +44,7 @@ export default async function UsersPage({
       where: { deletedAt: null },
       select: { recipientEmail: true },
     }),
+    getProfileEditingSetting(),
   ]);
 
   const certCountByEmail = new Map<string, number>();
@@ -85,6 +87,7 @@ export default async function UsersPage({
         initialUsers={initialUsers}
         currentUserId={guardUser.id}
         initialSearch={initialSearch}
+        initialProfileFeature={initialProfileFeature}
       />
     </div>
   );

@@ -1,18 +1,23 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getHostSurface, getSurfaceOrigin, getWorkspaceHref } from "@/lib/domain";
 import { performFullLogoutRedirect } from "@/lib/client-auth";
+import { ProfileAvatarGlyph } from "@/components/ProfileAvatarGlyph";
+import ProfileEditModal, {
+  type EditableProfileData,
+} from "@/components/ProfileEditModal";
+import { PROFILE_SYNC_EVENT, PROFILE_SYNC_STORAGE_KEY } from "@/lib/profile";
 import { 
   LayoutDashboard, 
   Stamp, 
   FileSpreadsheet, 
   LogOut,
-  UserCheck,
+  SlidersHorizontal,
   Calendar,
   ArrowRight,
   BookOpen,
@@ -48,7 +53,86 @@ export default function Navbar({ initialHost = "" }: { initialHost?: string }) {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [navigatingWorkspace, setNavigatingWorkspace] = useState(false);
+  const [profileEditOpen, setProfileEditOpen] = useState(false);
+  const [liveProfile, setLiveProfile] = useState<{
+    name?: string | null;
+    email?: string | null;
+    avatarIcon?: string | null;
+    canEditProfile?: boolean;
+  } | null>(null);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
+
+  const sessionUserId = (session?.user as { id?: string } | undefined)?.id;
+
+  const syncProfileState = useCallback(async () => {
+    if (!sessionUserId) return;
+    try {
+      const res = await fetch("/api/profile", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json().catch(() => null);
+      if (!data?.user) return;
+      setLiveProfile({
+        name: data.user.name ?? null,
+        email: data.user.email ?? null,
+        avatarIcon: data.user.avatarIcon ?? null,
+        canEditProfile: Boolean(data.canEditProfile),
+      });
+    } catch {
+      // Ignore transient background sync errors
+    }
+  }, [sessionUserId]);
+
+  useEffect(() => {
+    if (!sessionUserId) {
+      setLiveProfile(null);
+      setProfileEditOpen(false);
+      return;
+    }
+    void syncProfileState();
+  }, [sessionUserId, pathname, syncProfileState]);
+
+  useEffect(() => {
+    if (!sessionUserId) return;
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void syncProfileState();
+      }
+    };
+    const handleFocusOrEvent = () => {
+      void syncProfileState();
+    };
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === PROFILE_SYNC_STORAGE_KEY) {
+        void syncProfileState();
+      }
+    };
+
+    window.addEventListener("focus", handleFocusOrEvent);
+    window.addEventListener(PROFILE_SYNC_EVENT, handleFocusOrEvent);
+    window.addEventListener("storage", handleStorage);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void syncProfileState();
+      }
+    }, 8000);
+
+    return () => {
+      window.removeEventListener("focus", handleFocusOrEvent);
+      window.removeEventListener(PROFILE_SYNC_EVENT, handleFocusOrEvent);
+      window.removeEventListener("storage", handleStorage);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.clearInterval(intervalId);
+    };
+  }, [sessionUserId, syncProfileState]);
+
+  useEffect(() => {
+    if (accountMenuOpen && sessionUserId) {
+      void syncProfileState();
+    }
+  }, [accountMenuOpen, sessionUserId, syncProfileState]);
 
   useEffect(() => {
     setAccountMenuOpen(false);
@@ -126,8 +210,16 @@ export default function Navbar({ initialHost = "" }: { initialHost?: string }) {
       : userRole === "member"
         ? "Attendee"
         : "Organizer";
-  const displayName = session?.user?.name || roleLabel;
-  const displayEmail = session?.user?.email || "";
+  const effectiveName = liveProfile?.name ?? session?.user?.name;
+  const displayName = effectiveName || roleLabel;
+  const displayEmail = liveProfile?.email ?? session?.user?.email ?? "";
+  const canEditProfile =
+    liveProfile !== null
+      ? Boolean(liveProfile.canEditProfile)
+      : Boolean(session?.user?.canEditProfile);
+  const effectiveAvatarIcon = canEditProfile
+    ? (liveProfile ? liveProfile.avatarIcon : session?.user?.avatarIcon) ?? null
+    : null;
 
   const renderAccountMenu = () => (
     <div className="relative shrink-0" ref={accountMenuRef}>
@@ -147,7 +239,11 @@ export default function Navbar({ initialHost = "" }: { initialHost?: string }) {
             : "bg-zinc-800 text-white hover:bg-zinc-900"
         }`}
       >
-        {session?.user?.name?.charAt(0).toUpperCase() || <UserCheck size={14} />}
+        <ProfileAvatarGlyph
+          avatarIcon={effectiveAvatarIcon}
+          name={effectiveName}
+          size={15}
+        />
       </button>
 
       <AnimatePresence>
@@ -160,21 +256,51 @@ export default function Navbar({ initialHost = "" }: { initialHost?: string }) {
             transition={{ duration: 0.14 }}
             className="absolute right-0 top-full mt-2 w-64 rounded-2xl border border-zinc-200 bg-white p-2 shadow-xl z-50 text-left"
           >
-            <div className="px-2.5 py-2 border-b border-zinc-100 mb-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold text-zinc-900 truncate">
-                  {displayName}
-                </span>
-                <span className="shrink-0 rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-700">
-                  {roleLabel}
-                </span>
+            <div className="px-2.5 py-2 border-b border-zinc-100 mb-1.5 flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-zinc-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                <ProfileAvatarGlyph
+                  avatarIcon={effectiveAvatarIcon}
+                  name={effectiveName}
+                  size={15}
+                />
               </div>
-              {displayEmail && (
-                <p className="mt-0.5 text-[11px] text-zinc-500 truncate">
-                  {displayEmail}
-                </p>
-              )}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-zinc-900 truncate">
+                    {displayName}
+                  </span>
+                  <span className="shrink-0 rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-700">
+                    {roleLabel}
+                  </span>
+                </div>
+                {displayEmail && (
+                  <p className="mt-0.5 text-[11px] text-zinc-500 truncate">
+                    {displayEmail}
+                  </p>
+                )}
+              </div>
             </div>
+
+            {canEditProfile && (
+              <button
+                type="button"
+                role="menuitem"
+                disabled={signingOut}
+                onClick={() => {
+                  setAccountMenuOpen(false);
+                  setProfileEditOpen(true);
+                }}
+                className="w-full flex items-center justify-between gap-2.5 rounded-xl px-2.5 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 transition-colors cursor-pointer disabled:opacity-60"
+              >
+                <span className="flex items-center gap-2.5">
+                  <SlidersHorizontal size={14} className="shrink-0 text-zinc-500" />
+                  <span>Edit profile</span>
+                </span>
+                <span className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200">
+                  Beta
+                </span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -595,6 +721,28 @@ export default function Navbar({ initialHost = "" }: { initialHost?: string }) {
           </div>
         </div>
       </header>
+      {sessionUserId && (
+        <ProfileEditModal
+          open={profileEditOpen}
+          onClose={() => setProfileEditOpen(false)}
+          onSaved={(updated: EditableProfileData) =>
+            setLiveProfile((prev) => ({
+              ...prev,
+              name: updated.name,
+              email: updated.email,
+              avatarIcon: updated.avatarIcon,
+              canEditProfile: true,
+            }))
+          }
+          onFeatureDisabled={() =>
+            setLiveProfile((prev) => ({
+              ...prev,
+              avatarIcon: null,
+              canEditProfile: false,
+            }))
+          }
+        />
+      )}
     </>
   );
 }

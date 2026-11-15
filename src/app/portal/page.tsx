@@ -51,7 +51,7 @@ export default async function PortalPage() {
   const host = headersList.get("host") || "";
   const surface = getHostSurface(host);
 
-  if (!session) {
+  if (!session?.user?.id) {
     redirect(surface === "local" ? "/login" : `${getSurfaceOrigin("hq", host)}/login`);
   }
 

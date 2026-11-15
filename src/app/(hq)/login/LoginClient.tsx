@@ -1,16 +1,24 @@
 "use client";
 
-import { signIn, signOut, getSession } from "next-auth/react";
-import { useState, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { signIn, getSession, useSession } from "next-auth/react";
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { LogIn, LogOut, Mail, Key, ShieldAlert, ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Award, Check } from "lucide-react";
+import { LogIn, Mail, Key, ShieldAlert, ArrowLeft, Eye, EyeOff, Loader2, Award, Check } from "lucide-react";
 import {
   getHostSurface,
   getTargetSurfaceForRole,
+  getWorkspaceHref,
   getWorkspacePath,
 } from "@/lib/domain";
+import {
+  clearAuthRedirectGuard,
+  ClientSessionUser,
+  hasAuthErrorQuery,
+  isActiveSessionUser,
+  trySafeClientReplace,
+} from "@/lib/client-auth";
 
 /* ---------------------------------------------------------------------------
    Shared field styling.
@@ -43,6 +51,16 @@ const DEMO_ACCOUNTS = [
   { key: "member", label: "Attendee Demo", email: "member@shim.app", password: "member123" },
 ] as const;
 
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  account_suspended: "Your account has been suspended by an administrator.",
+  expired_handoff: "Your workspace sign-in link expired. Please sign in again.",
+  invalid_handoff: "Unable to verify workspace handoff. Please sign in again.",
+  missing_handoff: "Missing workspace handoff token. Please sign in again.",
+  user_not_found: "Account not found. Please sign in again.",
+  handoff_failed: "Could not switch to your workspace domain. Please sign in again.",
+  server_error: "An authentication error occurred. Please sign in again.",
+};
+
 /* The two halves of the split. The left panel is PINNED — it never scrolls —
    and the right panel owns its own scroller, so a long form no longer drags
    the brand copy up with it. */
@@ -58,23 +76,10 @@ const PANEL_RIGHT =
   "flex w-full min-w-0 flex-col overflow-y-auto overscroll-contain bg-white lg:w-1/2 dark:bg-zinc-950";
 const PANEL_RIGHT_INNER = "flex flex-1 flex-col justify-center px-5 py-10 sm:px-8 sm:py-14";
 
-export interface ActiveAccountSummary {
-  email: string;
-  name: string | null;
-  role: string;
-  continueHref: string;
-  workspaceLabel: string;
-}
-
-export default function LoginPage({
-  activeAccount = null,
-}: {
-  activeAccount?: ActiveAccountSummary | null;
-}) {
-  const router = useRouter();
+export default function LoginPage() {
+  const { data: session, status } = useSession();
   const searchParams = useSearchParams();
-  const [signedInAccount, setSignedInAccount] = useState<ActiveAccountSummary | null>(activeAccount);
-  const [signingOut, setSigningOut] = useState(false);
+  const submittingRef = useRef(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -82,19 +87,20 @@ export default function LoginPage({
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setSignedInAccount(activeAccount);
-  }, [activeAccount]);
-
-  const handleBannerSignOut = async () => {
-    setSigningOut(true);
-    try {
-      await signOut({ redirect: false });
-      setSignedInAccount(null);
-      router.refresh();
-    } finally {
-      setSigningOut(false);
+    const user = session?.user as ClientSessionUser | undefined;
+    const errorParam = searchParams.get("error");
+    if (
+      status !== "authenticated" ||
+      !isActiveSessionUser(user) ||
+      loading ||
+      submittingRef.current ||
+      Boolean(errorParam) ||
+      hasAuthErrorQuery()
+    ) {
+      return;
     }
-  };
+    trySafeClientReplace(getWorkspaceHref(user.role, window.location.host));
+  }, [status, session, loading, searchParams]);
 
   // Pre-fill from an emailed link (?email=...&claim=...) so an attendee who
   // already has an account can sign in and find their certificate waiting.
@@ -103,8 +109,9 @@ export default function LoginPage({
   useEffect(() => {
     const emailFromLink = searchParams.get("email");
     if (emailFromLink) setEmail(emailFromLink);
-    if (searchParams.get("error") === "account_suspended") {
-      setError("Your account has been suspended by an administrator.");
+    const errorCode = searchParams.get("error");
+    if (errorCode && AUTH_ERROR_MESSAGES[errorCode]) {
+      setError(AUTH_ERROR_MESSAGES[errorCode]);
     }
   }, [searchParams]);
 
@@ -116,6 +123,8 @@ export default function LoginPage({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    clearAuthRedirectGuard();
+    submittingRef.current = true;
     setLoading(true);
     setError("");
 
@@ -127,6 +136,7 @@ export default function LoginPage({
       });
 
       if (res?.error) {
+        submittingRef.current = false;
         if (res.error === "ACCOUNT_SUSPENDED") {
           setError("Your account has been suspended by an administrator.");
         } else {
@@ -139,23 +149,33 @@ export default function LoginPage({
         const targetSurface = getTargetSurfaceForRole(role);
 
         if (currentSurface !== "local" && currentSurface !== targetSurface) {
+          let handoffUrl: string | null = null;
           try {
             const handoffRes = await fetch("/api/auth/handoff");
             if (handoffRes.ok) {
               const data = await handoffRes.json();
-              if (data.url) {
-                window.location.replace(data.url);
-                return;
-              }
+              handoffUrl = data.url || null;
             }
           } catch (e) {
             console.error("Handoff failed", e);
           }
+
+          if (!handoffUrl) {
+            submittingRef.current = false;
+            setError(
+              "Could not transfer your session to the workspace domain. Please try signing in again."
+            );
+            return;
+          }
+
+          window.location.replace(handoffUrl);
+          return;
         }
 
         window.location.replace(getWorkspacePath(role));
       }
     } catch (err) {
+      submittingRef.current = false;
       console.error(err);
       setError("An unexpected authentication error occurred.");
     } finally {
@@ -243,14 +263,12 @@ export default function LoginPage({
           className={PANEL_RIGHT_INNER}
         >
           <div className="mx-auto w-full max-w-[420px]">
-            {!signedInAccount && (
-              <Link
-                href="/"
-                className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-zinc-500 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-              >
-                <ArrowLeft size={14} /> Back to Home
-              </Link>
-            )}
+            <Link
+              href="/"
+              className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-zinc-500 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            >
+              <ArrowLeft size={14} /> Back to Home
+            </Link>
 
             <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8 dark:border-zinc-800 dark:bg-zinc-900/40 dark:shadow-none">
               <div className="mb-6">
@@ -268,47 +286,6 @@ export default function LoginPage({
                       ? "Your certificate is waiting in your wallet. Sign in to see it."
                       : "Account created. Sign in to open your wallet."}
                   </span>
-                </div>
-              )}
-
-              {signedInAccount && (
-                <div className="mb-5 flex flex-col gap-2.5 rounded-xl border border-zinc-200 bg-zinc-50 p-3.5 text-xs dark:border-zinc-800 dark:bg-zinc-900/70">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="truncate text-zinc-600 dark:text-zinc-400">
-                      Signed in as <strong className="font-semibold text-zinc-900 dark:text-zinc-100">{signedInAccount.email}</strong>
-                    </span>
-                    <span className="shrink-0 rounded-md border border-zinc-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
-                      {signedInAccount.role === "member" ? "Attendee" : signedInAccount.role}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {signedInAccount.continueHref.startsWith("/api/") ? (
-                      <a
-                        href={signedInAccount.continueHref}
-                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-                      >
-                        <span>Continue to {signedInAccount.workspaceLabel}</span>
-                        <ArrowRight size={13} />
-                      </a>
-                    ) : (
-                      <Link
-                        href={signedInAccount.continueHref}
-                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-                      >
-                        <span>Continue to {signedInAccount.workspaceLabel}</span>
-                        <ArrowRight size={13} />
-                      </Link>
-                    )}
-                    <button
-                      type="button"
-                      onClick={handleBannerSignOut}
-                      disabled={signingOut}
-                      className="inline-flex items-center justify-center gap-1 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
-                    >
-                      <LogOut size={12} />
-                      <span>{signingOut ? "..." : "Sign out"}</span>
-                    </button>
-                  </div>
                 </div>
               )}
 

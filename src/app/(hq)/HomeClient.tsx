@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 import { 
   ArrowRight, 
   Layout, 
@@ -14,32 +13,14 @@ import {
 import { motion } from "framer-motion";
 import LiveSpecimenCarousel from "@/components/LiveSpecimenCarousel";
 import SupportModal, { SupportEventOption } from "@/components/SupportModal";
-import { getWorkspaceHref } from "@/lib/domain";
 
 export default function HomeClient({
   events = [],
-  initialHost = "",
 }: {
   events?: SupportEventOption[];
-  initialHost?: string;
 }) {
-  const { data: session } = useSession();
-  const [host, setHost] = useState(initialHost);
   const [supportOpen, setSupportOpen] = useState(false);
 
-  useEffect(() => {
-    setHost(window.location.host);
-  }, []);
-
-  const userRole = (session?.user as any)?.role as string | undefined;
-  const heroHref = session?.user ? getWorkspaceHref(userRole, host) : "/login";
-  const heroLabel = session?.user
-    ? userRole === "member"
-      ? "Open Wallet"
-      : userRole === "admin"
-        ? "Open Admin Console"
-        : "Open Organizer Studio"
-    : "Get Started";
   const heroBtnClass =
     "bg-zinc-100 hover:bg-white text-zinc-800 font-medium rounded-md py-3 px-8 transition-colors flex items-center justify-center gap-2 w-fit group";
   return (
@@ -72,36 +53,14 @@ export default function HomeClient({
                 Stop manually generating PDFs. shim automates stunning, QR-secured credentials for your webinars, summits, and hackathons in minutes.
               </p>
 
-              {/* Action Bar - Multi-domain CTAs */}
+              {/* Action Bar - Sign In CTAs (authenticated users redirect before render) */}
               <div className="flex flex-col gap-3 mt-4">
                 <div className="flex flex-col sm:flex-row gap-4">
-                  {heroHref.startsWith("/api/") ? (
-                    <a href={heroHref} className={heroBtnClass}>
-                      {heroLabel}
-                      <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                    </a>
-                  ) : (
-                    <Link href={heroHref} className={heroBtnClass}>
-                      {heroLabel}
-                      <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                    </Link>
-                  )}
+                  <Link href="/login" prefetch={false} className={heroBtnClass}>
+                    Get Started
+                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                  </Link>
                 </div>
-                {session?.user && (
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-400">
-                    <span>
-                      Signed in as{" "}
-                      <span className="font-medium text-zinc-200">{session.user.email}</span>
-                    </span>
-                    <span className="text-zinc-700">&middot;</span>
-                    <Link
-                      href="/login"
-                      className="font-medium text-zinc-300 hover:text-white underline underline-offset-4 transition-colors"
-                    >
-                      Switch account
-                    </Link>
-                  </div>
-                )}
               </div>
             </motion.div>
 
@@ -180,7 +139,7 @@ export default function HomeClient({
             <h2 className="text-4xl font-semibold text-zinc-50 mb-6 tracking-tight">Issue your first credential today.</h2>
             <p className="text-zinc-400 text-lg mb-10 max-w-xl mx-auto">Join the organizers using shim to modernize their event experience.</p>
             <div className="flex items-center justify-center">
-              <Link href="/register" className="bg-zinc-100 text-zinc-900 text-sm font-medium py-3 px-8 rounded-md hover:bg-white transition-colors">
+              <Link href="/register" prefetch={false} className="bg-zinc-100 text-zinc-900 text-sm font-medium py-3 px-8 rounded-md hover:bg-white transition-colors">
                 Create an account
               </Link>
             </div>

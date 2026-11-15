@@ -104,11 +104,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     headers(),
   ]);
   const initialHost = headerList.get("host") || "";
+  const activeSession =
+    (session?.user as { isActive?: boolean } | undefined)?.isActive === true
+      ? session
+      : null;
 
   return (
     <html lang="en" className={`${inter.variable} ${outfit.variable} ${cinzel.variable} ${cormorant.variable} ${greatVibes.variable} ${playfair.variable} ${spaceMono.variable} ${spaceGrotesk.variable}`}>
       <body className="flex flex-col h-screen w-full overflow-hidden bg-[#0a0a0a]">
-        <AuthProvider session={session}>
+        <AuthProvider session={activeSession}>
           <DynamicFavicon />
           <Navbar initialHost={initialHost} />
           {/* <main> is the app-wide scroll container, so it owns the page

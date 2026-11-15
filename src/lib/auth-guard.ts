@@ -8,6 +8,7 @@ import {
   getHostSurface,
   getSurfaceOrigin,
   getTargetSurfaceForRole,
+  getWorkspaceHref,
 } from "@/lib/domain";
 import { createHandoffUrl } from "@/lib/handoff";
 import {
@@ -189,4 +190,44 @@ function getPathForPage(gate: DashboardGateKey): string {
     case "admin-only":
       return "/dashboard/users";
   }
+}
+
+/**
+ * Redirects already-authenticated active users away from public and auth entry
+ * pages (`/`, `/login`, `/register`) straight into their role's workspace.
+ * Returns the resolved request `host` header so callers can forward `initialHost`.
+ */
+export async function redirectIfAuthenticated(): Promise<string> {
+  const [headerList, session] = await Promise.all([
+    headers(),
+    getServerSession(authOptions),
+  ]);
+  const host = headerList.get("host") || "";
+  const hasAuthError = Boolean(headerList.get("x-shim-auth-error"));
+  const sessionUserId = (session?.user as { id?: string } | undefined)?.id;
+
+  if (!hasAuthError && sessionUserId) {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: sessionUserId },
+      select: { id: true, role: true, isActive: true },
+    });
+
+    if (dbUser && dbUser.isActive) {
+      const surface = getHostSurface(host);
+      const workspaceHref = getWorkspaceHref(dbUser.role, host);
+
+      if (workspaceHref.startsWith("/api/") && surface !== "local") {
+        const handoffUrl = await createHandoffUrl({
+          userId: dbUser.id,
+          role: dbUser.role,
+          host,
+        });
+        redirect(handoffUrl);
+      }
+
+      redirect(workspaceHref);
+    }
+  }
+
+  return host;
 }

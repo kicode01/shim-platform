@@ -14,6 +14,7 @@ import {
   UserCheck,
   Calendar,
   ArrowRight,
+  ArrowLeftRight,
   BookOpen,
   History,
   Award,
@@ -44,6 +45,38 @@ export default function Navbar({ initialHost = "" }: { initialHost?: string }) {
 
   const [confirmLogout, setConfirmLogout] = useState(false);
   const logoutTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [signingOutAction, setSigningOutAction] = useState<"switch" | "logout" | null>(null);
+  const accountMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setAccountMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
+        setAccountMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setAccountMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [accountMenuOpen]);
 
   const userRole = (session?.user as any)?.role as string | undefined;
   const dashboardSuffix =
@@ -64,6 +97,25 @@ export default function Navbar({ initialHost = "" }: { initialHost?: string }) {
         ? "Admin"
         : "Dashboard";
 
+  const performSignOut = async (action: "switch" | "logout" = "logout") => {
+    if (signingOutAction) return;
+    setSigningOutAction(action);
+    if (logoutTimeoutRef.current) clearTimeout(logoutTimeoutRef.current);
+    setConfirmLogout(false);
+    setAccountMenuOpen(false);
+
+    try {
+      await signOut({ redirect: false });
+    } finally {
+      const currentHost = window.location.host;
+      const currentSurface = getHostSurface(currentHost);
+      const isCrossSubdomain = currentSurface === "studio" || currentSurface === "wallet";
+      window.location.replace(
+        isCrossSubdomain ? `${getSurfaceOrigin("hq", currentHost)}/logout` : "/login"
+      );
+    }
+  };
+
   const handleLogoutClick = async () => {
     if (!confirmLogout) {
       setConfirmLogout(true);
@@ -72,16 +124,95 @@ export default function Navbar({ initialHost = "" }: { initialHost?: string }) {
       return;
     }
 
-    if (logoutTimeoutRef.current) clearTimeout(logoutTimeoutRef.current);
-    setConfirmLogout(false);
-    await signOut({ redirect: false });
-    const currentHost = window.location.host;
-    const currentSurface = getHostSurface(currentHost);
-    const isCrossSubdomain = currentSurface === "studio" || currentSurface === "wallet";
-    window.location.href = isCrossSubdomain
-      ? `${getSurfaceOrigin("hq", currentHost)}/logout`
-      : "/login";
+    await performSignOut("logout");
   };
+
+  const roleLabel =
+    userRole === "admin"
+      ? "Admin"
+      : userRole === "member"
+        ? "Attendee"
+        : "Organizer";
+  const displayName = session?.user?.name || roleLabel;
+  const displayEmail = session?.user?.email || "";
+
+  const renderAccountMenu = () => (
+    <div className="relative shrink-0" ref={accountMenuRef}>
+      <button
+        type="button"
+        onClick={() => {
+          setConfirmLogout(false);
+          setAccountMenuOpen((prev) => !prev);
+        }}
+        aria-haspopup="menu"
+        aria-expanded={accountMenuOpen}
+        aria-label="Account menu"
+        title={displayEmail || displayName}
+        className={`mob-avatar w-8 h-8 flex items-center justify-center font-bold text-xs shrink-0 rounded-xl transition-all cursor-pointer ${
+          accountMenuOpen
+            ? "bg-zinc-900 text-white ring-2 ring-zinc-900/20"
+            : "bg-zinc-800 text-white hover:bg-zinc-900"
+        }`}
+      >
+        {session?.user?.name?.charAt(0).toUpperCase() || <UserCheck size={14} />}
+      </button>
+
+      <AnimatePresence>
+        {accountMenuOpen && (
+          <motion.div
+            role="menu"
+            initial={{ opacity: 0, y: 6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.97 }}
+            transition={{ duration: 0.14 }}
+            className="absolute right-0 top-full mt-2 w-64 rounded-2xl border border-zinc-200 bg-white p-2 shadow-xl z-50 text-left"
+          >
+            <div className="px-2.5 py-2 border-b border-zinc-100 mb-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-zinc-900 truncate">
+                  {displayName}
+                </span>
+                <span className="shrink-0 rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-700">
+                  {roleLabel}
+                </span>
+              </div>
+              {displayEmail && (
+                <p className="mt-0.5 text-[11px] text-zinc-500 truncate">
+                  {displayEmail}
+                </p>
+              )}
+            </div>
+
+            <button
+              type="button"
+              role="menuitem"
+              disabled={signingOutAction !== null}
+              onClick={() => performSignOut("switch")}
+              className="w-full flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 transition-colors cursor-pointer disabled:opacity-60"
+            >
+              <ArrowLeftRight size={14} className="shrink-0 text-zinc-500" />
+              <span>
+                {signingOutAction === "switch" ? "Switching account..." : "Switch account"}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              role="menuitem"
+              disabled={signingOutAction !== null}
+              onClick={() => performSignOut("logout")}
+              className="w-full flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors cursor-pointer disabled:opacity-60"
+            >
+              <LogOut size={14} className="shrink-0" />
+              <span>
+                {signingOutAction === "logout" ? "Signing out..." : "Sign out"}
+              </span>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 
   const renderWorkspaceLink = (className: string, showArrow = false) => {
     const content = (
@@ -439,14 +570,8 @@ export default function Navbar({ initialHost = "" }: { initialHost?: string }) {
 
                   <div className="mob-divider w-px h-5 bg-zinc-200 mx-2"></div>
 
-                  {/* User chip — monogram only, matching the portal bar. The
-                      dashboard header names the user in context, so the chip
-                      stays a quiet identity anchor rather than a second label. */}
-                  <div className="flex items-center gap-2.5 p-1 pr-1 rounded-2xl hover:bg-zinc-100/80 transition-colors cursor-default shrink-0">
-                    <div className="mob-avatar w-8 h-8 flex items-center justify-center font-bold text-xs shrink-0 rounded-xl bg-zinc-800 text-white">
-                      {session?.user?.name?.charAt(0).toUpperCase() || <UserCheck size={14} />}
-                    </div>
-                  </div>
+                  {/* Interactive Account Menu (profile summary, Switch account, Sign out) */}
+                  {renderAccountMenu()}
 
                   {/* Logout */}
                   {renderLogoutButton("dashboard", true)}
@@ -463,14 +588,8 @@ export default function Navbar({ initialHost = "" }: { initialHost?: string }) {
                   transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
                   className="mob-nav-right flex items-center gap-4 h-full"
                 >
-                  {/* User chip — light. Monogram only: the wallet's holder card
-                      states the name and ID in full, so repeating them here only
-                      crowds the bar. This stays a quiet "signed in as" anchor. */}
-                  <div className="flex items-center gap-2.5 rounded-2xl shrink-0" title={session?.user?.email || ""}>
-                    <div className="mob-avatar w-8 h-8 flex items-center justify-center font-bold text-xs shrink-0 rounded-xl bg-zinc-800 text-white">
-                      {session?.user?.name?.charAt(0).toUpperCase() || <UserCheck size={14} />}
-                    </div>
-                  </div>
+                  {/* Interactive Account Menu (profile summary, Switch account, Sign out) */}
+                  {renderAccountMenu()}
 
                   {/* Logout — light */}
                   {renderLogoutButton("portal", true)}

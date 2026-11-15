@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   description: "Create an account.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function RegisterPage() {
   return <RegisterClient />;
 }

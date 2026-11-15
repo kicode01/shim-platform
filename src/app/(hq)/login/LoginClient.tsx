@@ -144,7 +144,7 @@ export default function LoginPage({
             if (handoffRes.ok) {
               const data = await handoffRes.json();
               if (data.url) {
-                window.location.href = data.url;
+                window.location.replace(data.url);
                 return;
               }
             }
@@ -153,7 +153,7 @@ export default function LoginPage({
           }
         }
 
-        window.location.href = getWorkspacePath(role);
+        window.location.replace(getWorkspacePath(role));
       }
     } catch (err) {
       console.error(err);
@@ -243,12 +243,14 @@ export default function LoginPage({
           className={PANEL_RIGHT_INNER}
         >
           <div className="mx-auto w-full max-w-[420px]">
-            <Link
-              href="/"
-              className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-zinc-500 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-            >
-              <ArrowLeft size={14} /> Back to Home
-            </Link>
+            {!signedInAccount && (
+              <Link
+                href="/"
+                className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-zinc-500 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+              >
+                <ArrowLeft size={14} /> Back to Home
+              </Link>
+            )}
 
             <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8 dark:border-zinc-800 dark:bg-zinc-900/40 dark:shadow-none">
               <div className="mb-6">

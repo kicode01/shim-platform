@@ -2,6 +2,7 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
+import { DEFAULT_ORGANIZER_PAGES } from "@/lib/permissions";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
@@ -32,6 +33,19 @@ export const authOptions: NextAuthOptions = {
           });
         }
 
+        // Demo login fallback for organizer studio testing
+        if (!user && email === "organizer@shim.app" && credentials.password === "organizer123") {
+          user = await prisma.user.create({
+            data: {
+              email: "organizer@shim.app",
+              name: "Test Organizer",
+              role: "organizer",
+              image: "organizer123",
+              allowedPages: [...DEFAULT_ORGANIZER_PAGES],
+            }
+          });
+        }
+
         // Demo login fallback for attendee/member portal testing
         if (!user && email === "member@shim.app" && credentials.password === "member123") {
           user = await prisma.user.create({
@@ -52,6 +66,7 @@ export const authOptions: NextAuthOptions = {
 
           // Strict password verification
           const isDemoAdmin = email === "admin@shim.app" || email === "admin@sppq.edu";
+          const isDemoOrganizer = email === "organizer@shim.app";
           const isDemoMember = email === "member@shim.app";
 
           // If they have a password stored in 'image', check it
@@ -61,6 +76,7 @@ export const authOptions: NextAuthOptions = {
           // If no password stored (legacy user), enforce demo passwords if it's a demo account
           else if (!user.image) {
             if (isDemoAdmin && credentials.password !== "admin123") return null;
+            if (isDemoOrganizer && credentials.password !== "organizer123") return null;
             if (isDemoMember && credentials.password !== "member123") return null;
             // Note: Other legacy users without passwords will still be able to log in with any password.
           }

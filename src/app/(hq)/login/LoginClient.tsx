@@ -37,6 +37,12 @@ const SUBMIT =
 
 const LINK = "font-medium text-zinc-900 hover:underline dark:text-zinc-100";
 
+const DEMO_ACCOUNTS = [
+  { key: "admin", label: "Admin Demo", email: "admin@shim.app", password: "admin123" },
+  { key: "organizer", label: "Organizer Demo", email: "organizer@shim.app", password: "organizer123" },
+  { key: "member", label: "Attendee Demo", email: "member@shim.app", password: "member123" },
+] as const;
+
 /* The two halves of the split. The left panel is PINNED — it never scrolls —
    and the right panel owns its own scroller, so a long form no longer drags
    the brand copy up with it. */
@@ -72,14 +78,9 @@ export default function LoginPage() {
     }
   }, [searchParams]);
 
-  const handleDemoFill = (role: "admin" | "member") => {
-    if (role === "admin") {
-      setEmail("admin@shim.app");
-      setPassword("admin123");
-    } else {
-      setEmail("member@shim.app");
-      setPassword("member123");
-    }
+  const handleDemoFill = (acct: (typeof DEMO_ACCOUNTS)[number]) => {
+    setEmail(acct.email);
+    setPassword(acct.password);
     setError("");
   };
 
@@ -131,11 +132,6 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
-
-  const demoAccounts = [
-    { key: "admin" as const, label: "Admin Demo", email: "admin@shim.app" },
-    { key: "member" as const, label: "Attendee Demo", email: "member@shim.app" },
-  ];
 
   return (
     /* `flex-1 min-h-0` makes the shell EXACTLY the height of <main>, and
@@ -229,7 +225,7 @@ export default function LoginPage() {
                 <h2 className="mb-1 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
                   Welcome Back
                 </h2>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">Access your organizer dashboard.</p>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">Access your admin, organizer, or attendee workspace.</p>
               </div>
 
               {(claimId || registered) && (
@@ -245,7 +241,7 @@ export default function LoginPage() {
 
               {/* Demo access cards */}
               <div className="mb-6 flex flex-col gap-3">
-                {demoAccounts.map((acct) => (
+                {DEMO_ACCOUNTS.map((acct) => (
                   <div
                     key={acct.key}
                     className="flex flex-col items-start justify-between gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3 transition-colors hover:border-zinc-300 sm:flex-row sm:items-center dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-zinc-700"
@@ -256,7 +252,7 @@ export default function LoginPage() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleDemoFill(acct.key)}
+                      onClick={() => handleDemoFill(acct)}
                       className="shrink-0 rounded-lg bg-zinc-900 px-3.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
                     >
                       Auto-fill

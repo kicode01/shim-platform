@@ -20,12 +20,12 @@ import {
   User
 } from "lucide-react";
 
-export default function Navbar() {
+export default function Navbar({ initialHost = "" }: { initialHost?: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
 
-  const [host, setHost] = useState("");
+  const [host, setHost] = useState(initialHost);
   useEffect(() => {
     if (typeof window !== "undefined") {
       setHost(window.location.host);
@@ -46,6 +46,16 @@ export default function Navbar() {
   const logoutTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const userRole = (session?.user as any)?.role as string | undefined;
+  const dashboardSuffix =
+    userRole === "admin"
+      ? ".admin"
+      : userRole === "organizer"
+        ? ".organizer"
+        : surface === "hq"
+          ? ".admin"
+          : surface === "studio"
+            ? ".organizer"
+            : null;
   const workspaceHref = getWorkspaceHref(userRole, host);
   const workspaceLabel =
     userRole === "member"
@@ -290,27 +300,27 @@ export default function Navbar() {
                     shim
                   </motion.span>
                 
-                <AnimatePresence mode="wait">
-                  {isDashboardMode && (
+                <AnimatePresence initial={false} mode="wait">
+                  {isDashboardMode && dashboardSuffix && (
                     <motion.span 
-                      key={`dashboard-${userRole === "admin" ? "admin" : "organizer"}`}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -10 }}
-                      transition={{ duration: 0.3 }}
+                      key={`dashboard-${dashboardSuffix}`}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
                       className="mob-suffix text-zinc-700 text-2xl font-black tracking-[-0.08em] lowercase leading-none"
                       style={{ fontFamily: 'var(--font-inter), system-ui, sans-serif' }}
                     >
-                      {userRole === "admin" ? ".admin" : ".organizer"}
+                      {dashboardSuffix}
                     </motion.span>
                   )}
                   {isPortalMode && (
                     <motion.span 
                       key="portal"
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -10 }}
-                      transition={{ duration: 0.3 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
                       className="mob-suffix text-zinc-700 text-2xl font-black tracking-[-0.08em] lowercase leading-none"
                       style={{ fontFamily: 'var(--font-inter), system-ui, sans-serif' }}
                     >
@@ -320,10 +330,10 @@ export default function Navbar() {
                   {isValidateMode && (
                     <motion.span 
                       key="validate"
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -10 }}
-                      transition={{ duration: 0.3 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
                       className="mob-suffix text-zinc-400 text-2xl font-black tracking-[-0.08em] lowercase leading-none"
                       style={{ fontFamily: 'var(--font-inter), system-ui, sans-serif' }}
                     >
@@ -367,8 +377,8 @@ export default function Navbar() {
           {/* Right Section. The landing-mode fixed column width is gone with
               the max-w-7xl frame it was balancing against. */}
           <div className="flex items-center justify-end h-full shrink-0 w-auto">
-            {isMounted && (
-              <AnimatePresence mode="wait">
+            {(isMounted || Boolean(initialHost) || Boolean(session)) && (
+              <AnimatePresence initial={false} mode="wait">
                 {isLandingMode && (
                   <motion.div 
                     key="landing-right"

@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Outfit, Cinzel, Cormorant_Garamond, Great_Vibes, Playfair_Display, Space_Mono, Space_Grotesk } from "next/font/google";
+import { getServerSession } from "next-auth";
+import { headers } from "next/headers";
+import { authOptions } from "@/lib/auth";
 import "./globals.css";
 import AuthProvider from "@/components/AuthProvider";
 import Navbar from "@/components/Navbar";
@@ -95,13 +98,19 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const [session, headerList] = await Promise.all([
+    getServerSession(authOptions),
+    headers(),
+  ]);
+  const initialHost = headerList.get("host") || "";
+
   return (
     <html lang="en" className={`${inter.variable} ${outfit.variable} ${cinzel.variable} ${cormorant.variable} ${greatVibes.variable} ${playfair.variable} ${spaceMono.variable} ${spaceGrotesk.variable}`}>
       <body className="flex flex-col h-screen w-full overflow-hidden bg-[#0a0a0a]">
-        <AuthProvider>
+        <AuthProvider session={session}>
           <DynamicFavicon />
-          <Navbar />
+          <Navbar initialHost={initialHost} />
           {/* <main> is the app-wide scroll container, so it owns the page
               surface.
 

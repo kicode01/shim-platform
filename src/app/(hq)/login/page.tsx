@@ -1,17 +1,10 @@
 import type { Metadata } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import {
-  getHostSurface,
-  getTargetSurfaceForRole,
-  getWorkspacePath,
-} from "@/lib/domain";
-import { createHandoffUrl } from "@/lib/handoff";
-import LoginClient from "./LoginClient";
-import HandoffRedirect from "./HandoffRedirect";
+import { getWorkspaceHref } from "@/lib/domain";
+import LoginClient, { type ActiveAccountSummary } from "./LoginClient";
 
 export const metadata: Metadata = {
   title: "Sign In",
@@ -21,31 +14,34 @@ export const metadata: Metadata = {
 export default async function LoginPage() {
   const session = await getServerSession(authOptions);
   const userId = (session?.user as any)?.id as string | undefined;
+  let activeAccount: ActiveAccountSummary | null = null;
 
   if (userId) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, role: true, isActive: true },
+      select: { id: true, email: true, name: true, role: true, isActive: true },
     });
 
-    if (user && user.isActive) {
+    if (user && user.isActive && user.email) {
       const headersList = await headers();
       const host = headersList.get("host") || "";
-      const surface = getHostSurface(host);
-      const targetSurface = getTargetSurfaceForRole(user.role);
+      const continueHref = getWorkspaceHref(user.role, host);
+      const workspaceLabel =
+        user.role === "admin"
+          ? "Admin Console"
+          : user.role === "member"
+            ? "Attendee Wallet"
+            : "Organizer Studio";
 
-      if (surface === "local" || surface === targetSurface) {
-        redirect(getWorkspacePath(user.role));
-      } else {
-        const handoffUrl = await createHandoffUrl({
-          userId: user.id,
-          role: user.role,
-          host,
-        });
-        return <HandoffRedirect url={handoffUrl} role={user.role} />;
-      }
+      activeAccount = {
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        continueHref,
+        workspaceLabel,
+      };
     }
   }
 
-  return <LoginClient />;
+  return <LoginClient activeAccount={activeAccount} />;
 }

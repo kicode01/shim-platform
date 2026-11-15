@@ -1,11 +1,11 @@
 "use client";
 
-import { signIn, getSession } from "next-auth/react";
+import { signIn, signOut, getSession } from "next-auth/react";
 import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { LogIn, Mail, Key, ShieldAlert, ArrowLeft, Eye, EyeOff, Loader2, Award, Check } from "lucide-react";
+import { LogIn, LogOut, Mail, Key, ShieldAlert, ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Award, Check } from "lucide-react";
 import {
   getHostSurface,
   getTargetSurfaceForRole,
@@ -58,13 +58,43 @@ const PANEL_RIGHT =
   "flex w-full min-w-0 flex-col overflow-y-auto overscroll-contain bg-white lg:w-1/2 dark:bg-zinc-950";
 const PANEL_RIGHT_INNER = "flex flex-1 flex-col justify-center px-5 py-10 sm:px-8 sm:py-14";
 
-export default function LoginPage() {
+export interface ActiveAccountSummary {
+  email: string;
+  name: string | null;
+  role: string;
+  continueHref: string;
+  workspaceLabel: string;
+}
+
+export default function LoginPage({
+  activeAccount = null,
+}: {
+  activeAccount?: ActiveAccountSummary | null;
+}) {
+  const router = useRouter();
   const searchParams = useSearchParams();
+  const [signedInAccount, setSignedInAccount] = useState<ActiveAccountSummary | null>(activeAccount);
+  const [signingOut, setSigningOut] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    setSignedInAccount(activeAccount);
+  }, [activeAccount]);
+
+  const handleBannerSignOut = async () => {
+    setSigningOut(true);
+    try {
+      await signOut({ redirect: false });
+      setSignedInAccount(null);
+      router.refresh();
+    } finally {
+      setSigningOut(false);
+    }
+  };
 
   // Pre-fill from an emailed link (?email=...&claim=...) so an attendee who
   // already has an account can sign in and find their certificate waiting.
@@ -236,6 +266,47 @@ export default function LoginPage() {
                       ? "Your certificate is waiting in your wallet. Sign in to see it."
                       : "Account created. Sign in to open your wallet."}
                   </span>
+                </div>
+              )}
+
+              {signedInAccount && (
+                <div className="mb-5 flex flex-col gap-2.5 rounded-xl border border-zinc-200 bg-zinc-50 p-3.5 text-xs dark:border-zinc-800 dark:bg-zinc-900/70">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-zinc-600 dark:text-zinc-400">
+                      Signed in as <strong className="font-semibold text-zinc-900 dark:text-zinc-100">{signedInAccount.email}</strong>
+                    </span>
+                    <span className="shrink-0 rounded-md border border-zinc-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                      {signedInAccount.role === "member" ? "Attendee" : signedInAccount.role}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {signedInAccount.continueHref.startsWith("/api/") ? (
+                      <a
+                        href={signedInAccount.continueHref}
+                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+                      >
+                        <span>Continue to {signedInAccount.workspaceLabel}</span>
+                        <ArrowRight size={13} />
+                      </a>
+                    ) : (
+                      <Link
+                        href={signedInAccount.continueHref}
+                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+                      >
+                        <span>Continue to {signedInAccount.workspaceLabel}</span>
+                        <ArrowRight size={13} />
+                      </Link>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleBannerSignOut}
+                      disabled={signingOut}
+                      className="inline-flex items-center justify-center gap-1 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                    >
+                      <LogOut size={12} />
+                      <span>{signingOut ? "..." : "Sign out"}</span>
+                    </button>
+                  </div>
                 </div>
               )}
 

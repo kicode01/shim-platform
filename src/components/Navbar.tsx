@@ -15,7 +15,6 @@ import {
   UserCheck,
   Calendar,
   ArrowRight,
-  ArrowLeftRight,
   BookOpen,
   History,
   Award,
@@ -47,7 +46,7 @@ export default function Navbar({ initialHost = "" }: { initialHost?: string }) {
   const [confirmLogout, setConfirmLogout] = useState(false);
   const logoutTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [signingOutAction, setSigningOutAction] = useState<"switch" | "logout" | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
   const [navigatingWorkspace, setNavigatingWorkspace] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -100,9 +99,9 @@ export default function Navbar({ initialHost = "" }: { initialHost?: string }) {
         ? "Admin"
         : "Dashboard";
 
-  const performSignOut = async (action: "switch" | "logout" = "logout") => {
-    if (signingOutAction) return;
-    setSigningOutAction(action);
+  const performSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
     if (logoutTimeoutRef.current) clearTimeout(logoutTimeoutRef.current);
     setConfirmLogout(false);
     setAccountMenuOpen(false);
@@ -118,7 +117,7 @@ export default function Navbar({ initialHost = "" }: { initialHost?: string }) {
       return;
     }
 
-    await performSignOut("logout");
+    await performSignOut();
   };
 
   const roleLabel =
@@ -180,26 +179,13 @@ export default function Navbar({ initialHost = "" }: { initialHost?: string }) {
             <button
               type="button"
               role="menuitem"
-              disabled={signingOutAction !== null}
-              onClick={() => performSignOut("switch")}
-              className="w-full flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 transition-colors cursor-pointer disabled:opacity-60"
-            >
-              <ArrowLeftRight size={14} className="shrink-0 text-zinc-500" />
-              <span>
-                {signingOutAction === "switch" ? "Switching account..." : "Switch account"}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              role="menuitem"
-              disabled={signingOutAction !== null}
-              onClick={() => performSignOut("logout")}
+              disabled={signingOut}
+              onClick={() => performSignOut()}
               className="w-full flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors cursor-pointer disabled:opacity-60"
             >
               <LogOut size={14} className="shrink-0" />
               <span>
-                {signingOutAction === "logout" ? "Signing out..." : "Sign out"}
+                {signingOut ? "Signing out..." : "Sign out"}
               </span>
             </button>
           </motion.div>
@@ -584,7 +570,7 @@ export default function Navbar({ initialHost = "" }: { initialHost?: string }) {
 
                   <div className="mob-divider w-px h-5 bg-zinc-200 mx-2"></div>
 
-                  {/* Interactive Account Menu (profile summary, Switch account, Sign out) */}
+                  {/* Interactive Account Menu (profile summary, Sign out) */}
                   {renderAccountMenu()}
 
                   {/* Logout */}
@@ -602,7 +588,7 @@ export default function Navbar({ initialHost = "" }: { initialHost?: string }) {
                   transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
                   className="mob-nav-right flex items-center gap-4 h-full"
                 >
-                  {/* Interactive Account Menu (profile summary, Switch account, Sign out) */}
+                  {/* Interactive Account Menu (profile summary, Sign out) */}
                   {renderAccountMenu()}
 
                   {/* Logout — light */}

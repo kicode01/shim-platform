@@ -1,18 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireApiStaffAccess } from "@/lib/auth-guard";
 import { getEffectiveCertificateStatus } from "@/lib/security";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
+  const { user, error } = await requireApiStaffAccess("overview");
+  if (error) return error;
 
   try {
-    const userRole = (session.user as any).role;
-    const userId = (session.user as any).id;
+    const userRole = user.role;
+    const userId = user.id;
     const now = new Date();
     const issuerFilter = userRole === "admin" ? { deletedAt: null } : { issuerId: userId, deletedAt: null };
     const templateFilter = userRole === "admin" ? {} : { userId };

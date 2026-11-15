@@ -5,6 +5,12 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { linkCertificatesToUser } from "@/lib/claim";
 import { getEffectiveCertificateStatus } from "@/lib/security";
+import {
+  getHostSurface,
+  getSurfaceOrigin,
+  getTargetSurfaceForRole,
+} from "@/lib/domain";
+import { createHandoffUrl } from "@/lib/handoff";
 import PortalClient from "./PortalClient";
 import type { Metadata } from "next";
 
@@ -41,23 +47,45 @@ async function mintMembershipId(): Promise<string> {
 
 export default async function PortalPage() {
   const session = await getServerSession(authOptions);
+  const headersList = await headers();
+  const host = headersList.get("host") || "";
+  const surface = getHostSurface(host);
 
   if (!session) {
-    const headersList = await headers();
-    const host = headersList.get("host") || "";
-    const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
-    redirect(isLocal ? "/login" : "https://shim-hq.vercel.app/login");
+    redirect(surface === "local" ? "/login" : `${getSurfaceOrigin("hq", host)}/login`);
   }
 
   let user = await prisma.user.findUnique({
     where: { id: session.user.id }
   });
 
-  if (!user || user.role !== "member") {
-    const headersList = await headers();
-    const host = headersList.get("host") || "";
-    const isLocal = host.includes("localhost");
-    redirect(isLocal ? "/dashboard" : "https://shim-studio.vercel.app");
+  if (!user || !user.isActive) {
+    redirect(
+      surface === "local"
+        ? "/login?error=account_suspended"
+        : `${getSurfaceOrigin("hq", host)}/login?error=account_suspended`
+    );
+  }
+
+  if (user.role !== "member") {
+    if (surface === "local") {
+      redirect("/dashboard");
+    }
+    const handoffUrl = await createHandoffUrl({
+      userId: user.id,
+      role: user.role,
+      host,
+    });
+    redirect(handoffUrl);
+  }
+
+  if (surface !== "local" && surface !== getTargetSurfaceForRole(user.role)) {
+    const handoffUrl = await createHandoffUrl({
+      userId: user.id,
+      role: user.role,
+      host,
+    });
+    redirect(handoffUrl);
   }
 
   // Every member needs a stable membership ID — it is the wallet's identifier,

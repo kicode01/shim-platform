@@ -46,6 +46,10 @@ export const authOptions: NextAuthOptions = {
         }
 
         if (user) {
+          if (user.isActive === false) {
+            throw new Error("ACCOUNT_SUSPENDED");
+          }
+
           // Strict password verification
           const isDemoAdmin = email === "admin@shim.app" || email === "admin@sppq.edu";
           const isDemoMember = email === "member@shim.app";

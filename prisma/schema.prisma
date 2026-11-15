@@ -14,6 +14,8 @@ model User {
   emailVerified DateTime?
   image           String?
   role            String       @default("organizer") // "admin", "organizer", or "member"
+  isActive        Boolean      @default(true)
+  allowedPages    String[]     @default(["overview", "credentials", "events", "templates", "issue", "audit"])
   certificateRole String       @default("Participant") // "Organizer", "Speaker", "Participant", "Others"
   membershipId    String?      @unique
   accounts      Account[]
@@ -169,10 +171,13 @@ model SupportTicket {
   eventId       String?
   event         Event?   @relation(fields: [eventId], references: [id], onDelete: SetNull)
   eventName     String?
-  description   String
-  status        String   @default("Pending") // "Pending" | "Resolved"
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  description         String
+  status              String    @default("Pending") // "Pending" | "Resolved"
+  sharedWithOrganizer Boolean   @default(false)
+  adminNotes          String?
+  resolvedAt          DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   @@index([status])
   @@index([createdAt])

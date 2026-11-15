@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireApiStaffAccess } from "@/lib/auth-guard";
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
+  const { user, error } = await requireApiStaffAccess("events");
+  if (error) return error;
 
   const { id } = await params;
 
@@ -17,9 +14,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       where: { id }
     });
 
-    const userRole = (session.user as any).role;
-    const userId = (session.user as any).id;
-    if (!existing || (userRole !== "admin" && existing.organizerId !== userId)) {
+    if (!existing || (user.role !== "admin" && existing.organizerId !== user.id)) {
       return NextResponse.json({ message: "Event not found or unauthorized" }, { status: 404 });
     }
 
@@ -45,10 +40,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
+  const { user, error } = await requireApiStaffAccess("events");
+  if (error) return error;
 
   const { id } = await params;
 
@@ -57,9 +50,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
       where: { id }
     });
 
-    const userRole = (session.user as any).role;
-    const userId = (session.user as any).id;
-    if (!existing || (userRole !== "admin" && existing.organizerId !== userId)) {
+    if (!existing || (user.role !== "admin" && existing.organizerId !== user.id)) {
       return NextResponse.json({ message: "Event not found or unauthorized" }, { status: 404 });
     }
 

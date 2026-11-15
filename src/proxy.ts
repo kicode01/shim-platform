@@ -1,78 +1,97 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { getHostSurface, getRequestOrigin, getSurfaceOrigin } from "@/lib/domain";
 
 export function proxy(req: NextRequest) {
   const url = req.nextUrl.clone();
-  const hostname = req.headers.get('host') || '';
+  const hostname = req.headers.get("host") || "";
+  const requestOrigin = getRequestOrigin(
+    hostname,
+    req.url,
+    req.headers.get("x-forwarded-proto")
+  );
   const pathname = url.pathname;
 
-  // Skip static assets, API routes, and Auth pages so they work globally
+  // Skip static assets, API routes, and global auth/verification pages
   if (
-    pathname.startsWith('/api') ||
-    pathname.startsWith('/_next') ||
-    pathname.includes('.') ||
-    pathname === '/login' ||
-    pathname === '/register' ||
-    pathname.startsWith('/validate') ||
-    pathname.startsWith('/attend') ||
-    pathname.startsWith('/kiosk') ||
-    pathname.startsWith('/scanner')
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/_next") ||
+    pathname.includes(".") ||
+    pathname === "/login" ||
+    pathname === "/register" ||
+    pathname === "/logout" ||
+    pathname.startsWith("/validate") ||
+    pathname.startsWith("/attend") ||
+    pathname.startsWith("/kiosk") ||
+    pathname.startsWith("/scanner")
   ) {
     return NextResponse.next();
   }
 
-  const isStudio = hostname.includes('shim-studio');
-  const isWallet = hostname.includes('shim-wallet');
+  const surface = getHostSurface(hostname);
+
+  const nextWithPath = (effectivePath: string, rewriteTarget?: URL) => {
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set("x-shim-pathname", effectivePath);
+    if (rewriteTarget) {
+      return NextResponse.rewrite(rewriteTarget, {
+        request: { headers: requestHeaders },
+      });
+    }
+    return NextResponse.next({
+      request: { headers: requestHeaders },
+    });
+  };
 
   // Organizer Workspace (shim-studio)
-  if (isStudio) {
-    // Redirect access to portal from studio domain to the participant wallet
-    if (pathname.startsWith('/portal')) {
-      const rest = pathname.replace(/^\/portal/, '') || '';
-      return NextResponse.redirect(new URL(`https://shim-wallet.vercel.app${rest}`, req.url));
+  if (surface === "studio") {
+    if (pathname.startsWith("/portal")) {
+      const rest = pathname.replace(/^\/portal/, "") || "";
+      return NextResponse.redirect(
+        new URL(`${getSurfaceOrigin("wallet", hostname)}${rest}`)
+      );
     }
 
-    // Redirect root to /dashboard so client routers and active tabs match
-    if (pathname === '/') {
-      return NextResponse.redirect(new URL('/dashboard', req.url));
+    if (pathname === "/") {
+      return NextResponse.redirect(new URL("/dashboard", requestOrigin));
     }
-    
-    // Map subpaths to /dashboard seamlessly
-    if (!pathname.startsWith('/dashboard')) {
+
+    if (!pathname.startsWith("/dashboard")) {
       url.pathname = `/dashboard${pathname}`;
-      return NextResponse.rewrite(url);
+      return nextWithPath(url.pathname, url);
     }
-    return NextResponse.next();
+    return nextWithPath(pathname);
   }
 
-  // Participant Wallet (shim-wallet)
-  if (isWallet) {
-    // Redirect access to dashboard from wallet domain to the organizer studio
-    if (pathname.startsWith('/dashboard')) {
-      const rest = pathname.replace(/^\/dashboard/, '') || '';
-      return NextResponse.redirect(new URL(`https://shim-studio.vercel.app${rest}`, req.url));
+  // Attendee Wallet (shim-wallet)
+  if (surface === "wallet") {
+    if (pathname.startsWith("/dashboard")) {
+      const rest = pathname.replace(/^\/dashboard/, "") || "";
+      return NextResponse.redirect(
+        new URL(`${getSurfaceOrigin("studio", hostname)}${rest}`)
+      );
     }
 
-    // Redirect root to /portal so client routers and active tabs match
-    if (pathname === '/') {
-      return NextResponse.redirect(new URL('/portal', req.url));
+    if (pathname === "/") {
+      return NextResponse.redirect(new URL("/portal", requestOrigin));
     }
 
-    // Map subpaths to /portal seamlessly
-    if (!pathname.startsWith('/portal')) {
+    if (!pathname.startsWith("/portal")) {
       url.pathname = `/portal${pathname}`;
-      return NextResponse.rewrite(url);
+      return nextWithPath(url.pathname, url);
     }
-    return NextResponse.next();
+    return nextWithPath(pathname);
   }
 
-    // Main Domain (HQ) - If dashboard or portal are accessed on shim-hq, redirect to the landing page
-  if (!isStudio && !isWallet) {
-    const isLocal = hostname.includes('localhost') || hostname.includes('127.0.0.1');
-    if (!isLocal && (pathname.startsWith('/dashboard') || pathname.startsWith('/portal'))) {
-      return NextResponse.redirect(new URL('/', req.url));
-    }
+  // Main / Admin Workspace (shim-hq):
+  // Serves public landing + auth routes AND /dashboard for authenticated admins.
+  // Organizers hitting /dashboard or anyone hitting /portal are routed cleanly server-side.
+  if (surface === "hq" && pathname.startsWith("/portal")) {
+    const rest = pathname.replace(/^\/portal/, "") || "";
+    return NextResponse.redirect(
+      new URL(`${getSurfaceOrigin("wallet", hostname)}${rest}`)
+    );
   }
 
-  return NextResponse.next();
+  return nextWithPath(pathname);
 }

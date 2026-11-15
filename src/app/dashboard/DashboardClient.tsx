@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef } from "react";
 import { getEffectiveCertificateStatus } from "@/lib/security";
+import { canAccessDashboardPage } from "@/lib/permissions";
 
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import Link from "next/link";
@@ -30,6 +31,13 @@ interface EventItem {
   date: string | null;
   attendeeCount: number;
   credentialCount: number;
+  organizerName?: string | null;
+}
+
+interface AdminMetrics {
+  pendingSupportCount: number;
+  activeOrganizerCount: number;
+  totalMemberCount: number;
 }
 
 interface StatsData {
@@ -59,13 +67,25 @@ export default function DashboardClient({
   initialStats,
   allCertificates = [],
   allVerifications = [],
+  isAdmin = false,
+  userRole,
+  allowedPages,
+  adminMetrics,
 }: {
   initialEvents: EventItem[];
   initialStats: StatsData;
   allCertificates?: { issueDate: string | Date; status: string; validityDate?: string | Date | null; isClaimed: boolean }[];
   allVerifications?: { timestamp: string | Date }[];
+  isAdmin?: boolean;
+  userRole?: string;
+  allowedPages?: string[];
+  adminMetrics?: AdminMetrics;
 }) {
   const [timeframe, setTimeframe] = useState("30d");
+  const effectiveRole = userRole ?? (isAdmin ? "admin" : "organizer");
+  const canTemplates = canAccessDashboardPage(effectiveRole, allowedPages, "templates");
+  const canIssue = canAccessDashboardPage(effectiveRole, allowedPages, "issue");
+  const canEvents = canAccessDashboardPage(effectiveRole, allowedPages, "events");
 
   /* Mobile swipe carousel. The panels live in one horizontal snap scroller
      (`.mob-panels`); these refs/state keep the segmented control in sync with
@@ -186,7 +206,9 @@ export default function DashboardClient({
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6 mb-4 sm:mb-6 shrink-0">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-zinc-700 tracking-tight mb-1">Overview</h1>
-          <p className="text-zinc-500 text-xs sm:text-sm font-medium">Credentials and templates</p>
+          <p className="text-zinc-500 text-xs sm:text-sm font-medium">
+            {isAdmin ? "Platform-wide governance, credentials, and organizer activity" : "Credentials and templates"}
+          </p>
         </div>
         
         <div className="mob-dash-actions flex items-center gap-3">
@@ -205,18 +227,62 @@ export default function DashboardClient({
             />
           </div>
           
-          <div className="w-px h-6 bg-zinc-200 mx-1"></div>
+          {(canTemplates || canIssue) && (
+            <div className="w-px h-6 bg-zinc-200 mx-1"></div>
+          )}
 
-          <Link href="/dashboard/templates" className="flex items-center gap-2 bg-white text-zinc-700 hover:text-zinc-900 px-4 py-2 rounded-xl font-medium text-sm transition-all shadow-sm border border-zinc-200 hover:bg-zinc-50 h-9">
-            <Stamp size={15} strokeWidth={2.5} />
-            <span className="hidden sm:inline">Templates</span>
-          </Link>
-          <Link href="/dashboard/generate" className="flex items-center gap-2 bg-zinc-900 text-white hover:bg-zinc-800 px-4 py-2 rounded-xl font-medium text-sm transition-all shadow-sm active:scale-[0.98] h-9">
-            <Plus size={16} strokeWidth={2.5} />
-            <span>Issue</span>
-          </Link>
+          {canTemplates && (
+            <Link href="/dashboard/templates" className="flex items-center gap-2 bg-white text-zinc-700 hover:text-zinc-900 px-4 py-2 rounded-xl font-medium text-sm transition-all shadow-sm border border-zinc-200 hover:bg-zinc-50 h-9">
+              <Stamp size={15} strokeWidth={2.5} />
+              <span className="hidden sm:inline">Templates</span>
+            </Link>
+          )}
+          {canIssue && (
+            <Link href="/dashboard/generate" className="flex items-center gap-2 bg-zinc-900 text-white hover:bg-zinc-800 px-4 py-2 rounded-xl font-medium text-sm transition-all shadow-sm active:scale-[0.98] h-9">
+              <Plus size={16} strokeWidth={2.5} />
+              <span>Issue</span>
+            </Link>
+          )}
         </div>
       </div>
+
+      {isAdmin && adminMetrics && (
+        <div className="mb-4 rounded-xl border border-zinc-200 bg-zinc-50/80 px-4 py-2.5 shrink-0 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-zinc-600">
+            <span className="inline-flex items-center gap-1.5 font-bold text-zinc-900 uppercase tracking-wider text-[11px] bg-white border border-zinc-200 px-2 py-0.5 rounded-md">
+              Admin Controls
+            </span>
+            <span>
+              <strong className="text-zinc-900 tabular-nums">{adminMetrics.activeOrganizerCount}</strong> active organizers
+            </span>
+            <span className="text-zinc-300">·</span>
+            <span>
+              <strong className="text-zinc-900 tabular-nums">{adminMetrics.totalMemberCount}</strong> attendees
+            </span>
+            <span className="text-zinc-300">·</span>
+            <span>
+              <strong className={adminMetrics.pendingSupportCount > 0 ? "text-amber-700 tabular-nums" : "text-zinc-900 tabular-nums"}>
+                {adminMetrics.pendingSupportCount}
+              </strong>{" "}
+              pending support tickets
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard/users"
+              className="px-3 py-1 rounded-lg bg-white hover:bg-zinc-100 border border-zinc-200 text-xs font-semibold text-zinc-800 transition-colors"
+            >
+              Manage Users &amp; Pages
+            </Link>
+            <Link
+              href="/dashboard/support"
+              className="px-3 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-xs font-semibold text-white transition-colors"
+            >
+              Support Queue
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Mobile-only segmented control for the swipeable panels below. It reads
           as tabs and also acts as the page indicator: tapping scrolls the
@@ -345,9 +411,11 @@ export default function DashboardClient({
         <div id="mob-panel-events" className="mob-panel xl:col-span-1 bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm flex flex-col h-full min-h-0">
           <div className="p-6 border-b border-zinc-200 flex justify-between items-center bg-white shrink-0">
             <h2 className="text-lg font-bold text-zinc-700">Events</h2>
-            <Link href="/dashboard/events" className="mob-link text-sm font-medium text-zinc-600 hover:text-zinc-700 flex items-center gap-1">
-              View all <ArrowRight size={16} />
-            </Link>
+            {canEvents && (
+              <Link href="/dashboard/events" className="mob-link text-sm font-medium text-zinc-600 hover:text-zinc-700 flex items-center gap-1">
+                View all <ArrowRight size={16} />
+              </Link>
+            )}
           </div>
 
           <div className="mob-events-list flex-1 overflow-y-auto bg-zinc-50/50">
@@ -363,32 +431,47 @@ export default function DashboardClient({
               </div>
             ) : (
               <div className="divide-y divide-zinc-100">
-                {initialEvents.map((event) => (
-                  <Link 
-                    key={event.id}
-                    href={`/dashboard/events/${event.id}`}
-                    className="flex flex-col p-4 bg-white hover:bg-zinc-50 transition-colors group"
-                  >
-                    <div className="flex justify-between items-start mb-1">
-                      <h4 className="font-semibold text-zinc-800 text-sm group-hover:text-black transition-colors leading-tight line-clamp-1">{event.name}</h4>
-                      <div suppressHydrationWarning className="text-[11px] font-medium text-zinc-400 whitespace-nowrap ml-2 mt-0.5">
-                        {event.date ? new Date(event.date).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }) : "TBA"}
+                {initialEvents.map((event) => {
+                  const content = (
+                    <>
+                      <div className="flex justify-between items-start mb-1">
+                        <h4 className="font-semibold text-zinc-800 text-sm group-hover:text-black transition-colors leading-tight line-clamp-1">{event.name}</h4>
+                        <div suppressHydrationWarning className="text-[11px] font-medium text-zinc-400 whitespace-nowrap ml-2 mt-0.5">
+                          {event.date ? new Date(event.date).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }) : "TBA"}
+                        </div>
                       </div>
+                      
+                      <div className="flex items-center gap-3 text-[11px] font-medium text-zinc-500 mt-1">
+                        <div className="flex items-center gap-1">
+                          <Users size={12} className="text-zinc-400" />
+                          <span className="text-zinc-700 font-bold">{event.attendeeCount}</span> attendees
+                        </div>
+                        <div className="w-[3px] h-[3px] rounded-full bg-zinc-300" />
+                        <div className="flex items-center gap-1">
+                          <Stamp size={12} className="text-zinc-400" />
+                          <span className="text-zinc-700 font-bold">{event.credentialCount}</span> credentials
+                        </div>
+                      </div>
+                    </>
+                  );
+
+                  return canEvents ? (
+                    <Link
+                      key={event.id}
+                      href={`/dashboard/events/${event.id}`}
+                      className="flex flex-col p-4 bg-white hover:bg-zinc-50 transition-colors group"
+                    >
+                      {content}
+                    </Link>
+                  ) : (
+                    <div
+                      key={event.id}
+                      className="flex flex-col p-4 bg-white"
+                    >
+                      {content}
                     </div>
-                    
-                    <div className="flex items-center gap-3 text-[11px] font-medium text-zinc-500 mt-1">
-                      <div className="flex items-center gap-1">
-                        <Users size={12} className="text-zinc-400" />
-                        <span className="text-zinc-700 font-bold">{event.attendeeCount}</span> attendees
-                      </div>
-                      <div className="w-[3px] h-[3px] rounded-full bg-zinc-300" />
-                      <div className="flex items-center gap-1">
-                        <Stamp size={12} className="text-zinc-400" />
-                        <span className="text-zinc-700 font-bold">{event.credentialCount}</span> credentials
-                      </div>
-                    </div>
-                  </Link>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

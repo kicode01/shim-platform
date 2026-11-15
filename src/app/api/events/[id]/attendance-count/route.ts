@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireApiStaffAccess } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(
@@ -8,22 +7,16 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { user, error } = await requireApiStaffAccess(["events", "issue", "overview"]);
+    if (error) return error;
 
     const { id: eventId } = await params;
-
-    const userRole = (session.user as any).role;
-    const userId = (session.user as any).id;
 
     const event = await prisma.event.findUnique({
       where: { id: eventId },
     });
 
-    if (!event || (userRole !== "admin" && event.organizerId !== userId)) {
+    if (!event || (user.role !== "admin" && event.organizerId !== user.id)) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 

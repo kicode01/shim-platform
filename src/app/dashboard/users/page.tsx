@@ -1,61 +1,68 @@
 import type { Metadata } from "next";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import UsersClient from "./UsersClient";
+import { requireDashboardPageAccess } from "@/lib/auth-guard";
+import { resolveEffectiveAllowedPages } from "@/lib/permissions";
+import UsersClient, { ManageUser } from "./UsersClient";
 
 export const metadata: Metadata = {
-  title: "User Management",
-  description: "Manage member designations and certificate roles.",
+  title: "User Governance",
+  description: "Manage user accounts, tiers, profile corrections, and organizer workspace access.",
 };
 
-export default async function UsersPage() {
-  const session = await getServerSession(authOptions);
+export const dynamic = "force-dynamic";
 
-  if (!session) {
-    const headersList = await headers();
-    const host = headersList.get("host") || "";
-    const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
-    redirect(isLocal ? "/login" : "https://shim-hq.vercel.app/login");
-  }
+export default async function UsersPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ search?: string }>;
+}) {
+  const guardUser = await requireDashboardPageAccess("admin-only");
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const initialSearch = typeof resolvedSearchParams?.search === "string"
+    ? resolvedSearchParams.search.trim()
+    : "";
 
-  if ((session.user as any).role === "member") {
-    const headersList = await headers();
-    const host = headersList.get("host") || "";
-    const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
-    redirect(isLocal ? "/portal" : "https://shim-wallet.vercel.app");
-  }
-
-  const [users, certEmails] = await Promise.all([
+  const [users, certificates] = await Promise.all([
     prisma.user.findMany({
+      orderBy: { name: "asc" },
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
+        isActive: true,
+        allowedPages: true,
         certificateRole: true,
         membershipId: true,
+        _count: {
+          select: { events: true },
+        },
       },
-      orderBy: [{ name: "asc" }, { email: "asc" }],
     }),
     prisma.certificate.findMany({
-      where: { deletedAt: null, recipientEmail: { not: null } },
+      where: { deletedAt: null },
       select: { recipientEmail: true },
     }),
   ]);
 
   const certCountByEmail = new Map<string, number>();
-  for (const c of certEmails) {
+  for (const c of certificates) {
     const key = c.recipientEmail?.trim().toLowerCase();
     if (key) {
       certCountByEmail.set(key, (certCountByEmail.get(key) ?? 0) + 1);
     }
   }
 
-  const initialUsers = users.map((u) => ({
-    ...u,
+  const initialUsers: ManageUser[] = users.map((u) => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    role: u.role,
+    isActive: u.isActive,
+    allowedPages: resolveEffectiveAllowedPages(u.role, u.allowedPages),
+    certificateRole: u.certificateRole,
+    membershipId: u.membershipId,
+    eventCount: u._count.events,
     certificateCount: u.email
       ? certCountByEmail.get(u.email.trim().toLowerCase()) ?? 0
       : 0,
@@ -66,15 +73,19 @@ export default async function UsersPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6 mb-4 sm:mb-6 shrink-0">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-zinc-700 tracking-tight mb-1">
-            User Management
+            User Governance
           </h1>
           <p className="text-sm text-zinc-500">
-            Assign certificate designations for registered members across events
+            Control account tiers, profile corrections, suspension states, and per-organizer workspace pages
           </p>
         </div>
       </div>
 
-      <UsersClient initialUsers={initialUsers} />
+      <UsersClient
+        initialUsers={initialUsers}
+        currentUserId={guardUser.id}
+        initialSearch={initialSearch}
+      />
     </div>
   );
 }

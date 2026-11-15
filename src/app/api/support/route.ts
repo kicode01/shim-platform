@@ -1,23 +1,16 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireApiStaffAccess } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
-import {
-  isValidSupportIssueType,
-  isValidSupportStatus,
-} from "@/lib/support";
+import { isValidSupportIssueType } from "@/lib/support";
+import { listScopedSupportTickets } from "@/lib/support-server";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function GET(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (
-    !session?.user ||
-    ((session.user as any).role !== "admin" &&
-      (session.user as any).role !== "organizer")
-  ) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
+  const { user, error } = await requireApiStaffAccess("support");
+  if (error) return error;
 
   try {
     const { searchParams } = new URL(req.url);
@@ -25,36 +18,11 @@ export async function GET(req: Request) {
     const typeParam = (searchParams.get("type") || "").trim();
     const search = (searchParams.get("search") || "").trim();
 
-    const where: any = {};
-
-    if (statusParam && statusParam !== "all" && isValidSupportStatus(statusParam)) {
-      where.status = statusParam;
-    }
-
-    if (typeParam && typeParam !== "all" && isValidSupportIssueType(typeParam)) {
-      where.issueType = typeParam;
-    }
-
-    if (search) {
-      where.OR = [
-        { reporterName: { contains: search, mode: "insensitive" } },
-        { reporterEmail: { contains: search, mode: "insensitive" } },
-        { eventName: { contains: search, mode: "insensitive" } },
-        { description: { contains: search, mode: "insensitive" } },
-      ];
-    }
-
-    const tickets = await prisma.supportTicket.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      include: {
-        user: {
-          select: { id: true, name: true, email: true, role: true },
-        },
-        event: {
-          select: { id: true, name: true },
-        },
-      },
+    const tickets = await listScopedSupportTickets({
+      user,
+      statusParam,
+      typeParam,
+      search,
     });
 
     return NextResponse.json({ tickets });

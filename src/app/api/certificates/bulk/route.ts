@@ -1,15 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireApiStaffAccess } from "@/lib/auth-guard";
 import { computeCertificateFingerprint, parseValidityDateInput } from "@/lib/security";
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  
-  if (!session?.user || ((session.user as any).role !== "organizer" && (session.user as any).role !== "admin")) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
+  const { user, error } = await requireApiStaffAccess("issue");
+  if (error) return error;
 
   try {
     const { templateId, recipients, defaultRole, defaultEventId, defaultValidityDate } = await req.json();
@@ -34,18 +30,7 @@ export async function POST(req: Request) {
       }
     }
 
-    let issuerId = (session.user as any).id;
-    if (!issuerId && session.user.email) {
-      const dbUser = await prisma.user.findFirst({
-        where: { email: { equals: session.user.email.trim(), mode: "insensitive" } },
-        select: { id: true }
-      });
-      if (dbUser) issuerId = dbUser.id;
-    }
-
-    if (!issuerId) {
-      return NextResponse.json({ message: "Issuer account not found. Please log in again." }, { status: 401 });
-    }
+    const issuerId = user.id;
 
     const recipientEmails = Array.from(
       new Set(

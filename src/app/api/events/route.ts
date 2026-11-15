@@ -1,19 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireApiStaffAccess } from "@/lib/auth-guard";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
+  const { user, error } = await requireApiStaffAccess(["events", "issue"]);
+  if (error) return error;
 
   try {
-    const userRole = (session.user as any).role;
-    const userId = (session.user as any).id;
     const events = await prisma.event.findMany({
-      where: userRole === "admin" ? {} : { organizerId: userId },
+      where: user.role === "admin" ? {} : { organizerId: user.id },
       orderBy: { createdAt: "desc" },
       include: {
         _count: {
@@ -30,10 +25,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || ((session.user as any).role !== "organizer" && (session.user as any).role !== "admin")) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
+  const { user, error } = await requireApiStaffAccess("events");
+  if (error) return error;
 
   try {
     const body = await req.json();
@@ -50,7 +43,7 @@ export async function POST(req: Request) {
         description: description?.trim() || null,
         defaultTemplateId: defaultTemplateId || null,
         defaultRole: defaultRole?.trim() || "Participant",
-        organizerId: (session.user as any).id
+        organizerId: user.id
       }
     });
 

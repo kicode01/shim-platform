@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import TemplateEditor from "@/components/TemplateEditor";
+import { requireDashboardPageAccess } from "@/lib/auth-guard";
 
 export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await props.params;
@@ -22,10 +21,7 @@ export async function generateMetadata(props: { params: Promise<{ id: string }> 
 }
 
 export default async function EditTemplatePage(props: { params: Promise<{ id: string }> }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    redirect("/login");
-  }
+  const user = await requireDashboardPageAccess("templates");
 
   const { id } = await props.params;
 
@@ -33,8 +29,8 @@ export default async function EditTemplatePage(props: { params: Promise<{ id: st
     where: { id }
   });
 
-  const userRole = (session.user as any).role;
-  const userId = (session.user as any).id;
+  const userRole = user.role;
+  const userId = user.id;
   if (!template || (userRole !== "admin" && template.userId !== userId)) {
     notFound();
   }

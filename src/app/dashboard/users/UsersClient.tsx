@@ -1,79 +1,114 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
-  X,
-  Check,
-  Loader2,
-  UserCog,
   Users as UsersIcon,
+  Pencil,
+  Check,
+  X,
+  Loader2,
+  ShieldCheck,
+  Ban,
+  CheckCircle2,
+  SlidersHorizontal,
 } from "lucide-react";
-import { CERTIFICATE_ROLES, CertificateRole } from "@/lib/roles";
+import { CERTIFICATE_ROLES } from "@/lib/roles";
+import {
+  ACCOUNT_TIERS,
+  DEFAULT_ORGANIZER_PAGES,
+  ORGANIZER_PAGES,
+  ORGANIZER_PAGE_KEYS,
+  OrganizerPageKey,
+} from "@/lib/permissions";
 
-export interface ManagedUser {
+export interface ManageUser {
   id: string;
   name: string | null;
   email: string | null;
   role: string;
+  isActive: boolean;
+  allowedPages: string[];
   certificateRole: string;
   membershipId: string | null;
+  eventCount: number;
   certificateCount: number;
 }
 
 const ROLE_BADGE_CLASSES: Record<string, string> = {
   Organizer: "text-indigo-700 bg-indigo-50 border-indigo-200/80",
-  Speaker: "text-emerald-700 bg-emerald-50 border-emerald-200/80",
-  Participant: "text-zinc-700 bg-zinc-100 border-zinc-200/80",
-  Others: "text-amber-700 bg-amber-50 border-amber-200/80",
+  Speaker: "text-amber-700 bg-amber-50 border-amber-200/80",
+  Participant: "text-emerald-700 bg-emerald-50 border-emerald-200/80",
+  Others: "text-zinc-700 bg-zinc-100 border-zinc-200/80",
 };
 
-const ROLE_DOT_CLASSES: Record<string, string> = {
-  Organizer: "bg-indigo-500",
-  Speaker: "bg-emerald-500",
-  Participant: "bg-zinc-500",
-  Others: "bg-amber-500",
+const TIER_BADGE_CLASSES: Record<string, string> = {
+  admin: "text-zinc-900 bg-zinc-200/80 border-zinc-300",
+  organizer: "text-sky-700 bg-sky-50 border-sky-200/80",
+  member: "text-emerald-700 bg-emerald-50 border-emerald-200/80",
+};
+
+const TIER_LABELS: Record<string, string> = {
+  admin: "Admin (shim-hq)",
+  organizer: "Organizer (shim-studio)",
+  member: "Attendee (shim-wallet)",
 };
 
 export default function UsersClient({
   initialUsers,
+  currentUserId,
+  initialSearch = "",
 }: {
-  initialUsers: ManagedUser[];
+  initialUsers: ManageUser[];
+  currentUserId: string;
+  initialSearch?: string;
 }) {
-  const [users, setUsers] = useState<ManagedUser[]>(initialUsers);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [users, setUsers] = useState<ManageUser[]>(initialUsers);
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [tierFilter, setTierFilter] = useState<string>("all");
+  const [editingUser, setEditingUser] = useState<ManageUser | null>(null);
 
-  const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
-  const [selectedRole, setSelectedRole] =
-    useState<CertificateRole>("Participant");
+  const [formName, setFormName] = useState("");
+  const [formEmail, setFormEmail] = useState("");
+  const [formRole, setFormRole] = useState<string>("member");
+  const [formIsActive, setFormIsActive] = useState<boolean>(true);
+  const [formCertRole, setFormCertRole] = useState<string>("Participant");
+  const [formAllowedPages, setFormAllowedPages] = useState<OrganizerPageKey[]>([
+    ...DEFAULT_ORGANIZER_PAGES,
+  ]);
+  const [syncProfileToRecords, setSyncProfileToRecords] = useState<boolean>(true);
+
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     type: "error" | "success";
   } | null>(null);
 
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !saving) setEditingUser(null);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [saving]);
-
   const showToast = (
     message: string,
     type: "error" | "success" = "success"
   ) => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 3500);
   };
+
+  const tierCounts = useMemo(() => {
+    let admin = 0;
+    let organizer = 0;
+    let member = 0;
+    for (const u of users) {
+      if (u.role === "admin") admin += 1;
+      else if (u.role === "organizer") organizer += 1;
+      else member += 1;
+    }
+    return { all: users.length, admin, organizer, member };
+  }, [users]);
 
   const filteredUsers = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
     return users.filter((u) => {
-      if (roleFilter !== "all" && u.certificateRole !== roleFilter) {
+      if (tierFilter !== "all" && u.role !== tierFilter) {
         return false;
       }
       if (!q) return true;
@@ -81,69 +116,156 @@ export default function UsersClient({
         (u.name || "").toLowerCase().includes(q) ||
         (u.email || "").toLowerCase().includes(q) ||
         (u.membershipId || "").toLowerCase().includes(q) ||
-        (u.certificateRole || "").toLowerCase().includes(q)
+        u.role.toLowerCase().includes(q) ||
+        u.certificateRole.toLowerCase().includes(q)
       );
     });
-  }, [users, searchTerm, roleFilter]);
+  }, [users, searchTerm, tierFilter]);
 
-  const openEditModal = (user: ManagedUser) => {
-    setEditingUser(user);
-    const matched = CERTIFICATE_ROLES.find((r) => r === user.certificateRole);
-    setSelectedRole(matched ?? "Participant");
+  const openEditModal = (u: ManageUser) => {
+    setEditingUser(u);
+    setFormName(u.name || "");
+    setFormEmail(u.email || "");
+    setFormRole(u.role || "member");
+    setFormIsActive(u.isActive);
+    const matchedCertRole = CERTIFICATE_ROLES.find((r) => r === u.certificateRole);
+    setFormCertRole(matchedCertRole ?? "Participant");
+    const validPages = u.allowedPages.filter((p): p is OrganizerPageKey =>
+      (ORGANIZER_PAGE_KEYS as readonly string[]).includes(p)
+    );
+    setFormAllowedPages(validPages);
+    setSyncProfileToRecords(true);
   };
 
-  const handleSaveRole = async (e: React.FormEvent) => {
+  const toggleAllowedPage = (key: OrganizerPageKey) => {
+    setFormAllowedPages((prev) =>
+      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]
+    );
+  };
+
+  const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
 
     setSaving(true);
     try {
+      const payload: Record<string, unknown> = {
+        name: formName.trim(),
+        email: formEmail.trim(),
+        role: formRole,
+        isActive: formIsActive,
+        certificateRole: formCertRole,
+        syncProfileToRecords,
+      };
+      if (formRole === "organizer") {
+        payload.allowedPages = formAllowedPages;
+      }
+
       const res = await fetch(`/api/users/${editingUser.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ certificateRole: selectedRole }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        showToast(data?.message || "Failed to update role.", "error");
+        showToast(data?.message || "Failed to update user.", "error");
         return;
       }
 
       setUsers((prev) =>
         prev.map((u) =>
           u.id === editingUser.id
-            ? { ...u, certificateRole: data.user.certificateRole }
+            ? {
+                ...u,
+                name: data.user.name,
+                email: data.user.email,
+                role: data.user.role,
+                isActive: data.user.isActive,
+                allowedPages: data.user.allowedPages,
+                certificateRole: data.user.certificateRole,
+              }
             : u
         )
       );
+
       showToast(
-        `Updated ${editingUser.name || editingUser.email || "user"}'s role to ${data.user.certificateRole}.`,
+        `Saved changes for ${data.user.name || data.user.email || "user"}.`,
         "success"
       );
       setEditingUser(null);
     } catch (err) {
-      console.error("Failed updating user role:", err);
-      showToast("Network error while saving role.", "error");
+      console.error("Failed updating user:", err);
+      showToast("Network error while saving user settings.", "error");
     } finally {
       setSaving(false);
     }
   };
 
-  const renderRoleBadge = (certRole: string) => {
+  const renderTierBadge = (tier: string) => {
     const badgeClass =
-      ROLE_BADGE_CLASSES[certRole] ||
-      "text-zinc-700 bg-zinc-100 border-zinc-200/80";
-    const dotClass = ROLE_DOT_CLASSES[certRole] || "bg-zinc-500";
+      TIER_BADGE_CLASSES[tier] || "text-zinc-700 bg-zinc-100 border-zinc-200/80";
     return (
       <span
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] leading-none font-bold tracking-wider uppercase border shrink-0 ${badgeClass}`}
+        className={`inline-flex items-center px-2.5 py-1 rounded-md text-[11px] leading-none font-bold tracking-wider uppercase border shrink-0 ${badgeClass}`}
       >
-        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotClass}`} />
-        <span>{certRole || "Participant"}</span>
+        {tier}
       </span>
     );
   };
+
+  const renderStatusBadge = (isActive: boolean) => {
+    return isActive ? (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+        <CheckCircle2 size={11} />
+        Active
+      </span>
+    ) : (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200">
+        <Ban size={11} />
+        Suspended
+      </span>
+    );
+  };
+
+  const renderAccessSummary = (u: ManageUser) => {
+    if (u.role === "admin") {
+      return (
+        <span className="text-[11px] font-semibold text-zinc-600">
+          Full HQ Control
+        </span>
+      );
+    }
+    if (u.role === "organizer") {
+      const enabledCount = u.allowedPages.length;
+      const hasSupport = u.allowedPages.includes("support");
+      return (
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-zinc-700 bg-zinc-100 border border-zinc-200 px-2 py-0.5 rounded">
+            <SlidersHorizontal size={11} className="text-zinc-500" />
+            {enabledCount}/{ORGANIZER_PAGES.length} pages
+          </span>
+          {hasSupport && (
+            <span className="text-[10px] font-bold uppercase tracking-wide text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">
+              +Support
+            </span>
+          )}
+        </div>
+      );
+    }
+    const certBadgeClass =
+      ROLE_BADGE_CLASSES[u.certificateRole] ||
+      "text-zinc-700 bg-zinc-100 border-zinc-200/80";
+    return (
+      <span
+        className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold border ${certBadgeClass}`}
+      >
+        {u.certificateRole || "Participant"}
+      </span>
+    );
+  };
+
+  const isEditingSelf = editingUser?.id === currentUserId;
 
   return (
     <>
@@ -151,20 +273,25 @@ export default function UsersClient({
         {/* Controls Bar */}
         <div className="p-4 sm:p-6 border-b border-zinc-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white">
           <div className="mob-filter-row flex flex-wrap bg-zinc-100 rounded-2xl p-1 w-full sm:w-auto">
-            {["all", ...CERTIFICATE_ROLES].map((filter) => {
-              const isActive = roleFilter === filter;
+            {[
+              { key: "all", label: `All (${tierCounts.all})` },
+              { key: "admin", label: `Admins (${tierCounts.admin})` },
+              { key: "organizer", label: `Organizers (${tierCounts.organizer})` },
+              { key: "member", label: `Members (${tierCounts.member})` },
+            ].map((filter) => {
+              const isSelected = tierFilter === filter.key;
               return (
                 <button
-                  key={filter}
+                  key={filter.key}
                   type="button"
-                  onClick={() => setRoleFilter(filter)}
-                  className={`relative px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium capitalize rounded-xl transition-colors duration-200 flex items-center justify-center ${
-                    isActive
+                  onClick={() => setTierFilter(filter.key)}
+                  className={`relative px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium rounded-xl transition-colors duration-200 flex items-center justify-center ${
+                    isSelected
                       ? "bg-white text-zinc-800 shadow-sm"
                       : "text-zinc-500 hover:text-zinc-800 hover:bg-zinc-200/50"
                   }`}
                 >
-                  {filter}
+                  {filter.label}
                 </button>
               );
             })}
@@ -177,7 +304,7 @@ export default function UsersClient({
             />
             <input
               type="text"
-              placeholder="Search member or email..."
+              placeholder="Search name, email, ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-8 py-2 bg-white border border-zinc-200 text-zinc-700 rounded-xl focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 transition-all placeholder:text-zinc-400 text-sm"
@@ -202,10 +329,10 @@ export default function UsersClient({
                 <UsersIcon size={24} className="text-zinc-400" />
               </div>
               <h3 className="text-lg font-semibold text-zinc-700 mb-1">
-                No matching members found
+                No matching accounts found
               </h3>
               <p className="text-sm text-zinc-500 max-w-sm">
-                Try clearing your search or switching the role filter above.
+                Try clearing your search query or switching the account tier filter above.
               </p>
             </div>
           ) : (
@@ -216,16 +343,22 @@ export default function UsersClient({
                   <table className="table-modern w-full table-fixed">
                     <thead>
                       <tr>
-                        <th className="w-[38%] px-5 py-3 text-left text-xs font-semibold text-zinc-500 tracking-wide">
-                          Member
+                        <th className="w-[29%] px-5 py-3 text-left text-xs font-semibold text-zinc-500 tracking-wide">
+                          Account
                         </th>
-                        <th className="w-[18%] px-4 py-3 text-center text-xs font-semibold text-zinc-500 tracking-wide">
-                          Credentials
+                        <th className="w-[14%] px-3 py-3 text-left text-xs font-semibold text-zinc-500 tracking-wide">
+                          Tier
                         </th>
-                        <th className="w-[22%] px-4 py-3 text-center text-xs font-semibold text-zinc-500 tracking-wide">
-                          Role
+                        <th className="w-[14%] px-3 py-3 text-left text-xs font-semibold text-zinc-500 tracking-wide">
+                          Status
                         </th>
-                        <th className="w-[22%] px-5 py-3 text-right text-xs font-semibold text-zinc-500 tracking-wide">
+                        <th className="w-[21%] px-3 py-3 text-left text-xs font-semibold text-zinc-500 tracking-wide">
+                          Access / Default Role
+                        </th>
+                        <th className="w-[10%] px-3 py-3 text-center text-xs font-semibold text-zinc-500 tracking-wide">
+                          Activity
+                        </th>
+                        <th className="w-[12%] px-5 py-3 text-right text-xs font-semibold text-zinc-500 tracking-wide">
                           Actions
                         </th>
                       </tr>
@@ -236,42 +369,50 @@ export default function UsersClient({
                 <div className="overflow-y-auto overflow-x-hidden flex-1 min-h-0 bg-white">
                   <table className="table-modern w-full table-fixed">
                     <tbody className="divide-y divide-zinc-100">
-                      {filteredUsers.map((user) => (
+                      {filteredUsers.map((u) => (
                         <tr
-                          key={user.id}
+                          key={u.id}
                           className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors bg-white"
                         >
-                          <td className="w-[38%] px-5 py-3.5 overflow-hidden align-middle">
-                            <div className="font-semibold text-sm text-zinc-800 truncate">
-                              {user.name || "Unnamed User"}
-                            </div>
-                            <div className="flex items-center gap-2 mt-0.5 text-[13px] text-zinc-500 min-w-0">
-                              <span className="truncate">
-                                {user.email || "No email"}
+                          <td className="w-[29%] px-5 py-3.5 align-middle overflow-hidden">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="font-semibold text-sm text-zinc-800 truncate">
+                                {u.name || "Unnamed User"}
                               </span>
-                              {user.membershipId && (
-                                <span className="font-mono text-[11px] px-1.5 py-0.5 bg-zinc-100 text-zinc-600 rounded shrink-0">
-                                  {user.membershipId}
+                              {u.id === currentUserId && (
+                                <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-500 border border-zinc-200 shrink-0">
+                                  You
                                 </span>
                               )}
                             </div>
+                            <div className="text-xs text-zinc-500 truncate mt-0.5">
+                              {u.email || "No email"}
+                            </div>
                           </td>
-                          <td className="w-[18%] px-4 py-3.5 align-middle text-center">
-                            <span className="text-sm font-medium text-zinc-600 tabular-nums">
-                              {user.certificateCount}
+                          <td className="w-[14%] px-3 py-3.5 align-middle">
+                            {renderTierBadge(u.role)}
+                          </td>
+                          <td className="w-[14%] px-3 py-3.5 align-middle">
+                            {renderStatusBadge(u.isActive)}
+                          </td>
+                          <td className="w-[21%] px-3 py-3.5 align-middle">
+                            {renderAccessSummary(u)}
+                          </td>
+                          <td className="w-[10%] px-3 py-3.5 align-middle text-center">
+                            <span className="text-xs font-semibold text-zinc-700">
+                              {u.role === "organizer" || u.role === "admin"
+                                ? `${u.eventCount} evt`
+                                : `${u.certificateCount} cert`}
                             </span>
                           </td>
-                          <td className="w-[22%] px-4 py-3.5 align-middle text-center">
-                            {renderRoleBadge(user.certificateRole)}
-                          </td>
-                          <td className="w-[22%] px-5 py-3.5 align-middle text-right">
+                          <td className="w-[12%] px-5 py-3.5 align-middle text-right">
                             <button
                               type="button"
-                              onClick={() => openEditModal(user)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-700 bg-white hover:bg-zinc-100 border border-zinc-200 shadow-xs transition-colors"
+                              onClick={() => openEditModal(u)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-700 bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 transition-colors whitespace-nowrap"
                             >
-                              <UserCog size={14} />
-                              <span>Edit Role</span>
+                              <Pencil size={12} />
+                              Manage
                             </button>
                           </td>
                         </tr>
@@ -283,36 +424,41 @@ export default function UsersClient({
 
               {/* Mobile Stacked Cards */}
               <div className="lg:hidden flex-1 overflow-y-auto overflow-x-hidden bg-white">
-                {filteredUsers.map((user) => (
+                {filteredUsers.map((u) => (
                   <div
-                    key={user.id}
-                    className="border-b border-zinc-100 px-4 py-4"
+                    key={u.id}
+                    className="border-b border-zinc-100 px-4 py-4 space-y-2.5"
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="font-semibold text-sm text-zinc-800 truncate">
-                          {user.name || "Unnamed User"}
+                          {u.name || "Unnamed User"}
                         </div>
-                        <div className="text-[13px] text-zinc-500 truncate">
-                          {user.email || "No email"}
+                        <div className="text-xs text-zinc-500 truncate mt-0.5">
+                          {u.email || "No email"}
                         </div>
                       </div>
-                      {renderRoleBadge(user.certificateRole)}
+                      {renderStatusBadge(u.isActive)}
                     </div>
 
-                    <div className="mt-3 flex items-center justify-between gap-3">
-                      <div className="text-xs text-zinc-500">
-                        {user.certificateCount} credential
-                        {user.certificateCount === 1 ? "" : "s"}
-                        {user.membershipId ? ` · ${user.membershipId}` : ""}
-                      </div>
+                    <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                      {renderTierBadge(u.role)}
+                      {renderAccessSummary(u)}
+                    </div>
+
+                    <div className="pt-1 flex items-center justify-between gap-3">
+                      <span className="text-xs text-zinc-400">
+                        {u.role === "organizer" || u.role === "admin"
+                          ? `${u.eventCount} events`
+                          : `${u.certificateCount} certificates`}
+                      </span>
                       <button
                         type="button"
-                        onClick={() => openEditModal(user)}
-                        className="mob-card-action inline-flex items-center gap-1.5 h-10 px-3.5 rounded-lg text-xs font-semibold text-zinc-700 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 transition-colors shrink-0"
+                        onClick={() => openEditModal(u)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-700 bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 transition-colors"
                       >
-                        <UserCog size={14} />
-                        <span>Edit Role</span>
+                        <Pencil size={12} />
+                        Manage
                       </button>
                     </div>
                   </div>
@@ -323,117 +469,251 @@ export default function UsersClient({
         </div>
       </div>
 
-      {/* Edit Role Modal */}
+      {/* Manage User Modal */}
       <AnimatePresence>
         {editingUser && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/60 backdrop-blur-[2px]"
-            onClick={() => !saving && setEditingUser(null)}
-          >
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
             <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 8 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md bg-white border border-zinc-200 rounded-2xl shadow-2xl overflow-hidden"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 shadow-xl border border-zinc-200"
             >
-              <div className="px-6 py-5 border-b border-zinc-100 flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-bold text-zinc-800">Edit Role</h2>
-                  <p className="text-xs text-zinc-500 mt-0.5 truncate max-w-[280px]">
-                    {editingUser.name || "Member"}
-                    {editingUser.email ? ` (${editingUser.email})` : ""}
-                  </p>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-700">
+                    <ShieldCheck size={18} />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-zinc-800">
+                      Manage Account
+                    </h2>
+                    <p className="text-xs text-zinc-500 truncate max-w-[260px]">
+                      {editingUser.email}
+                    </p>
+                  </div>
                 </div>
                 <button
                   type="button"
-                  disabled={saving}
                   onClick={() => setEditingUser(null)}
-                  className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
-                  aria-label="Close modal"
+                  className="p-1.5 text-zinc-400 hover:text-zinc-600 rounded-lg hover:bg-zinc-100"
                 >
                   <X size={18} />
                 </button>
               </div>
 
-              <form onSubmit={handleSaveRole} className="p-6 space-y-5">
-                <div>
-                  <label
-                    htmlFor="certificateRoleSelect"
-                    className="block text-sm font-medium text-zinc-700 mb-2"
-                  >
-                    Certificate Designation Role
-                  </label>
-                  <select
-                    id="certificateRoleSelect"
-                    value={selectedRole}
-                    onChange={(e) =>
-                      setSelectedRole(e.target.value as CertificateRole)
-                    }
-                    className="w-full px-3.5 py-2.5 bg-white border border-zinc-300 rounded-xl text-sm font-medium text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-700 focus:border-transparent shadow-xs"
-                  >
-                    {CERTIFICATE_ROLES.map((roleOption) => (
-                      <option key={roleOption} value={roleOption}>
-                        {roleOption}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-zinc-500 mt-2 leading-relaxed">
-                    Updates this member&apos;s designation on event rosters and
-                    pre-fills certificate templates during generation.
-                  </p>
+              <form onSubmit={handleSaveUser} className="space-y-4">
+                {/* Profile Typo Correction */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-700 mb-1">
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg text-sm font-medium text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-700 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-700 mb-1">
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={formEmail}
+                      onChange={(e) => setFormEmail(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg text-sm font-medium text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-700 focus:border-transparent"
+                    />
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-2.5 pt-2">
+                <label className="flex items-center gap-2 text-xs text-zinc-600 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={syncProfileToRecords}
+                    onChange={(e) => setSyncProfileToRecords(e.target.checked)}
+                    className="rounded border-zinc-300 text-zinc-900 focus:ring-zinc-700"
+                  />
+                  <span>
+                    Sync name &amp; email typo fixes to attendance records
+                  </span>
+                </label>
+
+                <div className="border-t border-zinc-100 pt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Account Tier */}
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-700 mb-1">
+                      Workspace Tier
+                    </label>
+                    <select
+                      value={formRole}
+                      disabled={isEditingSelf}
+                      onChange={(e) => setFormRole(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg text-sm font-medium text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-700 disabled:bg-zinc-100 disabled:text-zinc-400"
+                    >
+                      {ACCOUNT_TIERS.map((tier) => (
+                        <option key={tier} value={tier}>
+                          {TIER_LABELS[tier] || tier}
+                        </option>
+                      ))}
+                    </select>
+                    {isEditingSelf && (
+                      <p className="text-[11px] text-zinc-400 mt-1">
+                        Own admin tier is locked
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Certificate Role */}
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-700 mb-1">
+                      Default Certificate Role
+                    </label>
+                    <select
+                      value={formCertRole}
+                      onChange={(e) => setFormCertRole(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg text-sm font-medium text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-700"
+                    >
+                      {CERTIFICATE_ROLES.map((r) => (
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Account Active / Suspended Toggle */}
+                <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50/70">
+                  <div>
+                    <div className="text-xs font-semibold text-zinc-800">
+                      Account Status
+                    </div>
+                    <div className="text-[11px] text-zinc-500">
+                      Suspended users cannot sign in or call dashboard APIs
+                    </div>
+                  </div>
                   <button
                     type="button"
-                    disabled={saving}
+                    disabled={isEditingSelf}
+                    onClick={() => setFormIsActive((v) => !v)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-50 ${
+                      formIsActive
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                        : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                    }`}
+                  >
+                    {formIsActive ? "Active" : "Suspended"}
+                  </button>
+                </div>
+
+                {/* Per-Organizer Page Access Controls */}
+                {formRole === "organizer" && (
+                  <div className="rounded-xl border border-zinc-200 bg-zinc-50/60 p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-xs font-bold text-zinc-800 uppercase tracking-wide">
+                          Organizer Studio Pages
+                        </div>
+                        <div className="text-[11px] text-zinc-500">
+                          Choose which dashboard pages this organizer can open on shim-studio
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setFormAllowedPages([...ORGANIZER_PAGE_KEYS])
+                          }
+                          className="text-[11px] font-semibold text-zinc-600 hover:text-zinc-900 px-2 py-1 rounded bg-white border border-zinc-200"
+                        >
+                          All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setFormAllowedPages([...DEFAULT_ORGANIZER_PAGES])
+                          }
+                          className="text-[11px] font-semibold text-zinc-600 hover:text-zinc-900 px-2 py-1 rounded bg-white border border-zinc-200"
+                        >
+                          Default
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+                      {ORGANIZER_PAGES.map((page) => {
+                        const checked = formAllowedPages.includes(page.key);
+                        return (
+                          <label
+                            key={page.key}
+                            className={`flex items-center gap-2 px-2.5 py-2 rounded-lg border text-xs font-semibold cursor-pointer transition-colors ${
+                              checked
+                                ? "bg-white border-zinc-800 text-zinc-900 shadow-xs"
+                                : "bg-zinc-100/70 border-zinc-200 text-zinc-500 hover:bg-white"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleAllowedPage(page.key)}
+                              className="rounded border-zinc-300 text-zinc-900 focus:ring-zinc-700"
+                            />
+                            <span>{page.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+
+                    <p className="text-[11px] text-zinc-500 leading-relaxed pt-0.5">
+                      Note: When <strong>Support</strong> is enabled, this organizer only receives{" "}
+                      <em>Event Concern</em> tickets for their own events where the reporter checked into attendance (or was explicitly shared by Admin).
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
                     onClick={() => setEditingUser(null)}
-                    className="px-4 py-2 rounded-xl text-sm font-medium text-zinc-600 hover:text-zinc-800 hover:bg-zinc-100 border border-zinc-200 transition-colors"
+                    className="px-4 py-2 text-xs font-semibold text-zinc-600 bg-zinc-100 hover:bg-zinc-200 rounded-lg transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={saving}
-                    className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-zinc-900 hover:bg-zinc-800 transition-colors flex items-center gap-2 disabled:opacity-60"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-zinc-900 hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-50"
                   >
-                    {saving ? (
-                      <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                      <Check size={16} />
-                    )}
-                    <span>{saving ? "Saving..." : "Save Role"}</span>
+                    {saving && <Loader2 size={13} className="animate-spin" />}
+                    Save Changes
                   </button>
                 </div>
               </form>
             </motion.div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
-      {/* Toast */}
+      {/* Toast Feedback */}
       <AnimatePresence>
         {toast && (
           <motion.div
-            initial={{ opacity: 0, y: 40, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className={`fixed bottom-6 right-6 z-50 p-4 rounded-xl shadow-lg border border-zinc-200 ${
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            className={`fixed bottom-20 lg:bottom-6 right-4 sm:right-6 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl border shadow-lg text-xs font-semibold ${
               toast.type === "error"
-                ? "bg-red-50 text-red-700"
-                : "bg-emerald-50 text-emerald-700"
-            } flex items-center gap-3`}
+                ? "bg-red-50 border-red-200 text-red-700"
+                : "bg-zinc-900 border-zinc-800 text-white"
+            }`}
           >
-            {toast.type === "error" ? (
-              <X size={18} className="text-red-500 shrink-0" />
-            ) : (
-              <Check size={18} className="text-emerald-500 shrink-0" />
-            )}
-            <span className="font-medium text-sm">{toast.message}</span>
+            {toast.type === "error" ? <X size={14} /> : <Check size={14} />}
+            <span>{toast.message}</span>
           </motion.div>
         )}
       </AnimatePresence>

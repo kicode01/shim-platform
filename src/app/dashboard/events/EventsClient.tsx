@@ -13,14 +13,16 @@ interface EventItem {
   createdAt: string;
   _count: { certificates: number };
   defaultTemplateId?: string | null;
+  organizer?: { name?: string | null; email?: string | null };
 }
 
 interface EventsClientProps {
   initialEvents: EventItem[];
   templates: { id: string; name: string }[];
+  isAdmin?: boolean;
 }
 
-export default function EventsClient({ initialEvents, templates }: EventsClientProps) {
+export default function EventsClient({ initialEvents, templates, isAdmin = false }: EventsClientProps) {
   const [events, setEvents] = useState<EventItem[]>(initialEvents);
   const [activeMobileTab, setActiveMobileTab] = useState<"list" | "create">("list");
   const [searchQuery, setSearchQuery] = useState("");
@@ -202,6 +204,11 @@ export default function EventsClient({ initialEvents, templates }: EventsClientP
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <div className="font-semibold text-zinc-800 text-sm leading-snug truncate">{evt.name}</div>
+                              {isAdmin && evt.organizer && (
+                                <div className="mt-0.5 text-[11px] font-medium text-zinc-400 truncate">
+                                  Organizer: {evt.organizer.name || evt.organizer.email}
+                                </div>
+                              )}
                               {evt.description && (
                                 <div className="mt-0.5 line-clamp-2 text-xs text-zinc-500">{evt.description}</div>
                               )}
@@ -283,6 +290,11 @@ export default function EventsClient({ initialEvents, templates }: EventsClientP
                           <tr key={evt.id} className="hover:bg-zinc-50/80 transition-colors group">
                             <td className="w-[40%] px-6 py-4 overflow-hidden">
                               <div className="font-medium text-zinc-700 truncate">{evt.name}</div>
+                              {isAdmin && evt.organizer && (
+                                <div className="text-[11px] font-medium text-zinc-400 truncate mt-0.5">
+                                  Organizer: {evt.organizer.name || evt.organizer.email}
+                                </div>
+                              )}
                               {evt.description && <div className="text-zinc-500 truncate mt-0.5 text-xs">{evt.description}</div>}
                             </td>
                             <td className="w-[25%] px-6 py-4">

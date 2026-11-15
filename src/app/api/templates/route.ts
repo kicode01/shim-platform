@@ -1,20 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireApiStaffAccess } from "@/lib/auth-guard";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  
-  if (!session?.user) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
+  const { user, error } = await requireApiStaffAccess(["templates", "issue", "events"]);
+  if (error) return error;
 
   try {
-    const userRole = (session.user as any).role;
-    const userId = (session.user as any).id;
     const templates = await prisma.template.findMany({
-      where: userRole === "admin" ? {} : { userId },
+      where: user.role === "admin" ? {} : { userId: user.id },
       include: {
         _count: {
           select: { certificates: true }
@@ -31,11 +25,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  
-  if (!session?.user) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
+  const { user, error } = await requireApiStaffAccess("templates");
+  if (error) return error;
 
   try {
     const { name, description, designData } = await req.json();
@@ -45,7 +36,7 @@ export async function POST(req: Request) {
     }
 
     let finalName = name.trim();
-    const userId = (session.user as any).id;
+    const userId = user.id;
 
     // Fetch existing templates that start with this name to determine if we need a suffix
     const existingTemplates = await prisma.template.findMany({

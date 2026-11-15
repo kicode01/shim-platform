@@ -71,9 +71,11 @@ const HoverMarquee = ({ text, className }: { text: string; className?: string })
 export default function CredentialsClient({
   initialCertificates,
   initialTrashCount = 0,
+  isAdmin = false,
 }: {
   initialCertificates: CertificateItem[];
   initialTrashCount?: number;
+  isAdmin?: boolean;
 }) {
   const [certificates, setCertificates] = useState<CertificateItem[]>(initialCertificates);
   const [trashCount, setTrashCount] = useState(initialTrashCount);
@@ -83,6 +85,7 @@ export default function CredentialsClient({
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmPurgeId, setConfirmPurgeId] = useState<string | null>(null);
   const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null);
   const [toast, setToast] = useState<{message: string, type: 'error' | 'success'} | null>(null);
   const [isTabLoading, setIsTabLoading] = useState(false);
@@ -227,6 +230,30 @@ export default function CredentialsClient({
     } catch (e) {
       console.error(e);
       showToast("Error restoring credential.", "error");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handlePurgeCertificate = async (id: string) => {
+    setUpdatingId(id);
+    try {
+      const res = await fetch(`/api/certificates/${id}?permanent=1`, {
+        method: "DELETE"
+      });
+
+      if (res.ok) {
+        setCertificates(prev => prev.filter(c => c.id !== id));
+        setTrashCount(prev => Math.max(0, prev - 1));
+        setConfirmPurgeId(null);
+        showToast("Credential permanently purged from database.", "success");
+      } else {
+        const data = await res.json().catch(() => null);
+        showToast(data?.message || "Failed to purge credential.", "error");
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Error purging credential.", "error");
     } finally {
       setUpdatingId(null);
     }
@@ -400,6 +427,11 @@ export default function CredentialsClient({
                           text={cert.template?.name || "Standard Template"} 
                           className="text-[13px] text-zinc-500 mx-auto max-w-full" 
                         />
+                        {isAdmin && cert.issuer && (
+                          <div className="text-[11px] text-zinc-400 truncate mt-0.5">
+                            Issuer: {cert.issuer.name || cert.issuer.email}
+                          </div>
+                        )}
                       </td>
                       <td className="w-[12%] px-4 py-3 align-middle text-center">
                         <div suppressHydrationWarning className="text-[13px] font-medium text-zinc-600">
@@ -426,15 +458,49 @@ export default function CredentialsClient({
                         <div className="flex items-center justify-end h-full">
                           <div className="inline-flex items-center gap-1">
                             {cert.deletedAt ? (
-                              <button
-                                onClick={() => handleRestoreCertificate(cert.id)}
-                                disabled={updatingId === cert.id}
-                                className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 transition-colors disabled:opacity-50"
-                                title="Restore from Trash"
-                              >
-                                {updatingId === cert.id ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
-                                <span>Restore</span>
-                              </button>
+                              <div className="inline-flex items-center gap-1">
+                                <button
+                                  onClick={() => handleRestoreCertificate(cert.id)}
+                                  disabled={updatingId === cert.id}
+                                  className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 transition-colors disabled:opacity-50"
+                                  title="Restore from Trash"
+                                >
+                                  {updatingId === cert.id ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                                  <span>Restore</span>
+                                </button>
+                                {isAdmin && (
+                                  confirmPurgeId === cert.id ? (
+                                    <div className="flex items-center gap-1 bg-red-50 p-1 rounded-md border border-red-200">
+                                      <span className="text-[10px] font-bold uppercase text-red-700 px-1">Purge?</span>
+                                      <button
+                                        onClick={() => handlePurgeCertificate(cert.id)}
+                                        disabled={updatingId === cert.id}
+                                        className="w-6 h-6 bg-red-600 text-white rounded flex items-center justify-center hover:bg-red-700"
+                                        title="Confirm Permanent Delete"
+                                      >
+                                        <Check size={12} />
+                                      </button>
+                                      <button
+                                        onClick={() => setConfirmPurgeId(null)}
+                                        className="w-6 h-6 bg-white text-zinc-600 rounded border border-zinc-200 flex items-center justify-center"
+                                        title="Cancel"
+                                      >
+                                        <X size={12} />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      onClick={() => setConfirmPurgeId(cert.id)}
+                                      disabled={updatingId === cert.id}
+                                      className="inline-flex items-center gap-1 h-8 px-2.5 rounded-md text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200/80 transition-colors disabled:opacity-50"
+                                      title="Permanently Purge (Admin)"
+                                    >
+                                      <Trash2 size={13} />
+                                      <span>Purge</span>
+                                    </button>
+                                  )
+                                )}
+                              </div>
                             ) : confirmDeleteId === cert.id ? (
                               <div className="flex items-center gap-1 bg-red-50 p-1 rounded-md border border-red-100">
                                 <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 px-2 shrink-0">
@@ -567,6 +633,34 @@ export default function CredentialsClient({
                               {updatingId === cert.id ? <Loader2 size={16} className="animate-spin" /> : <RotateCcw size={16} />}
                               <span>Restore</span>
                             </button>
+                            {isAdmin && (
+                              confirmPurgeId === cert.id ? (
+                                <div className="flex items-center gap-1 bg-red-50 p-1 rounded-md border border-red-200 shrink-0">
+                                  <button
+                                    onClick={() => handlePurgeCertificate(cert.id)}
+                                    disabled={updatingId === cert.id}
+                                    className="h-9 px-2.5 bg-red-600 text-white rounded text-xs font-semibold"
+                                  >
+                                    Purge
+                                  </button>
+                                  <button
+                                    onClick={() => setConfirmPurgeId(null)}
+                                    className="h-9 px-2.5 bg-white text-zinc-600 rounded border border-zinc-200 text-xs font-semibold"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setConfirmPurgeId(cert.id)}
+                                  disabled={updatingId === cert.id}
+                                  className="mob-card-action inline-flex items-center justify-center gap-1.5 h-11 px-3 rounded-md text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200/80 transition-colors shrink-0"
+                                >
+                                  <Trash2 size={15} />
+                                  <span>Purge</span>
+                                </button>
+                              )
+                            )}
                           </>
                         ) : (
                           <>

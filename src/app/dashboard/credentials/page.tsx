@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { getEffectiveCertificateStatus } from "@/lib/security";
+import { requireDashboardPageAccess } from "@/lib/auth-guard";
 import CredentialsClient from "./CredentialsClient";
 
 export const metadata: Metadata = {
@@ -13,17 +10,10 @@ export const metadata: Metadata = {
 };
 
 export default async function CredentialsPage() {
-  const session = await getServerSession(authOptions);
+  const user = await requireDashboardPageAccess("credentials");
 
-  if (!session) {
-    const headersList = await headers();
-    const host = headersList.get("host") || "";
-    const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
-    redirect(isLocal ? "/login" : "https://shim-hq.vercel.app/login");
-  }
-
-  const userRole = (session.user as any).role;
-  const userId = (session.user as any).id;
+  const userRole = user.role;
+  const userId = user.id;
 
   const scopeWhere = userRole === "admin" ? {} : { issuerId: userId };
 
@@ -60,7 +50,11 @@ export default async function CredentialsPage() {
         </div>
       </div>
       
-      <CredentialsClient initialCertificates={serializedCertificates} initialTrashCount={trashCount} />
+      <CredentialsClient
+        initialCertificates={serializedCertificates}
+        initialTrashCount={trashCount}
+        isAdmin={userRole === "admin"}
+      />
     </div>
   );
 }

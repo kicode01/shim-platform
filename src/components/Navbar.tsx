@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getWorkspaceHref, isLocalHost } from "@/lib/domain";
+import { getHostSurface, getSurfaceOrigin, getWorkspaceHref } from "@/lib/domain";
 import { 
   LayoutDashboard, 
   Stamp, 
@@ -28,12 +28,13 @@ export default function Navbar() {
   const [host, setHost] = useState("");
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setHost(window.location.hostname);
+      setHost(window.location.host);
     }
   }, []);
 
-  const isStudioHost = host.includes("shim-studio");
-  const isWalletHost = host.includes("shim-wallet");
+  const surface = getHostSurface(host);
+  const isStudioHost = surface === "studio";
+  const isWalletHost = surface === "wallet";
 
   const isAuthPage = pathname === "/login" || pathname === "/register";
   const isValidateMode = pathname.startsWith("/validate");
@@ -46,7 +47,12 @@ export default function Navbar() {
 
   const userRole = (session?.user as any)?.role as string | undefined;
   const workspaceHref = getWorkspaceHref(userRole, host);
-  const workspaceLabel = userRole === "member" ? "Portal" : "Dashboard";
+  const workspaceLabel =
+    userRole === "member"
+      ? "Portal"
+      : userRole === "admin"
+        ? "Admin"
+        : "Dashboard";
 
   const handleLogoutClick = async () => {
     if (!confirmLogout) {
@@ -59,10 +65,11 @@ export default function Navbar() {
     if (logoutTimeoutRef.current) clearTimeout(logoutTimeoutRef.current);
     setConfirmLogout(false);
     await signOut({ redirect: false });
-    const currentHost = window.location.hostname;
-    const isCrossSubdomain = currentHost.includes("shim-studio") || currentHost.includes("shim-wallet");
-    window.location.href = !isLocalHost(currentHost) && isCrossSubdomain
-      ? "https://shim-hq.vercel.app/logout"
+    const currentHost = window.location.host;
+    const currentSurface = getHostSurface(currentHost);
+    const isCrossSubdomain = currentSurface === "studio" || currentSurface === "wallet";
+    window.location.href = isCrossSubdomain
+      ? `${getSurfaceOrigin("hq", currentHost)}/logout`
       : "/login";
   };
 
@@ -165,7 +172,7 @@ export default function Navbar() {
           if (!host.includes("shim-wallet")) {
             router.prefetch('/dashboard');
           }
-          if (!host.includes("shim-studio")) {
+          if (!host.includes("shim-studio") && !host.includes("shim-hq")) {
             router.prefetch('/portal');
           }
         }
@@ -286,7 +293,7 @@ export default function Navbar() {
                 <AnimatePresence mode="wait">
                   {isDashboardMode && (
                     <motion.span 
-                      key="dashboard"
+                      key={`dashboard-${userRole === "admin" ? "admin" : "organizer"}`}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -10 }}
@@ -294,7 +301,7 @@ export default function Navbar() {
                       className="mob-suffix text-zinc-700 text-2xl font-black tracking-[-0.08em] lowercase leading-none"
                       style={{ fontFamily: 'var(--font-inter), system-ui, sans-serif' }}
                     >
-                      .organizer
+                      {userRole === "admin" ? ".admin" : ".organizer"}
                     </motion.span>
                   )}
                   {isPortalMode && (

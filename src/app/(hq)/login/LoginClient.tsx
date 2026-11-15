@@ -6,6 +6,11 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { LogIn, Mail, Key, ShieldAlert, ArrowLeft, Eye, EyeOff, Loader2, Award, Check } from "lucide-react";
+import {
+  getHostSurface,
+  getTargetSurfaceForRole,
+  getWorkspacePath,
+} from "@/lib/domain";
 
 /* ---------------------------------------------------------------------------
    Shared field styling.
@@ -62,6 +67,9 @@ export default function LoginPage() {
   useEffect(() => {
     const emailFromLink = searchParams.get("email");
     if (emailFromLink) setEmail(emailFromLink);
+    if (searchParams.get("error") === "account_suspended") {
+      setError("Your account has been suspended by an administrator.");
+    }
   }, [searchParams]);
 
   const handleDemoFill = (role: "admin" | "member") => {
@@ -88,9 +96,18 @@ export default function LoginPage() {
       });
 
       if (res?.error) {
-        setError("Invalid credentials. Please try again.");
+        if (res.error === "ACCOUNT_SUSPENDED") {
+          setError("Your account has been suspended by an administrator.");
+        } else {
+          setError("Invalid credentials. Please try again.");
+        }
       } else {
-        if (window.location.hostname.includes("shim-hq")) {
+        const sess = await getSession();
+        const role = (sess?.user as any)?.role as string | undefined;
+        const currentSurface = getHostSurface(window.location.host);
+        const targetSurface = getTargetSurfaceForRole(role);
+
+        if (currentSurface !== "local" && currentSurface !== targetSurface) {
           try {
             const handoffRes = await fetch("/api/auth/handoff");
             if (handoffRes.ok) {
@@ -105,16 +122,7 @@ export default function LoginPage() {
           }
         }
 
-        if (window.location.hostname.includes("shim-wallet")) {
-          window.location.href = "/portal";
-          return;
-        } else if (window.location.hostname.includes("shim-studio")) {
-          window.location.href = "/dashboard";
-          return;
-        }
-
-        const sess = await getSession();
-        window.location.href = sess?.user?.role === "member" ? "/portal" : "/dashboard";
+        window.location.href = getWorkspacePath(role);
       }
     } catch (err) {
       console.error(err);
@@ -125,7 +133,7 @@ export default function LoginPage() {
   };
 
   const demoAccounts = [
-    { key: "admin" as const, label: "Organizer Demo", email: "admin@shim.app" },
+    { key: "admin" as const, label: "Admin Demo", email: "admin@shim.app" },
     { key: "member" as const, label: "Attendee Demo", email: "member@shim.app" },
   ];
 

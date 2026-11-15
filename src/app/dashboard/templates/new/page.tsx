@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { redirect } from "next/navigation";
 import TemplateEditor from "@/components/TemplateEditor";
+import { requireDashboardPageAccess } from "@/lib/auth-guard";
 
 export const metadata: Metadata = {
   title: "New Template",
@@ -10,11 +8,7 @@ export const metadata: Metadata = {
 };
 
 export default async function NewTemplatePage() {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user) {
-    redirect("/login");
-  }
+  await requireDashboardPageAccess("templates");
 
   return (
     <div className="dashboard-bg w-full h-full flex flex-col overflow-hidden bg-[#141416] lg:bg-transparent">

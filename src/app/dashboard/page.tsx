@@ -1,14 +1,9 @@
 import type { Metadata } from "next";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { getEffectiveCertificateStatus } from "@/lib/security";
+import { requireDashboardPageAccess } from "@/lib/auth-guard";
 
 import DashboardClient from "./DashboardClient";
-import Link from "next/link";
-import { Plus, Stamp } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Overview",
@@ -16,25 +11,12 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
-
-  if (!session) {
-    const headersList = await headers();
-    const host = headersList.get("host") || "";
-    const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
-    redirect(isLocal ? "/login" : "https://shim-hq.vercel.app/login");
-  }
-
-  if ((session.user as any).role === "member") {
-    const headersList = await headers();
-    const host = headersList.get("host") || "";
-    const isLocal = host.includes("localhost");
-    redirect(isLocal ? "/portal" : "https://shim-wallet.vercel.app");
-  }
+  const user = await requireDashboardPageAccess("overview");
 
   // Load server-side initial stats and events
-  const userRole = (session.user as any).role;
-  const userId = session.user.id;
+  const userRole = user.role;
+  const userId = user.id;
+  const isAdmin = userRole === "admin";
   const issuerFilter = userRole === "admin" ? { deletedAt: null } : { issuerId: userId, deletedAt: null };
   const templateFilter = userRole === "admin" ? {} : { userId };
   const organizerFilter = userRole === "admin" ? {} : { organizerId: userId };
@@ -42,6 +24,7 @@ export default async function DashboardPage() {
   
   let totalCertificates = 0, validCertificates = 0, revokedCertificates = 0;
   let totalTemplates = 0, totalVerifications = 0, totalClaimed = 0;
+  let pendingSupportCount = 0, activeOrganizerCount = 0, totalMemberCount = 0;
   let recentEvents: any[] = [];
   let allCertificates: any[] = [];
   let allVerifications: any[] = [];
@@ -57,7 +40,10 @@ export default async function DashboardPage() {
       totalClaimed,
       recentEvents,
       allCertificates,
-      allVerifications
+      allVerifications,
+      pendingSupportCount,
+      activeOrganizerCount,
+      totalMemberCount
     ] = await Promise.all([
       prisma.certificate.count({ where: { ...issuerFilter } }),
       prisma.certificate.count({
@@ -76,6 +62,7 @@ export default async function DashboardPage() {
         take: 5,
         orderBy: { createdAt: "desc" },
         include: {
+          organizer: { select: { name: true, email: true } },
           _count: {
             select: { attendances: true, certificates: { where: { deletedAt: null } } }
           }
@@ -88,7 +75,10 @@ export default async function DashboardPage() {
       prisma.auditLog.findMany({
         where: auditFilter,
         select: { createdAt: true }
-      })
+      }),
+      isAdmin ? prisma.supportTicket.count({ where: { status: "Pending" } }) : Promise.resolve(0),
+      isAdmin ? prisma.user.count({ where: { role: "organizer", isActive: true } }) : Promise.resolve(0),
+      isAdmin ? prisma.user.count({ where: { role: "member" } }) : Promise.resolve(0),
     ]);
   } catch (error) {
     console.warn("Failed to load dashboard overview metrics:", error);
@@ -135,7 +125,8 @@ export default async function DashboardPage() {
     name: e.name,
     date: e.date ? e.date.toISOString() : null,
     attendeeCount: e._count.attendances,
-    credentialCount: e._count.certificates
+    credentialCount: e._count.certificates,
+    organizerName: e.organizer?.name || e.organizer?.email || null,
   }));
 
   return (
@@ -144,6 +135,14 @@ export default async function DashboardPage() {
       initialStats={initialStats} 
       allCertificates={allCertificates}
       allVerifications={allVerifications}
+      isAdmin={isAdmin}
+      userRole={userRole}
+      allowedPages={user.allowedPages}
+      adminMetrics={{
+        pendingSupportCount,
+        activeOrganizerCount,
+        totalMemberCount,
+      }}
     />
   );
 }

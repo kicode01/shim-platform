@@ -4,7 +4,11 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { getWorkspacePath, isLocalHost } from "@/lib/domain";
+import {
+  getHostSurface,
+  getTargetSurfaceForRole,
+  getWorkspacePath,
+} from "@/lib/domain";
 import { createHandoffUrl } from "@/lib/handoff";
 import LoginClient from "./LoginClient";
 import HandoffRedirect from "./HandoffRedirect";
@@ -21,17 +25,16 @@ export default async function LoginPage() {
   if (userId) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, role: true },
+      select: { id: true, role: true, isActive: true },
     });
 
-    if (user) {
+    if (user && user.isActive) {
       const headersList = await headers();
       const host = headersList.get("host") || "";
-      if (host.includes("shim-wallet")) {
-        redirect("/portal");
-      } else if (host.includes("shim-studio")) {
-        redirect("/dashboard");
-      } else if (isLocalHost(host)) {
+      const surface = getHostSurface(host);
+      const targetSurface = getTargetSurfaceForRole(user.role);
+
+      if (surface === "local" || surface === targetSurface) {
         redirect(getWorkspacePath(user.role));
       } else {
         const handoffUrl = await createHandoffUrl({

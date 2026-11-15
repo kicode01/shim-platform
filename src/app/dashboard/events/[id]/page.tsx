@@ -1,10 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { getEffectiveCertificateStatus } from "@/lib/security";
 import EventDetailsClient from "./EventDetailsClient";
 import type { Metadata } from "next";
+import { requireDashboardPageAccess } from "@/lib/auth-guard";
 
 export const metadata: Metadata = {
   title: "Attendees",
@@ -12,10 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default async function EventDetailsPage({ params }: { params: Promise<{ id: string }> }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return notFound();
-  }
+  const user = await requireDashboardPageAccess("events");
 
   const { id } = await params;
   const event = await prisma.event.findUnique({
@@ -31,8 +27,8 @@ export default async function EventDetailsPage({ params }: { params: Promise<{ i
     }
   });
 
-  const userRole = (session.user as any).role;
-  if (!event || (userRole !== "admin" && event.organizerId !== session.user.id)) {
+  const userRole = user.role;
+  if (!event || (userRole !== "admin" && event.organizerId !== user.id)) {
     notFound();
   }
 
@@ -45,7 +41,7 @@ export default async function EventDetailsPage({ params }: { params: Promise<{ i
 
   // Fetch templates for the Default Template dropdown
   const templates = await prisma.template.findMany({
-    where: userRole === "admin" ? {} : { userId: session.user.id },
+    where: userRole === "admin" ? {} : { userId: user.id },
     select: { id: true, name: true }
   });
 

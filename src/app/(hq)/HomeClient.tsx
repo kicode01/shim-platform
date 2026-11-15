@@ -26,13 +26,17 @@ export default function HomeClient({
   const [supportOpen, setSupportOpen] = useState(false);
 
   useEffect(() => {
-    setHost(window.location.hostname);
+    setHost(window.location.host);
   }, []);
 
   const userRole = (session?.user as any)?.role as string | undefined;
   const heroHref = session?.user ? getWorkspaceHref(userRole, host) : "/login";
   const heroLabel = session?.user
-    ? (userRole === "member" ? "Open Wallet" : "Open Dashboard")
+    ? userRole === "member"
+      ? "Open Wallet"
+      : userRole === "admin"
+        ? "Open Admin Console"
+        : "Open Organizer Studio"
     : "Get Started";
   const heroBtnClass =
     "bg-zinc-100 hover:bg-white text-zinc-800 font-medium rounded-md py-3 px-8 transition-colors flex items-center justify-center gap-2 w-fit group";

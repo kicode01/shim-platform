@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireApiStaffAccess } from "@/lib/auth-guard";
 
 export async function GET(
   req: Request,
@@ -9,10 +8,8 @@ export async function GET(
 ) {
   const { id } = await props.params;
 
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
+  const { user, error } = await requireApiStaffAccess(["templates", "issue", "events"]);
+  if (error) return error;
 
   try {
     const template = await prisma.template.findUnique({
@@ -24,10 +21,7 @@ export async function GET(
       }
     });
 
-    const userRole = (session.user as any).role;
-    const userId = (session.user as any).id;
-
-    if (!template || (userRole !== "admin" && template.userId !== userId)) {
+    if (!template || (user.role !== "admin" && template.userId !== user.id)) {
       return NextResponse.json({ message: "Template not found" }, { status: 404 });
     }
 
@@ -42,21 +36,16 @@ export async function PUT(
   req: Request,
   props: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
+  const { user, error } = await requireApiStaffAccess("templates");
+  if (error) return error;
 
   const { id } = await props.params;
 
   try {
     const { name, description, designData } = await req.json();
 
-    const userRole = (session.user as any).role;
-    const userId = (session.user as any).id;
-
     const existingTemplate = await prisma.template.findUnique({ where: { id } });
-    if (!existingTemplate || (userRole !== "admin" && existingTemplate.userId !== userId)) {
+    if (!existingTemplate || (user.role !== "admin" && existingTemplate.userId !== user.id)) {
       return NextResponse.json({ message: "Template not found" }, { status: 404 });
     }
 
@@ -104,19 +93,14 @@ export async function DELETE(
   req: Request,
   props: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
+  const { user, error } = await requireApiStaffAccess("templates");
+  if (error) return error;
 
   const { id } = await props.params;
 
   try {
-    const userRole = (session.user as any).role;
-    const userId = (session.user as any).id;
-
     const existingTemplate = await prisma.template.findUnique({ where: { id } });
-    if (!existingTemplate || (userRole !== "admin" && existingTemplate.userId !== userId)) {
+    if (!existingTemplate || (user.role !== "admin" && existingTemplate.userId !== user.id)) {
       return NextResponse.json({ message: "Template not found" }, { status: 404 });
     }
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireApiStaffAccess } from "@/lib/auth-guard";
 import {
   computeCertificateFingerprint,
   getEffectiveCertificateStatus,
@@ -144,10 +145,8 @@ export async function PATCH(
   req: Request,
   props: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
+  const { user, error } = await requireApiStaffAccess("credentials");
+  if (error) return error;
 
   const { id } = await props.params;
 
@@ -168,8 +167,8 @@ export async function PATCH(
       return NextResponse.json({ message: "No status or validityDate updates provided" }, { status: 400 });
     }
 
-    const userRole = (session.user as any).role;
-    const userId = (session.user as any).id;
+    const userRole = user.role;
+    const userId = user.id;
     const existing = await prisma.certificate.findFirst({ where: { id, deletedAt: null } });
     if (!existing || (userRole !== "admin" && existing.issuerId !== userId)) {
       return NextResponse.json({ message: "Certificate not found" }, { status: 404 });
@@ -214,10 +213,45 @@ export async function DELETE(
   }
 
   const { id } = await props.params;
+  const { searchParams } = new URL(req.url);
+  const permanent = searchParams.get("permanent") === "1";
 
   try {
-    const userRole = (session.user as any).role;
-    const userId = (session.user as any).id;
+    const dbUser = await prisma.user.findUnique({
+      where: { id: (session.user as any).id },
+      select: { id: true, role: true, isActive: true, allowedPages: true },
+    });
+    if (!dbUser || !dbUser.isActive) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
+    }
+    const userRole = dbUser.role;
+    const userId = dbUser.id;
+    if (userRole === "organizer" && !dbUser.allowedPages.includes("credentials")) {
+      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+    }
+
+    if (permanent) {
+      if (userRole !== "admin") {
+        return NextResponse.json(
+          { message: "Only administrators can permanently purge credentials." },
+          { status: 403 }
+        );
+      }
+      const trashed = await prisma.certificate.findUnique({
+        where: { id },
+        select: { id: true, deletedAt: true },
+      });
+      if (!trashed || !trashed.deletedAt) {
+        return NextResponse.json(
+          { message: "Certificate not found in trash." },
+          { status: 404 }
+        );
+      }
+      await prisma.auditLog.deleteMany({ where: { certificateId: id } });
+      await prisma.certificate.delete({ where: { id } });
+      return NextResponse.json({ success: true, purged: true });
+    }
+
     const existing = await prisma.certificate.findFirst({ where: { id, deletedAt: null } });
     if (!existing || (userRole !== "admin" && existing.issuerId !== userId)) {
       return NextResponse.json({ message: "Certificate not found" }, { status: 404 });

@@ -1,18 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireApiStaffAccess } from "@/lib/auth-guard";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  
-  if (!session?.user) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
+  const { user, error } = await requireApiStaffAccess(["templates", "issue", "events"]);
+  if (error) return error;
 
   try {
     const templates = await prisma.template.findMany({
-      where: { userId: (session.user as any).id },
+      where: user.role === "admin" ? {} : { userId: user.id },
       orderBy: { createdAt: 'desc' }
     });
 

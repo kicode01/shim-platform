@@ -1,15 +1,40 @@
 import { NextResponse } from "next/server";
 import { decode, encode } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { getHostSurface, getRequestOrigin, getSurfaceOrigin } from "@/lib/domain";
+
+function buildLoginErrorUrl(
+  errorCode: string,
+  host: string | null,
+  requestOrigin: string
+): URL {
+  const loginOrigin =
+    getHostSurface(host) === "local"
+      ? requestOrigin
+      : getSurfaceOrigin("hq", host);
+  return new URL(`/login?error=${errorCode}`, loginOrigin);
+}
 
 export async function GET(req: Request) {
+  const headerStore = await headers();
+  const host =
+    req.headers.get("x-forwarded-host") ||
+    req.headers.get("host") ||
+    headerStore.get("x-forwarded-host") ||
+    headerStore.get("host");
+  const protoHeader =
+    req.headers.get("x-forwarded-proto") || headerStore.get("x-forwarded-proto");
+  const requestOrigin = getRequestOrigin(host, req.url, protoHeader);
+
   try {
     const { searchParams } = new URL(req.url);
     const token = searchParams.get("token");
 
     if (!token) {
-      return NextResponse.redirect(new URL("/login?error=missing_handoff", req.url));
+      return NextResponse.redirect(
+        buildLoginErrorUrl("missing_handoff", host, requestOrigin)
+      );
     }
 
     // 1. Decode and verify the handoff token
@@ -20,23 +45,33 @@ export async function GET(req: Request) {
     });
 
     if (!decoded || !decoded.userId || decoded.purpose !== "handoff") {
-      return NextResponse.redirect(new URL("/login?error=invalid_handoff", req.url));
+      return NextResponse.redirect(
+        buildLoginErrorUrl("invalid_handoff", host, requestOrigin)
+      );
     }
 
     // Handoff tokens expire very quickly (e.g., 60 seconds)
     // The decode function verifies signature, but we also manually check expiry just in case
     const now = Math.floor(Date.now() / 1000);
     if (decoded.exp && (decoded.exp as number) < now) {
-      return NextResponse.redirect(new URL("/login?error=expired_handoff", req.url));
+      return NextResponse.redirect(
+        buildLoginErrorUrl("expired_handoff", host, requestOrigin)
+      );
     }
 
-    // 2. Fetch the user to ensure they still exist and get their latest details
+    // 2. Fetch the user to ensure they still exist and are active
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId as string }
     });
 
-    if (!user) {
-      return NextResponse.redirect(new URL("/login?error=user_not_found", req.url));
+    if (!user || !user.isActive) {
+      return NextResponse.redirect(
+        buildLoginErrorUrl(
+          !user ? "user_not_found" : "account_suspended",
+          host,
+          requestOrigin
+        )
+      );
     }
 
     // 3. Generate a NextAuth-compatible session JWT
@@ -52,13 +87,13 @@ export async function GET(req: Request) {
       maxAge: 30 * 24 * 60 * 60, // 30 days
     });
 
-    // 4. Determine redirect destination
+    // 4. Determine redirect destination on the incoming host origin
     const destination = user.role === "member" ? "/portal" : "/dashboard";
-    const redirectUrl = new URL(destination, req.url);
+    const redirectUrl = new URL(destination, requestOrigin);
     const response = NextResponse.redirect(redirectUrl);
 
     // 5. Set the session cookie directly on both response and cookieStore
-    const proto = req.headers.get("x-forwarded-proto") || (req.url.startsWith("https://") ? "https" : "http");
+    const proto = req.headers.get("x-forwarded-proto") || (requestOrigin.startsWith("https://") ? "https" : "http");
     const isHttps = proto === "https";
     const secureCookieName = "__Secure-next-auth.session-token";
     const standardCookieName = "next-auth.session-token";
@@ -94,6 +129,8 @@ export async function GET(req: Request) {
 
   } catch (error) {
     console.error("Handoff consumption error:", error);
-    return NextResponse.redirect(new URL("/login?error=server_error", req.url));
+    return NextResponse.redirect(
+      buildLoginErrorUrl("server_error", host, requestOrigin)
+    );
   }
 }

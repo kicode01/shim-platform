@@ -1,9 +1,7 @@
-import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import AuditClient from "./AuditClient";
 import type { Metadata } from "next";
+import { requireDashboardPageAccess } from "@/lib/auth-guard";
 
 export const metadata: Metadata = {
   title: "Audit",
@@ -11,13 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default async function AuditPage() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    redirect("/login");
-  }
-
-  const userRole = (session.user as any).role;
-  const userId = session.user.id;
+  const user = await requireDashboardPageAccess("audit");
+  const userRole = user.role;
+  const userId = user.id;
 
   // Get certificates for this organizer (as issuer or event organizer), or all if admin
   const whereCertClause = userRole === "admin"

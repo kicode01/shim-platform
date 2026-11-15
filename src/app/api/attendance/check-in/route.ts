@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireApiStaffAccess } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { computeCertificateFingerprint } from "@/lib/security";
 import { linkCertificatesByEmail } from "@/lib/claim";
@@ -8,11 +7,8 @@ import { sendCertificateEmail } from "@/lib/email";
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || (session.user.role !== "organizer" && session.user.role !== "admin")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { user, error } = await requireApiStaffAccess(["events", "issue", "overview"]);
+    if (error) return error;
 
     const { eventId, membershipId } = await request.json();
 
@@ -25,7 +21,7 @@ export async function POST(request: Request) {
       where: { id: eventId }
     });
 
-    if (!event || (session.user.role !== "admin" && event.organizerId !== session.user.id)) {
+    if (!event || (user.role !== "admin" && event.organizerId !== user.id)) {
       return NextResponse.json({ error: "Event not found or unauthorized" }, { status: 404 });
     }
 

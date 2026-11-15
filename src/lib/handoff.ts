@@ -1,5 +1,10 @@
 import { encode } from "next-auth/jwt";
-import { isLocalHost } from "@/lib/domain";
+import {
+  getHostSurface,
+  getRequestOrigin,
+  getSurfaceOrigin,
+  getTargetSurfaceForRole,
+} from "@/lib/domain";
 
 export async function createHandoffUrl(params: {
   userId: string;
@@ -19,24 +24,24 @@ export async function createHandoffUrl(params: {
     maxAge: 60,
   });
 
-  const isLocal = isLocalHost(host) || (requestUrl ? isLocalHost(requestUrl) : false);
-
-  let targetDomain: string;
-  if (isLocal) {
-    targetDomain = "http://localhost:3000";
-    if (requestUrl) {
-      try {
-        targetDomain = new URL(requestUrl).origin;
-      } catch {
-        // Fallback to host header below
-      }
-    } else if (host) {
-      targetDomain = `http://${host}`;
+  let effectiveHost = host || "";
+  if (!effectiveHost && requestUrl) {
+    try {
+      effectiveHost = new URL(requestUrl).host;
+    } catch {
+      effectiveHost = "";
     }
-  } else {
-    targetDomain =
-      role === "member" ? "https://shim-wallet.vercel.app" : "https://shim-studio.vercel.app";
   }
 
-  return `${targetDomain}/api/auth/consume?token=${token}`;
+  const currentSurface = getHostSurface(effectiveHost);
+  let targetOrigin: string;
+
+  if (currentSurface === "local") {
+    targetOrigin = getRequestOrigin(effectiveHost, requestUrl);
+  } else {
+    const targetSurface = getTargetSurfaceForRole(role);
+    targetOrigin = getSurfaceOrigin(targetSurface, effectiveHost);
+  }
+
+  return `${targetOrigin}/api/auth/consume?token=${token}`;
 }

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireApiStaffAccess } from "@/lib/auth-guard";
 import { linkCertificatesByEmail } from "@/lib/claim";
 import {
   computeCertificateFingerprint,
@@ -10,18 +9,16 @@ import {
 } from "@/lib/security";
 
 export async function GET(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
+  const { user, error } = await requireApiStaffAccess("credentials");
+  if (error) return error;
 
   const { searchParams } = new URL(req.url);
   const search = searchParams.get("search") || "";
   const status = searchParams.get("status") || "";
 
   try {
-    const userRole = (session.user as any).role;
-    const userId = (session.user as any).id;
+    const userRole = user.role;
+    const userId = user.id;
     const now = new Date();
     const whereClause: any = userRole === "admin" ? {} : { issuerId: userId };
     const andConditions: any[] = [];
@@ -88,10 +85,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || ((session.user as any).role !== "organizer" && (session.user as any).role !== "admin")) {
-    return NextResponse.json({ message: "Unauthorized. Please sign in as an organizer or admin." }, { status: 401 });
-  }
+  const { user, error } = await requireApiStaffAccess("issue");
+  if (error) return error;
 
   try {
     const body = await req.json();
@@ -106,19 +101,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: parsedValidity.error }, { status: 400 });
     }
 
-    // Safely resolve issuer ID from session or database fallback
-    let issuerId = (session.user as any).id;
-    if (!issuerId && session.user.email) {
-      const dbUser = await prisma.user.findFirst({
-        where: { email: { equals: session.user.email.trim(), mode: "insensitive" } },
-        select: { id: true }
-      });
-      if (dbUser) issuerId = dbUser.id;
-    }
-
-    if (!issuerId) {
-      return NextResponse.json({ message: "Issuer account not found. Please log in again." }, { status: 401 });
-    }
+    const issuerId = user.id;
 
     // Verify template exists
     const template = await prisma.template.findUnique({

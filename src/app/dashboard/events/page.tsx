@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { requireDashboardPageAccess } from "@/lib/auth-guard";
 
 import EventsClient from "./EventsClient";
 
@@ -12,19 +10,15 @@ export const metadata: Metadata = {
 };
 
 export default async function EventsPage() {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user) {
-    redirect("/login");
-  }
-
-  const userRole = (session.user as any).role;
-  const userId = (session.user as any).id;
+  const user = await requireDashboardPageAccess("events");
+  const userRole = user.role;
+  const userId = user.id;
 
   const [events, templates] = await Promise.all([
     prisma.event.findMany({
       where: userRole === "admin" ? {} : { organizerId: userId },
       include: {
+        organizer: { select: { name: true, email: true } },
         _count: {
           select: { certificates: { where: { deletedAt: null } } }
         }
@@ -43,5 +37,11 @@ export default async function EventsPage() {
     createdAt: e.createdAt.toISOString(),
   }));
 
-  return <EventsClient initialEvents={serializedEvents} templates={templates} />;
+  return (
+    <EventsClient
+      initialEvents={serializedEvents}
+      templates={templates}
+      isAdmin={userRole === "admin"}
+    />
+  );
 }

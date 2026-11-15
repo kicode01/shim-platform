@@ -1,17 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireApiStaffAccess } from "@/lib/auth-guard";
 
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { user, error } = await requireApiStaffAccess("credentials");
+    if (error) return error;
 
     const { id } = await params;
 
@@ -27,10 +24,9 @@ export async function PUT(
       return NextResponse.json({ error: "Certificate not found" }, { status: 404 });
     }
 
-    const userRole = (session.user as any).role;
-    const isIssuer = certificate.issuerId === session.user.id;
-    const isOrganizer = certificate.event?.organizerId === session.user.id;
-    const isAdmin = userRole === "admin";
+    const isIssuer = certificate.issuerId === user.id;
+    const isOrganizer = certificate.event?.organizerId === user.id;
+    const isAdmin = user.role === "admin";
 
     if (!isIssuer && !isOrganizer && !isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
